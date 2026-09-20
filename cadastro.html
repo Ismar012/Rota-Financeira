@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Criar conta | Rota Financeira</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<header class="header"><nav class="nav"><a class="logo-text" href="/">ROTA <span>FINANCEIRA</span></a><a class="btn btn-outline" href="login.html">Já tenho conta</a></nav></header>
+<main class="login-wrap"><section class="auth">
+<img class="auth-logo" src="logo-rota.png" alt="Rota Financeira"><h1>Crie sua conta</h1><p class="auth-sub">Comece sua jornada financeira com a Rota.</p>
+<form id="registerForm">
+<div class="field"><label for="nome">NOME COMPLETO</label><input id="nome" type="text" autocomplete="name" placeholder="Seu nome" required></div>
+<div class="field"><label for="email">E-MAIL</label><input id="email" type="email" autocomplete="email" placeholder="seuemail@email.com" required></div>
+<div class="field"><label for="telefone">WHATSAPP (OPCIONAL)</label><input id="telefone" type="tel" autocomplete="tel" placeholder="(00) 00000-0000"></div>
+<div class="field"><label for="senha">CRIAR SENHA</label><input id="senha" type="password" autocomplete="new-password" minlength="8" placeholder="Mínimo de 8 caracteres" required></div>
+<div class="field"><label for="confirmar">CONFIRMAR SENHA</label><input id="confirmar" type="password" autocomplete="new-password" placeholder="Repita sua senha" required></div>
+<button class="btn btn-gold" type="submit">CRIAR MINHA CONTA</button><p id="feedback" class="notice"></p>
+</form>
+<div class="auth-foot">Já possui uma conta? <a href="login.html">Entrar</a></div>
+</section></main>
+<script>
+document.getElementById('registerForm').addEventListener('submit', async (e) => {e.preventDefault(); const b=document.querySelector('#feedback'); b.textContent='Criando sua conta...'; if(senha.value!==confirmar.value){b.textContent='As senhas não coincidem.';return;}
+try { const r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:nome.value,email:email.value,phone:telefone.value,password:senha.value})}); const d=await r.json(); if(!r.ok) throw new Error(d.error||'Falha no cadastro.'); window.location.href='dashboard.html'; } catch(err){b.textContent=err.message;}
+});
+</script>
+</body></html>

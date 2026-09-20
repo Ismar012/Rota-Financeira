@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+
+<title>Meu planejamento | Rota Financeira</title>
+
+<!-- Estilos principais da Rota Financeira -->
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/planejamento.css">
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+</head>
+
+<body>
+
+<!-- =========================
+     CABEÇALHO
+========================== -->
+
+<header class="header">
+
+
+<nav class="nav">
+
+    <a class="logo-text" href="/dashboard.html">
+        ROTA <span>FINANCEIRA</span>
+    </a>
+
+    <div class="nav-actions">
+
+        <a class="back-link" href="/dashboard.html">
+            ← Minha área
+        </a>
+
+        <button
+            id="logout"
+            class="btn btn-outline"
+            type="button">
+            Sair
+        </button>
+
+    </div>
+
+</nav>
+
+
+</header>
+
+<!-- =========================
+     CONTEÚDO PRINCIPAL
+========================== -->
+
+<main class="planning-page">
+
+
+<div class="planning-container">
+
+
+    <!-- CABEÇALHO DO PLANEJAMENTO -->
+
+    <section class="planning-head">
+
+        <div>
+
+            <div class="eyebrow">
+                Planejamento financeiro
+            </div>
+
+            <h1 class="planning-title">
+                Meu planejamento
+            </h1>
+
+            <p class="muted">
+                Acompanhe ganhos, gastos, fluxo de caixa e sua meta diária.
+            </p>
+
+        </div>
+
+
+        <!-- SELETOR DE MÊS -->
+
+        <div class="month-selector">
+
+            <button
+                id="prevMonth"
+                class="month-btn"
+                type="button"
+                aria-label="Mês anterior">
+                ‹
+            </button>
+
+            <input
+                id="monthPicker"
+                type="month"
+                aria-label="Selecionar mês">
+
+            <button
+                id="nextMonth"
+                class="month-btn"
+                type="button"
+                aria-label="Próximo mês">
+                ›
+            </button>
+
+            <button
+                id="menuBtn"
+                class="menu-btn"
+                type="button"
+                aria-label="Mais opções">
+                ⋮
+            </button>
+
+
+            <!-- MENU -->
+
+            <div
+                id="menu"
+                class="menu">
+
+                <button
+                    id="menuEdit"
+                    type="button">
+                    Editar lançamentos
+                </button>
+
+                <button
+                    id="menuRest"
+                    type="button">
+                    Cadastrar dia de descanso
+                </button>
+
+                <button
+                    id="menuManageRest"
+                    type="button">
+                    Gerenciar dias de descanso
+                </button>
+
+                <button
+                    id="menuAdmin"
+                    type="button"
+                    style="display:none">
+                    Área do administrador
+                </button>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         RESUMO FINANCEIRO
+    ========================== -->
+
+    <section class="summary-grid">
+
+
+        <!-- META DIÁRIA -->
+
+        <article class="summary-card highlight">
+
+            <span>
+                Meta diária
+            </span>
+
+            <strong id="dailyGoal">
+                R$ 0,00
+            </strong>
+
+            <small id="workingDays">
+                0 dias de trabalho
+            </small>
+
+        </article>
+
+
+        <!-- GANHOS -->
+
+        <article class="summary-card">
+
+            <span>
+                Ganhos
+            </span>
+
+            <strong id="totalIncome">
+                R$ 0,00
+            </strong>
+
+            <small>
+                projetados no mês
+            </small>
+
+        </article>
+
+
+        <!-- GASTOS -->
+
+        <article class="summary-card">
+
+            <span>
+                Gastos
+            </span>
+
+            <strong id="totalExpense">
+                R$ 0,00
+            </strong>
+
+            <small>
+                despesas + descanso
+            </small>
+
+        </article>
+
+
+        <!-- FLUXO DE CAIXA -->
+
+        <article class="summary-card">
+
+            <span>
+                Fluxo de caixa
+            </span>
+
+            <strong id="totalCashflow">
+                R$ 0,00
+            </strong>
+
+            <small>
+                ganhos − gastos
+            </small>
+
+        </article>
+
+    </section>
+
+
+
+    <!-- =========================
+         GRÁFICO
+    ========================== -->
+
+    <section class="chart-card">
+
+        <div class="section-title">
+
+            <div>
+
+                <div class="eyebrow">
+                    Evolução
+                </div>
+
+                <h2>
+                    Movimentação diária
+                </h2>
+
+            </div>
+
+            <span
+                id="monthLabel"
+                class="month-label">
+            </span>
+
+        </div>
+
+
+        <div class="chart-wrap">
+
+            <canvas id="financeChart"></canvas>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================
+         AÇÕES
+    ========================== -->
+
+    <section class="action-grid">
+
+
+        <!-- CADASTRAR GANHO -->
+
+        <button
+            id="addIncome"
+            class="action-card income-action"
+            type="button">
+
+            <span class="action-icon">
+                +
+            </span>
+
+            <span>
+
+                <strong>
+                    Cadastrar ganho
+                </strong>
+
+                <small>
+                    Adicionar uma receita prevista
+                </small>
+
+            </span>
+
+        </button>
+
+
+        <!-- CADASTRAR DESPESA -->
+
+        <button
+            id="addExpense"
+            class="action-card expense-action"
+            type="button">
+
+            <span class="action-icon">
+                +
+            </span>
+
+            <span>
+
+                <strong>
+                    Cadastrar despesa
+                </strong>
+
+                <small>
+                    Adicionar uma despesa prevista
+                </small>
+
+            </span>
+
+        </button>
+
+    </section>
+
+
+
+    <!-- =========================
+         LANÇAMENTOS
+    ========================== -->
+
+    <section
+        id="entriesSection"
+        class="list-card hidden">
+
+        <div class="section-title">
+
+            <div>
+
+                <div class="eyebrow">
+                    Lançamentos
+                </div>
+
+                <h2>
+                    Editar lançamentos
+                </h2>
+
+            </div>
+
+        </div>
+
+        <!--
+            O planejamento.js preenche este elemento
+            dinamicamente.
+
+            É aqui que os lançamentos de GANHO e DESPESA
+            serão exibidos, juntamente com seus respectivos
+            botões de ação.
+        -->
+
+        <div id="entriesList"></div>
+
+    </section>
+
+
+
+    <!-- =========================
+         DIAS DE DESCANSO
+    ========================== -->
+
+    <section
+        id="restSection"
+        class="list-card hidden">
+
+        <div class="section-title">
+
+            <div>
+
+                <div class="eyebrow">
+                    Dias de descanso
+                </div>
+
+                <h2>
+                    Gerenciar descanso
+                </h2>
+
+            </div>
+
+        </div>
+
+        <div id="restList"></div>
+
+    </section>
+
+
+
+    <!-- FEEDBACK -->
+
+    <p
+        id="feedback"
+        class="notice">
+    </p>
+
+</div>
+
+
+</main>
+
+<!-- =========================
+     MODAL — LANÇAMENTO
+========================== -->
+
+<div
+    id="modal"
+    class="modal hidden">
+
+
+<div class="modal-box">
+
+    <button
+        id="closeModal"
+        class="modal-close"
+        type="button"
+        aria-label="Fechar">
+        ×
+    </button>
+
+
+    <div
+        class="eyebrow"
+        id="modalEyebrow">
+        Novo lançamento
+    </div>
+
+
+    <h2 id="modalTitle">
+        Cadastrar
+    </h2>
+
+
+    <form id="entryForm">
+
+        <input
+            type="hidden"
+            id="entryId">
+
+        <input
+            type="hidden"
+            id="entryType">
+
+
+        <!-- NOME -->
+
+        <label for="entryName">
+
+            Nome
+
+            <input
+                id="entryName"
+                maxlength="120"
+                required
+                placeholder="Ex.: Combustível">
+
+        </label>
+
+
+        <!-- VALOR -->
+
+        <label for="entryAmount">
+
+            Valor
+
+            <input
+                id="entryAmount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+                placeholder="0,00">
+
+        </label>
+
+
+        <!-- TIPO DE DESPESA -->
+
+        <label
+            id="expenseModeLabel"
+            for="expenseRecurrence"
+            class="hidden">
+
+            Tipo de despesa
+
+            <select id="expenseRecurrence" aria-label="Tipo de despesa">
+                <option value="single">Única</option>
+                <option value="fixed">Despesa fixa</option>
+                <option value="installment">Parcelada</option>
+            </select>
+
+        </label>
+
+
+        <!-- QUANTIDADE DE PARCELAS -->
+
+        <label
+            id="installmentLabel"
+            for="installmentTotal"
+            class="hidden">
+
+            Número de parcelas
+
+            <input
+                id="installmentTotal"
+                type="number"
+                min="2"
+                max="120"
+                step="1"
+                placeholder="Ex.: 6">
+
+        </label>
+
+
+        <!-- DATA DO CADASTRO -->
+
+        <label for="createdDate">
+
+            Data do cadastro
+
+            <input
+                id="createdDate"
+                type="date"
+                required>
+
+        </label>
+
+
+        <!-- DATA DE PAGAMENTO / RECEBIMENTO -->
+
+        <label
+            id="dueLabel"
+            for="dueDate">
+
+            Data de pagamento
+
+            <input
+                id="dueDate"
+                type="date"
+                required>
+
+        </label>
+
+
+        <!-- SALVAR -->
+
+        <button
+            class="primary-btn"
+            type="submit">
+            Salvar lançamento
+        </button>
+
+    </form>
+
+</div>
+
+
+</div>
+
+<!-- =========================
+     MODAL — DIA DE DESCANSO
+========================== -->
+
+<div
+    id="restModal"
+    class="modal hidden">
+
+
+<div class="modal-box">
+
+    <button
+        id="closeRestModal"
+        class="modal-close"
+        type="button"
+        aria-label="Fechar">
+        ×
+    </button>
+
+
+    <div class="eyebrow">
+        Planejamento
+    </div>
+
+
+    <h2>
+        Cadastrar dia de descanso
+    </h2>
+
+
+    <form id="restForm">
+
+
+        <!-- DATA -->
+
+        <label for="restDate">
+
+            Data
+
+            <input
+                id="restDate"
+                type="date"
+                required>
+
+        </label>
+
+
+        <!-- VALOR -->
+
+        <label for="restAmount">
+
+            Quanto pretende gastar?
+
+            <input
+                id="restAmount"
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                placeholder="0,00">
+
+        </label>
+
+
+        <!-- SALVAR -->
+
+        <button
+            class="primary-btn"
+            type="submit">
+            Salvar dia de descanso
+        </button>
+
+    </form>
+
+</div>
+
+
+</div>
+
+<!-- =========================
+     JAVASCRIPT
+     IMPORTANTE: carregar por último
+========================== -->
+
+<script src="/planejamento.js"></script>
+
+</body>
+
+</html>

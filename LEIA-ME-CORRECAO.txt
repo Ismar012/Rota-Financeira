@@ -1,0 +1,12 @@
+CORREÇÃO — MEUS SERVIÇOS E MEU PERFIL
+
+O problema era que o Dashboard existente ainda mantinha os dois cards como “Em breve”.
+
+Nesta versão, o server.js injeta uma navegação apenas quando a página servida é /dashboard.html:
+- “Meus Serviços” -> /servicos.html
+- “Meu Perfil” -> /perfil.html
+
+O Meu Planejamento não é alterado.
+
+Substitua somente os arquivos deste pacote na pasta original e reinicie o Node.
+Não substitua nem apague rota_financeira.sqlite.

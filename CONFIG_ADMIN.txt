@@ -1,0 +1,28 @@
+CONFIGURAÇÃO DO ADMINISTRADOR — ROTA FINANCEIRA
+
+1) O servidor lê o e-mail do administrador pela variável de ambiente:
+   ADMIN_EMAIL
+
+Windows PowerShell:
+   $env:ADMIN_EMAIL="seuemail@dominio.com"
+   node server.js
+
+Windows CMD:
+   set ADMIN_EMAIL=seuemail@dominio.com
+   node server.js
+
+Se você já usa um arquivo .env ou painel de hospedagem, mantenha ADMIN_EMAIL configurado lá conforme o método da sua hospedagem.
+
+IMPORTANTE:
+- Não altere a tabela do banco manualmente.
+- O servidor faz as migrações das novas colunas automaticamente.
+- O arquivo rota_financeira.sqlite NÃO deve ser substituído pelo conteúdo deste pacote.
+
+STATUS DOS CLIENTES:
+- Automático: Free nos primeiros 25 dias.
+- Automático: Trial nos últimos 5 dias antes de completar 30 dias.
+- Após 30 dias, o status exibido passa para Cancelado automaticamente, mas isso NÃO bloqueia o cliente sozinho.
+- Pagante: definido manualmente pelo administrador.
+- Inadimplente: definido manualmente pelo administrador.
+- Cancelado: definido manualmente pelo administrador e bloqueia o acesso.
+- Automático: remove o status manual e devolve o cálculo automático.
