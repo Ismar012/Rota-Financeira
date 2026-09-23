@@ -336,6 +336,7 @@ async function saveEntry(event) {
   const id = Number($('entryId').value || 0);
 
   const payload = {
+    request_id: crypto.randomUUID(),
     type: $('entryType').value,
     name: $('entryName').value.trim(),
     amount: Number($('entryAmount').value),
