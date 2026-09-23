@@ -5602,6 +5602,13 @@ function serveStatic(
     const session = await auth.json().catch(() => ({}));
     if (!session || !session.authenticated || !session.user) return;
 
+    // O aviso só pode aparecer uma vez após um novo login.
+    if (sessionStorage.getItem('rotaShowFinanceReminder') !== '1') return;
+
+    // Consome a autorização para impedir que apareça novamente
+    // ao navegar entre dashboard, planejamento, perfil ou serviços.
+    sessionStorage.removeItem('rotaShowFinanceReminder');
+
     const response = await fetch('/api/finance/reminders', { credentials: 'same-origin' });
     if (!response.ok) return;
     const data = await response.json().catch(() => ({}));
