@@ -5680,12 +5680,24 @@ function serveStatic(
 })();
 </script>`;
 
-        const output = html.includes('</body>')
-          ? html.replace('</body>', adminVisibilityScript + '\n</body>')
-          : html + adminVisibilityScript;
+let scriptToInject = adminVisibilityScript;
 
-        res.writeHead(200, headers);
-        res.end(output);
+// O lembrete financeiro só deve existir no Dashboard.
+// Nas demais páginas, removemos apenas o bloco do lembrete,
+// mantendo normalmente o controle de visibilidade do administrador.
+if (pathname !== '/dashboard.html') {
+  scriptToInject = scriptToInject.replace(
+    /<script data-rota-finance-reminders>[\s\S]*?<\/script>/,
+    ''
+  );
+}
+
+const output = html.includes('</body>')
+  ? html.replace('</body>', scriptToInject + '\n</body>')
+  : html + scriptToInject;
+
+res.writeHead(200, headers);
+res.end(output);
       });
       return;
     }
