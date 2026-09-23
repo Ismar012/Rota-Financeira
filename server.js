@@ -251,6 +251,12 @@ async function initializeDatabase() {
     ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS recurrence_day INTEGER;
     ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS recurrence_active SMALLINT NOT NULL DEFAULT 1;
 
+    ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS request_id VARCHAR(100);
+    
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_finance_entries_request_id
+    ON finance_entries(user_id, request_id)
+    WHERE request_id IS NOT NULL;
+    
     CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash);
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_finance_entries_user ON finance_entries(user_id);
@@ -3102,6 +3108,12 @@ async function handleFinanceApi(
       const body =
         await readBody(req);
 
+      const requestId =
+  clean(
+    body.request_id,
+    100
+  );
+      
       const type =
         clean(
           body.type,
@@ -3141,6 +3153,17 @@ async function handleFinanceApi(
           ? Number(body.installment_total)
           : null;
 
+      if (!requestId) {
+  return sendJson(
+    res,
+    400,
+    {
+      error:
+        'Identificador da operação não informado.'
+    }
+  );
+}
+      
       if (
         type !== 'income' &&
         type !== 'expense'
@@ -3223,17 +3246,54 @@ async function handleFinanceApi(
 
       await db.exec('BEGIN');
       try {
-        const insert = await db.prepare(`
-          INSERT INTO finance_entries
-          (user_id, type, name, amount, created_date, due_date, paid, paid_at, rest_day_id, recurrence_type, series_id, installment_number, installment_total, recurrence_day)
-          VALUES (?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?)
-        `);
+const insert = await db.prepare(`
+  INSERT INTO finance_entries
+  (
+    user_id,
+    type,
+    name,
+    amount,
+    created_date,
+    due_date,
+    paid,
+    paid_at,
+    rest_day_id,
+    recurrence_type,
+    series_id,
+    installment_number,
+    installment_total,
+    recurrence_day,
+    request_id
+  )
+  VALUES (?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?)
+`);
 
-        for (const row of rowsToCreate) {
-          const result = await insert.run(
-            userId, type, name, amount, createdDate, row.date,
-            recurrenceType, seriesId, row.installmentNumber, row.installmentTotal, recurrenceDay
-          );
+for (let i = 0; i < rowsToCreate.length; i++) {
+  const row = rowsToCreate[i];
+
+  const result = await insert.run(
+    userId,
+    type,
+    name,
+    amount,
+    createdDate,
+    row.date,
+    recurrenceType,
+    seriesId,
+    row.installmentNumber,
+    row.installmentTotal,
+    recurrenceDay,
+
+    // A chave identifica a operação inteira.
+    // Somente a primeira linha recebe o request_id.
+    i === 0 ? requestId : null
+  );
+
+  if (firstEntryId === null) {
+    firstEntryId =
+      Number(result.lastInsertRowid);
+  }
+}
           if (firstEntryId === null) firstEntryId = Number(result.lastInsertRowid);
         }
         await db.exec('COMMIT');
@@ -3271,6 +3331,54 @@ async function handleFinanceApi(
         }
       );
     } catch (err) {
+    if (
+  err?.code === '23505' &&
+  requestId
+) {
+  const existingEntry =
+    await db.prepare(`
+      SELECT
+        id,
+        type,
+        name,
+        amount,
+        created_date,
+        due_date,
+        paid,
+        paid_at,
+        rest_day_id,
+        recurrence_type,
+        series_id,
+        installment_number,
+        installment_total,
+        recurrence_day,
+        created_at
+
+      FROM finance_entries
+
+      WHERE
+        user_id = ?
+        AND request_id = ?
+
+      LIMIT 1
+    `).get(
+      userId,
+      requestId
+    );
+
+  if (existingEntry) {
+    return sendJson(
+      res,
+      200,
+      {
+        message:
+          'Lançamento já cadastrado.',
+        entry: existingEntry,
+        duplicate: true
+      }
+    );
+  }
+}
       console.error(
         'Erro ao cadastrar lançamento:',
         err
