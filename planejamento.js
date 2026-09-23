@@ -323,50 +323,113 @@
     }
   }
 
-  async function saveEntry(event) {
-    event.preventDefault();
+async function saveEntry(event) {
+  event.preventDefault();
 
-    const id = Number($('entryId').value || 0);
-    const payload = {
-      type: $('entryType').value,
-      name: $('entryName').value.trim(),
-      amount: Number($('entryAmount').value),
-      created_date: $('createdDate').value,
-      due_date: $('dueDate').value,
-      recurrence_type: $('entryType').value === 'expense' ? $('expenseRecurrence').value : 'single',
-      installment_total: $('entryType').value === 'expense' ? Number($('installmentTotal').value || 0) : null
-    };
+  const form = event.currentTarget;
 
-    if (!payload.name || !Number.isFinite(payload.amount) || payload.amount <= 0 || !payload.created_date || !payload.due_date) {
-      feedback('Preencha todos os campos corretamente.', 'error');
+  // Impede clique duplo / envio duplicado.
+  if (form.dataset.saving === 'true') {
+    return;
+  }
+
+  const id = Number($('entryId').value || 0);
+
+  const payload = {
+    type: $('entryType').value,
+    name: $('entryName').value.trim(),
+    amount: Number($('entryAmount').value),
+    created_date: $('createdDate').value,
+    due_date: $('dueDate').value,
+    recurrence_type:
+      $('entryType').value === 'expense'
+        ? $('expenseRecurrence').value
+        : 'single',
+    installment_total:
+      $('entryType').value === 'expense'
+        ? Number($('installmentTotal').value || 0)
+        : null
+  };
+
+  // Primeiro valida os dados.
+  if (
+    !payload.name ||
+    !Number.isFinite(payload.amount) ||
+    payload.amount <= 0 ||
+    !payload.created_date ||
+    !payload.due_date
+  ) {
+    feedback(
+      'Preencha todos os campos corretamente.',
+      'error'
+    );
+    return;
+  }
+
+  // A partir daqui somente o primeiro envio é aceito.
+  form.dataset.saving = 'true';
+
+  const submitButton =
+    form.querySelector('button[type="submit"]');
+
+  if (submitButton) {
+    submitButton.disabled = true;
+  }
+
+  // Fecha o pop-up imediatamente após o primeiro clique válido.
+  hideModal('modal');
+
+  try {
+    if (id) {
+      await api(`/api/finance/entries/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+
+      feedback(
+        'Lançamento atualizado com sucesso.',
+        'success'
+      );
+    } else {
+      await api('/api/finance/entries', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      feedback(
+        payload.type === 'income'
+          ? 'Ganho cadastrado com sucesso.'
+          : 'Despesa cadastrada com sucesso.',
+        'success'
+      );
+    }
+
+    // Atualiza os dados da tela depois da confirmação do servidor.
+    await loadSummary();
+
+  } catch (error) {
+    if (
+      error.status === 401 ||
+      error.status === 403
+    ) {
+      window.location.href = '/login.html';
       return;
     }
 
-    try {
-      if (id) {
-        await api(`/api/finance/entries/${id}`, {
-          method: 'PUT',
-          body: JSON.stringify(payload)
-        });
-        feedback('Lançamento atualizado com sucesso.', 'success');
-      } else {
-        await api('/api/finance/entries', {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        });
-        feedback(payload.type === 'income' ? 'Ganho cadastrado com sucesso.' : 'Despesa cadastrada com sucesso.', 'success');
-      }
+    feedback(
+      error.message ||
+        'Não foi possível cadastrar.',
+      'error'
+    );
 
-      hideModal('modal');
-      await loadSummary();
-    } catch (error) {
-      if (error.status === 401 || error.status === 403) {
-        window.location.href = '/login.html';
-        return;
-      }
-      feedback(error.message, 'error');
+  } finally {
+    form.dataset.saving = 'false';
+
+    if (submitButton) {
+      submitButton.disabled = false;
     }
   }
+}
 
   async function changeEntryStatus(id, action) {
     const routes = {
