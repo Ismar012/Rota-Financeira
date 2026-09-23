@@ -3230,7 +3230,7 @@ async function handleFinanceApi(
         `);
 
         for (const row of rowsToCreate) {
-          const result = insert.run(
+          const result = await insert.run(
             userId, type, name, amount, createdDate, row.date,
             recurrenceType, seriesId, row.installmentNumber, row.installmentTotal, recurrenceDay
           );
