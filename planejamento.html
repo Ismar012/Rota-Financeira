@@ -30,15 +30,11 @@
 
 <nav class="nav">
 
-    <a class="logo-text" href="/dashboard.html">
+    <a class="logo-text" href="#" id="backLogo">
         ROTA <span>FINANCEIRA</span>
     </a>
 
     <div class="nav-actions">
-
-        <a class="back-link" href="/dashboard.html">
-            ← Minha área
-        </a>
 
         <button
             id="logout"
@@ -178,7 +174,7 @@
             </strong>
 
             <small id="workingDays">
-                0 dias de trabalho
+                0 dias disponíveis
             </small>
 
         </article>
@@ -197,7 +193,7 @@
             </strong>
 
             <small>
-                projetados no mês
+                total acumulado
             </small>
 
         </article>
@@ -235,7 +231,7 @@
             </strong>
 
             <small>
-                ganhos − gastos
+                seu dinheiro hoje
             </small>
 
         </article>
@@ -668,6 +664,12 @@
 ========================== -->
 
 <script src="/planejamento.js"></script>
+<script>
+document.getElementById('backLogo')?.addEventListener('click', function (event) {
+    event.preventDefault();
+    window.history.back();
+});
+</script>
 
 </body>
 

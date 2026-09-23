@@ -254,12 +254,13 @@
   function renderSummary(data) {
     const totals = data.totals || {};
     $('dailyGoal').textContent = fmt(totals.dailyGoal);
-    $('workingDays').textContent = `${Number(totals.workingDays || 0)} dias de trabalho`;
+    $('workingDays').textContent = `${Number(totals.availableWorkingDays ?? totals.workingDays ?? 0)} dias disponíveis`;
     $('totalIncome').textContent = fmt(totals.income);
     $('totalExpense').textContent = fmt(totals.expense);
-    $('totalCashflow').textContent = fmt(totals.cashflow);
-    $('totalCashflow').classList.toggle('negative', Number(totals.cashflow) < 0);
-    $('totalCashflow').classList.toggle('positive', Number(totals.cashflow) >= 0);
+    const moneyToday = Number(totals.availableBalance ?? totals.cashflow ?? 0);
+    $('totalCashflow').textContent = fmt(moneyToday);
+    $('totalCashflow').classList.toggle('negative', moneyToday < 0);
+    $('totalCashflow').classList.toggle('positive', moneyToday >= 0);
   }
 
   function renderChart(data) {
@@ -276,9 +277,9 @@
       data: {
         labels,
         datasets: [
-          { label: 'Ganhos', data: incomes, borderWidth: 2, tension: 0.25, pointRadius: 2 },
-          { label: 'Despesas', data: expenses, borderWidth: 2, tension: 0.25, pointRadius: 2 },
-          { label: 'Fluxo de caixa', data: cashflow, borderWidth: 2, tension: 0.25, pointRadius: 2 }
+          { label: 'Ganhos', data: incomes, borderColor: '#6BCB77', backgroundColor: '#6BCB77', borderWidth: 2, tension: 0.25, pointRadius: 2 },
+          { label: 'Despesas', data: expenses, borderColor: '#E74C3C', backgroundColor: '#E74C3C', borderWidth: 2, tension: 0.25, pointRadius: 2 },
+          { label: 'Fluxo de caixa', data: cashflow, borderColor: '#F59E0B', backgroundColor: '#F59E0B', borderWidth: 2, tension: 0.25, pointRadius: 2 }
         ]
       },
       options: {
@@ -485,7 +486,10 @@
       // A proteção real da área administrativa continua no servidor.
       const adminMenu = $('menuAdmin');
       if (adminMenu) {
-        adminMenu.style.display = data.user?.role === 'admin' ? '' : 'none';
+        const isAdmin = String(data.user?.role || '').trim().toLowerCase() === 'admin';
+        adminMenu.style.display = isAdmin ? 'block' : 'none';
+        adminMenu.disabled = !isAdmin;
+        adminMenu.setAttribute('aria-hidden', isAdmin ? 'false' : 'true');
       }
 
       return true;

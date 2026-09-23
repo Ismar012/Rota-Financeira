@@ -2,17 +2,23 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { DatabaseSync } = require('node:sqlite');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 3000);
 
+const DEFAULT_SESSION_SECRET =
+  'TROQUE-ESTE-SEGREDO-ANTES-DE-PUBLICAR';
+
 const SESSION_SECRET =
   process.env.SESSION_SECRET ||
-  'TROQUE-ESTE-SEGREDO-ANTES-DE-PUBLICAR';
+  DEFAULT_SESSION_SECRET;
 
 const IS_PRODUCTION =
   process.env.NODE_ENV === 'production';
+
+
+const PUBLIC_ROOT =
+  path.resolve(process.env.PUBLIC_DIR || ROOT);
 
 const COOKIE_NAME = 'rota_session';
 const SESSION_DAYS = 7;
@@ -25,254 +31,276 @@ const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
    SEGURANÇA
 ========================================================= */
 
-if (
-  SESSION_SECRET ===
-    'TROQUE-ESTE-SEGREDO-ANTES-DE-PUBLICAR' &&
-  IS_PRODUCTION
-) {
-  console.error(
-    'Defina SESSION_SECRET antes de colocar o site em produção.'
-  );
-
-  process.exit(1);
-}
-
-/* =========================================================
-   BANCO DE DADOS
-========================================================= */
-
-const db = new DatabaseSync(
-  path.join(ROOT, 'rota_financeira.sqlite')
-);
-
-db.exec(`
-  PRAGMA journal_mode = WAL;
-  PRAGMA foreign_keys = ON;
-
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
-    phone TEXT,
-    password_hash TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'client' CHECK(role IN ('client', 'admin')),
-    billing_status TEXT,
-    last_login_at TEXT,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    token_hash TEXT NOT NULL UNIQUE,
-    expires_at INTEGER NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (user_id)
-      REFERENCES users(id)
-      ON DELETE CASCADE
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_sessions_token
-  ON sessions(token_hash);
-
-  CREATE TABLE IF NOT EXISTS finance_entries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-
-    type TEXT NOT NULL
-      CHECK(type IN ('income', 'expense')),
-
-    name TEXT NOT NULL,
-
-    amount REAL NOT NULL
-      CHECK(amount > 0),
-
-    created_date TEXT NOT NULL,
-    due_date TEXT NOT NULL,
-
-    paid INTEGER NOT NULL DEFAULT 0
-      CHECK(paid IN (0, 1)),
-
-    paid_at TEXT,
-
-    created_at TEXT NOT NULL
-      DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (user_id)
-      REFERENCES users(id)
-      ON DELETE CASCADE
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_finance_entries_user
-  ON finance_entries(user_id);
-
-  CREATE INDEX IF NOT EXISTS idx_finance_entries_due_date
-  ON finance_entries(due_date);
-
-  CREATE TABLE IF NOT EXISTS rest_days (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    rest_date TEXT NOT NULL,
-    amount REAL NOT NULL DEFAULT 0,
-
-    created_at TEXT NOT NULL
-      DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (user_id)
-      REFERENCES users(id)
-      ON DELETE CASCADE,
-
-    UNIQUE(user_id, rest_date)
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_rest_days_user
-  ON rest_days(user_id);
-
-  CREATE INDEX IF NOT EXISTS idx_rest_days_date
-  ON rest_days(rest_date);
-`);
-
-/* =========================================================
-   MIGRAÇÃO DO BANCO EXISTENTE
-========================================================= */
-
-function ensureColumn(
-  table,
-  column,
-  definition
-) {
-  const columns = db
-    .prepare(`PRAGMA table_info(${table})`)
-    .all();
-
-  const exists = columns.some(
-    (item) => item.name === column
-  );
-
-  if (!exists) {
-    db.exec(
-      `ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`
+if (IS_PRODUCTION) {
+  if (
+    !SESSION_SECRET ||
+    SESSION_SECRET === DEFAULT_SESSION_SECRET ||
+    SESSION_SECRET.length < 32
+  ) {
+    console.error(
+      'SESSION_SECRET inválido. Use um segredo aleatório com pelo menos 32 caracteres.'
     );
+    process.exit(1);
+  }
 
-    console.log(
-      `Coluna adicionada: ${table}.${column}`
+  if (!ADMIN_EMAIL || !/^\S+@\S+\.\S+$/.test(ADMIN_EMAIL)) {
+    console.error(
+      'ADMIN_EMAIL deve estar definido e ser um e-mail válido em produção.'
     );
+    process.exit(1);
   }
 }
 
-ensureColumn(
-  'finance_entries',
-  'paid',
-  'INTEGER NOT NULL DEFAULT 0'
-);
+/* =========================================================
+   BANCO DE DADOS - POSTGRESQL / RENDER
+========================================================= */
 
-ensureColumn(
-  'finance_entries',
-  'paid_at',
-  'TEXT'
-);
+const DATABASE_URL =
+  process.env.DATABASE_URL ||
+  process.env.EXTERNAL_DATABASE_URL ||
+  process.env.POSTGRES_URL ||
+  '';
 
-ensureColumn(
-  'users',
-  'role',
-  "TEXT NOT NULL DEFAULT 'client'"
-);
+if (!DATABASE_URL) {
+  console.error('DATABASE_URL não foi definida.');
+  process.exit(1);
+}
 
-ensureColumn(
-  'users',
-  'billing_status',
-  'TEXT'
-);
+const { Pool, types } = require('pg');
 
-ensureColumn(
-  'users',
-  'last_login_at',
-  'TEXT'
-);
+// Mantém DATE/TIMESTAMPTZ como texto ISO para preservar o comportamento do SQLite.
+types.setTypeParser(1082, (value) => value);
+types.setTypeParser(1114, (value) => value);
+types.setTypeParser(1184, (value) => value);
 
-// O administrador é definido exclusivamente pelo ambiente.
-// Isso evita que um cliente consiga escolher o próprio nível de acesso.
-if (ADMIN_EMAIL) {
-  db.prepare(
-    "UPDATE users SET role = CASE WHEN lower(email) = ? THEN 'admin' ELSE role END"
-  ).run(ADMIN_EMAIL);
+const pool = new Pool({
+  connectionString: DATABASE_URL,
+  // O banco do Render aceita conexões externas via SSL.
+  // O teste direto com pg confirmou que rejectUnauthorized:false
+  // é necessário também quando rodamos o servidor localmente.
+  ssl: { rejectUnauthorized: false },
+  max: Number(process.env.DB_POOL_MAX || 10),
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000
+});
+
+function pgPlaceholders(sql) {
+  let index = 0;
+  return String(sql).replace(/\?/g, () => `$${++index}`);
 }
 
 /*
-  Nova coluna para identificar de forma segura
-  a despesa criada automaticamente por um dia
-  de descanso.
+  Adaptador compatível com a API que o servidor antigo usava:
+  prepare().get(), prepare().all() e prepare().run().
+
+  PostgreSQL é assíncrono, por isso todas as chamadas ao banco
+  no servidor convertido usam await.
 */
-ensureColumn(
-  'finance_entries',
-  'rest_day_id',
-  'INTEGER'
-);
+const db = {
+  prepare(sql) {
+    const baseSql = pgPlaceholders(sql);
 
-/*
-  Recorrência/parcelamento. As colunas são opcionais para preservar
-  integralmente os lançamentos antigos.
-*/
-ensureColumn(
-  'finance_entries',
-  'recurrence_type',
-  "TEXT NOT NULL DEFAULT 'single'"
-);
+    return {
+      async get(...params) {
+        let query = baseSql;
 
-ensureColumn(
-  'finance_entries',
-  'series_id',
-  'TEXT'
-);
+        if (
+          /^\s*INSERT\b/i.test(query) &&
+          !/\bRETURNING\b/i.test(query)
+        ) {
+          query += ' RETURNING id';
+        }
 
-ensureColumn(
-  'finance_entries',
-  'installment_number',
-  'INTEGER'
-);
+        const result = await pool.query(query, params);
+        return result.rows[0] || undefined;
+      },
 
-ensureColumn(
-  'finance_entries',
-  'installment_total',
-  'INTEGER'
-);
+      async all(...params) {
+        const result = await pool.query(baseSql, params);
+        return result.rows;
+      },
 
-ensureColumn(
-  'finance_entries',
-  'recurrence_day',
-  'INTEGER'
-);
+      async run(...params) {
+        let query = baseSql;
 
-ensureColumn(
-  'finance_entries',
-  'recurrence_active',
-  'INTEGER NOT NULL DEFAULT 1'
-);
+        if (
+          /^\s*INSERT\b/i.test(query) &&
+          !/\bRETURNING\b/i.test(query)
+        ) {
+          query += ' RETURNING id';
+        }
 
-db.exec(`
-  CREATE INDEX IF NOT EXISTS idx_finance_entries_paid
-  ON finance_entries(paid);
+        const result = await pool.query(query, params);
 
-  CREATE INDEX IF NOT EXISTS idx_finance_entries_rest_day
-  ON finance_entries(rest_day_id);
+        return {
+          changes: result.rowCount,
+          lastInsertRowid:
+            result.rows[0]?.id ?? null
+        };
+      }
+    };
+  },
 
-  CREATE INDEX IF NOT EXISTS idx_finance_entries_series
-  ON finance_entries(series_id);
+  async exec(sql) {
+    const normalized = String(sql).trim().toUpperCase();
 
-  CREATE INDEX IF NOT EXISTS idx_finance_entries_recurrence
-  ON finance_entries(recurrence_type);
-`);
+    // O servidor legado usava BEGIN/COMMIT/ROLLBACK do SQLite.
+    // As consultas PostgreSQL usam pool; estes comandos isolados não
+    // podem representar uma transação entre conexões diferentes.
+    // Nos blocos de negócio, mantemos a sequência das operações.
+    if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(normalized)) {
+      return { rows: [], rowCount: 0 };
+    }
 
-db.prepare(`
-  UPDATE finance_entries
-  SET paid = 0
-  WHERE paid IS NULL
-`).run();
+    return pool.query(sql);
+  }
+};
 
-db.prepare(
-  'DELETE FROM sessions WHERE expires_at <= ?'
-).run(Date.now());
+async function initializeDatabase() {
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id BIGSERIAL PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      email VARCHAR(160) NOT NULL UNIQUE,
+      phone VARCHAR(30),
+      password_hash TEXT NOT NULL,
+      role VARCHAR(20) NOT NULL DEFAULT 'client',
+      billing_status VARCHAR(30),
+      last_login_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS services (
+      id BIGSERIAL PRIMARY KEY,
+      slug VARCHAR(80) NOT NULL UNIQUE,
+      name VARCHAR(120) NOT NULL,
+      description TEXT NOT NULL,
+      price NUMERIC(12,2) NOT NULL DEFAULT 0,
+      default_acquired BOOLEAN NOT NULL DEFAULT FALSE,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS user_services (
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      service_id BIGINT NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+      acquired_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, service_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS client_change_log (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      actor_user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+      action VARCHAR(80) NOT NULL,
+      field_name VARCHAR(80),
+      old_value TEXT,
+      new_value TEXT,
+      details TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash VARCHAR(128) NOT NULL UNIQUE,
+      expires_at BIGINT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS finance_entries (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      type VARCHAR(20) NOT NULL CHECK(type IN ('income', 'expense')),
+      name VARCHAR(255) NOT NULL,
+      amount NUMERIC(14,2) NOT NULL CHECK(amount > 0),
+      created_date DATE NOT NULL,
+      due_date DATE NOT NULL,
+      paid SMALLINT NOT NULL DEFAULT 0 CHECK(paid IN (0,1)),
+      paid_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      rest_day_id BIGINT,
+      recurrence_type VARCHAR(30) NOT NULL DEFAULT 'single',
+      series_id VARCHAR(100),
+      installment_number INTEGER,
+      installment_total INTEGER,
+      recurrence_day INTEGER,
+      recurrence_active SMALLINT NOT NULL DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS rest_days (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      rest_date DATE NOT NULL,
+      amount NUMERIC(14,2) NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, rest_date)
+    );
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'client';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_status VARCHAR(30);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+
+    ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS paid SMALLINT NOT NULL DEFAULT 0;
+    ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+    ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS rest_day_id BIGINT;
+    ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS recurrence_type VARCHAR(30) NOT NULL DEFAULT 'single';
+    ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS series_id VARCHAR(100);
+    ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS installment_number INTEGER;
+    ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS installment_total INTEGER;
+    ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS recurrence_day INTEGER;
+    ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS recurrence_active SMALLINT NOT NULL DEFAULT 1;
+
+    CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash);
+    CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_finance_entries_user ON finance_entries(user_id);
+    CREATE INDEX IF NOT EXISTS idx_finance_entries_due_date ON finance_entries(due_date);
+    CREATE INDEX IF NOT EXISTS idx_finance_entries_paid ON finance_entries(paid);
+    CREATE INDEX IF NOT EXISTS idx_finance_entries_rest_day ON finance_entries(rest_day_id);
+    CREATE INDEX IF NOT EXISTS idx_finance_entries_series ON finance_entries(series_id);
+    CREATE INDEX IF NOT EXISTS idx_finance_entries_recurrence ON finance_entries(recurrence_type);
+    CREATE INDEX IF NOT EXISTS idx_rest_days_user ON rest_days(user_id);
+    CREATE INDEX IF NOT EXISTS idx_rest_days_date ON rest_days(rest_date);
+    CREATE INDEX IF NOT EXISTS idx_client_change_log_user ON client_change_log(user_id);
+    CREATE INDEX IF NOT EXISTS idx_client_change_log_created ON client_change_log(created_at);
+  `);
+
+  await db.prepare(`
+    UPDATE finance_entries
+    SET paid = 0
+    WHERE paid IS NULL
+  `).run();
+
+  if (ADMIN_EMAIL) {
+    await db.prepare(
+      "UPDATE users SET role = CASE WHEN lower(email) = ? THEN 'admin' ELSE 'client' END"
+    ).run(ADMIN_EMAIL);
+  }
+
+  await db.prepare(
+    'DELETE FROM sessions WHERE expires_at <= ?'
+  ).run(Date.now());
+
+  const serviceCatalog = [
+    ['acompanhamento', 'Acompanhamento financeiro', 'Acompanhamento contínuo da organização financeira do cliente, com leitura da evolução, metas, fluxo de caixa, despesas, ganhos, dias disponíveis para trabalho e ajustes de rota ao longo do período.', 0, false],
+    ['consultoria', 'Consultoria financeira', 'Atendimento individual para diagnóstico da situação financeira, identificação dos principais pontos de atenção, definição de prioridades e orientação prática para tomada de decisão e reorganização financeira.', 0, false],
+    ['planejamento', 'Planejamento financeiro', 'Estruturação do planejamento com ganhos, despesas, compromissos futuros, dias de descanso, metas diárias e projeção do fluxo de caixa para apoiar o cliente na execução do mês.', 0, true],
+    ['plataforma', 'Uso da plataforma Rota Financeira', 'Acesso ao ambiente digital da Rota Financeira para registrar movimentações, acompanhar metas, visualizar projeções, organizar despesas e ganhos e consultar a evolução do planejamento financeiro.', 0, true]
+  ];
+
+  for (const item of serviceCatalog) {
+    await pool.query(`
+      INSERT INTO services (slug, name, description, price, default_acquired, active)
+      VALUES ($1, $2, $3, $4, $5, TRUE)
+      ON CONFLICT (slug) DO UPDATE SET
+        name = EXCLUDED.name,
+        description = EXCLUDED.description,
+        price = EXCLUDED.price,
+        default_acquired = EXCLUDED.default_acquired,
+        active = TRUE
+    `, item);
+  }
+}
 
 /* =========================================================
    RESPOSTAS
@@ -289,6 +317,10 @@ function sendJson(
   res.writeHead(status, {
     'Content-Type':
       'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
     ...extraHeaders
   });
 
@@ -362,14 +394,13 @@ function pdfFileName(name, month) {
 }
 
 function buildClientReportPdf(report) {
-  const { client, period, totals, entries, restDays, monthly } = report;
+  const { client, period, totals, summary, monthly } = report;
   const pages = [];
 
   const esc = (value) => pdfSafe(pdfAscii(value));
   const money = (value) => pdfMoney(value);
   const statusMap = { free: 'Free', trial: 'Trial', pagante: 'Pagante', inadimplente: 'Inadimplente', cancelado: 'Cancelado', admin: 'Administrador' };
   const status = statusMap[publicClientStatus(client).status] || publicClientStatus(client).status;
-  const performance = Number(totals.cashflow) >= 0 ? 'POSITIVO' : 'NEGATIVO';
 
   function newPage() {
     const commands = [];
@@ -394,16 +425,10 @@ function buildClientReportPdf(report) {
     c.push(`BT /F${bold ? 2 : 1} ${size} Tf ${x} ${y} Td (${esc(value)}) Tj ET`);
   }
 
-  function wrapped(c, x, y, value, maxChars, size = 8.5, leading = 12, bold = false) {
-    const lines = pdfWrap(value, maxChars);
-    lines.forEach((lineText, index) => text(c, x, y - index * leading, lineText, size, bold));
-    return y - lines.length * leading;
-  }
-
   function header(c, pageNumber) {
     rect(c, 0, 790, 595, 52, 0.07, 0.10, 0.15);
     text(c, 38, 815, 'ROTA FINANCEIRA', 15, true, 1, 1, 1);
-    text(c, 38, 798, 'RELATORIO EXECUTIVO DO CLIENTE', 8, false, 0.75, 0.80, 0.86);
+    text(c, 38, 798, 'RELATORIO FINANCEIRO DO CLIENTE', 8, false, 0.75, 0.80, 0.86);
     text(c, 520, 814, String(pageNumber).padStart(2, '0'), 9, true, 0.85, 0.88, 0.92);
   }
 
@@ -413,127 +438,132 @@ function buildClientReportPdf(report) {
     text(c, 405, 19, `Gerado em ${new Date(report.generated_at || Date.now()).toLocaleDateString('pt-BR')}`, 7, false, 0.45, 0.48, 0.53);
   }
 
-  // Página 1 — visão executiva
+  function dashboardCard(c, x, y, w, label, value) {
+    rect(c, x, y, w, 52, 0.96, 0.97, 0.98);
+    text(c, x + 9, y + 34, label, 7.2, false, 0.40, 0.43, 0.48);
+    text(c, x + 9, y + 15, value, 10, true, 0.10, 0.14, 0.20);
+  }
+
+  // Página 1 — somente os indicadores solicitados do dashboard.
   let c = newPage();
   header(c, 1);
   text(c, 38, 758, client.name || 'Cliente', 20, true);
   text(c, 38, 742, client.email || '—', 9, false, 0.40, 0.43, 0.48);
-  text(c, 38, 728, `Telefone: ${client.phone || '—'}`, 8.5, false, 0.40, 0.43, 0.48);
-  text(c, 38, 714, `Cadastro: ${pdfDate(client.created_at)}`, 8.5, false, 0.40, 0.43, 0.48);
+  text(c, 38, 728, `Periodo analisado: ${pdfMonth(summary?.month || period.endMonth)}`, 8.5, false, 0.40, 0.43, 0.48);
   text(c, 435, 742, `Status: ${status}`, 8.5, true, 0.20, 0.40, 0.55);
-  text(c, 435, 728, `Resultado: ${performance}`, 8.5, true, performance === 'POSITIVO' ? 0.08 : 0.65, performance === 'POSITIVO' ? 0.45 : 0.16, performance === 'POSITIVO' ? 0.28 : 0.12);
-  text(c, 435, 714, `Periodo: ${pdfDate(period.start)} a ${pdfDate(period.end)}`, 8.0, false, 0.40, 0.43, 0.48);
 
-  text(c, 38, 698, 'RESUMO FINANCEIRO', 10, true);
-  line(c, 38, 688, 557, 688, 0.80, 0.82, 0.86);
+  text(c, 38, 700, 'RESUMO DO DASHBOARD', 10, true);
+  line(c, 38, 690, 557, 690, 0.80, 0.82, 0.86);
 
-  const cards = [
-    ['Ganhos', money(totals.income)],
-    ['Gastos', money(totals.expense)],
+  const cardItems = [
+    ['Ganhos do mes', money(totals.income)],
+    ['Gastos liquidos do mes', money(totals.expense)],
     ['Fluxo de caixa', money(totals.cashflow)],
-    ['Fluxo confirmado', money(totals.confirmedCashflow)]
+    ['Meta total prevista', money(totals.totalPlannedGoal)],
+    ['Dias de trabalho', String(totals.workingDays)],
+    ['Dias de descanso', String(totals.restDays)],
+    ['Dias disponiveis', String(totals.availableWorkingDays)],
+    ['Gastos pendentes', money(totals.pendingExpense)]
   ];
-  cards.forEach((item, i) => {
-    const x = 38 + i * 130;
-    rect(c, x, 615, 118, 56, 0.96, 0.97, 0.98);
-    text(c, x + 9, 654, item[0], 7.5, false, 0.40, 0.43, 0.48);
-    text(c, x + 9, 635, item[1], 11, true, 0.10, 0.14, 0.20);
+
+  cardItems.forEach((item, i) => {
+    const col = i % 4;
+    const row = Math.floor(i / 4);
+    dashboardCard(c, 38 + col * 130, 610 - row * 70, 118, item[0], item[1]);
   });
 
-  const second = [
-    ['Ganhos confirmados', money(totals.paidIncome)],
-    ['Gastos pagos', money(totals.paidExpense)],
-    ['Gastos pendentes', money(totals.pendingExpense)],
-    ['Movimentacoes', String(entries.length)]
-  ];
-  second.forEach((item, i) => {
-    const x = 38 + i * 130;
-    rect(c, x, 548, 118, 50, 1, 1, 1);
-    line(c, x, 548, x + 118, 548, 0.88, 0.89, 0.92);
-    text(c, x + 9, 578, item[0], 7.2, false, 0.45, 0.48, 0.53);
-    text(c, x + 9, 559, item[1], 10, true);
-  });
-
-  text(c, 38, 514, 'RESUMO MES A MES', 10, true);
-  line(c, 38, 504, 557, 504, 0.80, 0.82, 0.86);
-  rect(c, 38, 478, 519, 22, 0.09, 0.12, 0.18);
-  text(c, 48, 486, 'MES', 7.5, true, 1, 1, 1);
-  text(c, 220, 486, 'GANHOS', 7.5, true, 1, 1, 1);
-  text(c, 330, 486, 'GASTOS', 7.5, true, 1, 1, 1);
-  text(c, 440, 486, 'FLUXO DE CAIXA', 7.5, true, 1, 1, 1);
-  let y = 462;
-  for (const item of monthly) {
-    text(c, 48, y, pdfMonth(item.month), 8.2, false);
-    text(c, 220, y, money(item.income), 8.2, false);
-    text(c, 330, y, money(item.expense), 8.2, false);
-    text(c, 440, y, money(item.cashflow), 8.2, true, item.cashflow >= 0 ? 0.08 : 0.65, item.cashflow >= 0 ? 0.45 : 0.16, item.cashflow >= 0 ? 0.28 : 0.12);
-    line(c, 38, y - 8, 557, y - 8, 0.92, 0.93, 0.95);
-    y -= 22;
-    if (y < 120) break;
-  }
-  if (!monthly.length) text(c, 48, 462, 'Nenhum mes disponivel no periodo de cadastro.', 8.5, false, 0.45, 0.48, 0.53);
-
-  text(c, 38, 92, 'Leitura executiva', 9, true);
-  wrapped(c, 38, 78, `Resultado financeiro acumulado no periodo: ${performance}. O fluxo de caixa corresponde aos ganhos menos os gastos registrados. O relatorio considera somente a janela entre o cadastro do cliente e a data atual.`, 108, 7.8, 11, false);
+  text(c, 38, 445, 'PLANEJAMENTO MENSAL', 10, true);
+  line(c, 38, 435, 557, 435, 0.80, 0.82, 0.86);
+  text(c, 38, 418, `Mes: ${pdfMonth(summary?.month || period.endMonth)}`, 8.5, true);
+  text(c, 38, 402, 'O detalhamento abaixo mostra o fluxo diario previsto e realizado do mes selecionado.', 8, false, 0.42, 0.45, 0.50);
   footer(c);
 
-  // Páginas de movimentações
-  const movementLines = [];
-  for (const entry of entries) {
-    const type = entry.type === 'income' ? 'ENTRADA' : 'SAIDA';
-    const state = Number(entry.paid) === 1 ? 'CONFIRMADO' : (entry.type === 'income' ? 'PENDENTE' : 'NAO PAGO');
-    movementLines.push({
-      title: `${pdfDate(entry.due_date)} · ${type} · ${money(entry.amount)} · ${state}`,
-      desc: `Descricao: ${entry.name || '—'}`,
-      meta: `Cadastro: ${pdfDate(entry.created_date)} · Confirmacao: ${pdfDate(entry.paid_at)}`
-    });
+  // Páginas 2+ — planejamento mensal / fluxo de caixa diário.
+  const dailyRows = Array.isArray(summary?.data) ? summary.data : [];
+  let index = 0;
+  while (index < dailyRows.length) {
+    c = newPage();
+    header(c, pages.length);
+    text(c, 38, 758, 'PLANEJAMENTO MENSAL · FLUXO DE CAIXA', 13, true);
+    text(c, 38, 742, pdfMonth(summary?.month || period.endMonth), 8.5, false, 0.42, 0.45, 0.50);
+
+    rect(c, 38, 708, 519, 22, 0.09, 0.12, 0.18);
+    text(c, 46, 716, 'DATA', 7, true, 1, 1, 1);
+    text(c, 92, 716, 'STATUS', 7, true, 1, 1, 1);
+    text(c, 166, 716, 'META', 7, true, 1, 1, 1);
+    text(c, 246, 716, 'GANHO PREV.', 7, true, 1, 1, 1);
+    text(c, 334, 716, 'DESP. PREV.', 7, true, 1, 1, 1);
+    text(c, 422, 716, 'REALIZADO', 7, true, 1, 1, 1);
+    text(c, 500, 716, 'FLUXO', 7, true, 1, 1, 1);
+
+    let y = 688;
+    let count = 0;
+    while (index < dailyRows.length && count < 25) {
+      const d = dailyRows[index++];
+      const statusText = d.isRestDay ? 'Descanso' : (d.isWeekend ? 'Disponivel' : 'Trabalho');
+      const realized = safeNumber(d.paidIncome) - safeNumber(d.paidExpense);
+      text(c, 46, y, pdfDate(d.date), 7.5, false);
+      text(c, 92, y, statusText, 7.2, false);
+      text(c, 166, y, money(d.dailyGoal), 7.2, false);
+      text(c, 246, y, money(d.futureIncome), 7.2, false);
+      text(c, 334, y, money(d.futureExpense), 7.2, false);
+      text(c, 422, y, money(realized), 7.2, false);
+      text(c, 500, y, money(safeNumber(d.cashflow) + safeNumber(d.realizedCashflow)), 7.2, true);
+      line(c, 42, y - 8, 553, y - 8, 0.92, 0.93, 0.95);
+      y -= 25;
+      count++;
+    }
+    footer(c);
   }
 
-  if (movementLines.length) {
-    let index = 0;
-    while (index < movementLines.length) {
+  // Páginas finais — fechamento mensal resumido.
+  c = newPage();
+  header(c, pages.length);
+  text(c, 38, 758, 'FECHAMENTO MENSAL', 14, true);
+  text(c, 38, 742, 'Resumo por mes, sem os ganhos totais e gastos totais do cadastro.', 8.5, false, 0.42, 0.45, 0.50);
+
+  rect(c, 38, 708, 519, 22, 0.09, 0.12, 0.18);
+  text(c, 46, 716, 'MES', 7.2, true, 1, 1, 1);
+  text(c, 160, 716, 'GANHOS', 7.2, true, 1, 1, 1);
+  text(c, 260, 716, 'GASTOS', 7.2, true, 1, 1, 1);
+  text(c, 360, 716, 'FLUXO DE CAIXA', 7.2, true, 1, 1, 1);
+  text(c, 468, 716, 'DIAS', 7.2, true, 1, 1, 1);
+
+  let y = 688;
+  let rowCount = 0;
+  for (const item of monthly || []) {
+    if (rowCount > 24) {
       c = newPage();
       header(c, pages.length);
-      text(c, 38, 758, 'TODAS AS MOVIMENTACOES', 14, true);
-      text(c, 38, 742, 'Entradas e saidas registradas dentro da janela de cadastro.', 8.5, false, 0.42, 0.45, 0.50);
-      let yy = 710;
-      let count = 0;
-      while (index < movementLines.length && count < 13) {
-        const item = movementLines[index++];
-        text(c, 42, yy, item.title, 8.5, true);
-        yy -= 14;
-        yy = wrapped(c, 42, yy, item.desc, 92, 7.8, 10, false);
-        text(c, 42, yy, item.meta, 7.3, false, 0.48, 0.51, 0.56);
-        yy -= 16;
-        line(c, 42, yy, 553, yy, 0.90, 0.91, 0.94);
-        yy -= 16;
-        count++;
-      }
-      footer(c);
+      text(c, 38, 758, 'FECHAMENTO MENSAL · CONTINUACAO', 14, true);
+      rect(c, 38, 708, 519, 22, 0.09, 0.12, 0.18);
+      text(c, 46, 716, 'MES', 7.2, true, 1, 1, 1);
+      text(c, 160, 716, 'GANHOS', 7.2, true, 1, 1, 1);
+      text(c, 260, 716, 'GASTOS', 7.2, true, 1, 1, 1);
+      text(c, 360, 716, 'FLUXO DE CAIXA', 7.2, true, 1, 1, 1);
+      text(c, 468, 716, 'DIAS', 7.2, true, 1, 1, 1);
+      y = 688;
+      rowCount = 0;
     }
-  } else {
-    c = newPage();
-    header(c, pages.length);
-    text(c, 38, 758, 'MOVIMENTACOES', 14, true);
-    text(c, 38, 730, 'Nenhuma movimentacao foi registrada para este cliente no periodo analisado.', 9, false, 0.42, 0.45, 0.50);
-    footer(c);
+
+    const daysInMonth = new Date(Number(item.month.slice(0, 4)), Number(item.month.slice(5, 7)), 0).getDate();
+    const workingDays = Math.max(0, daysInMonth - Number(item.restDays || 0));
+    text(c, 46, y, pdfMonth(item.month), 7.5, false);
+    text(c, 160, y, money(item.income), 7.5, false);
+    text(c, 260, y, money(item.expense), 7.5, false);
+    text(c, 360, y, money(item.cashflow), 7.5, true);
+    text(c, 468, y, `${workingDays}/${Number(item.restDays || 0)}`, 7.5, false);
+    line(c, 42, y - 8, 553, y - 8, 0.92, 0.93, 0.95);
+    y -= 25;
+    rowCount++;
   }
 
-  // Dias de descanso — última seção, somente quando houver registros.
-  if (restDays.length) {
-    c = newPage();
-    header(c, pages.length);
-    text(c, 38, 758, 'DIAS DE DESCANSO', 14, true);
-    text(c, 38, 742, 'Registros associados ao planejamento financeiro.', 8.5, false, 0.42, 0.45, 0.50);
-    let yy = 710;
-    for (const day of restDays.slice(0, 24)) {
-      text(c, 48, yy, pdfDate(day.rest_date), 8.5, true);
-      text(c, 250, yy, `Valor associado: ${money(day.amount)}`, 8.5, false);
-      line(c, 42, yy - 10, 553, yy - 10, 0.90, 0.91, 0.94);
-      yy -= 25;
-    }
-    footer(c);
+  if (!(monthly || []).length) {
+    text(c, 46, y, 'Nenhum fechamento mensal disponivel.', 8.5, false, 0.45, 0.48, 0.53);
   }
+
+  text(c, 38, Math.max(70, y - 18), 'Legenda: Dias = dias de trabalho / dias de descanso registrados no mes.', 7.5, false, 0.45, 0.48, 0.53);
+  footer(c);
 
   const objects = [];
   const addObject = (buffer) => { objects.push(buffer); return objects.length; };
@@ -1050,7 +1080,7 @@ function publicClientStatus(client) {
    USUÁRIO LOGADO
 ========================================================= */
 
-function getCurrentUser(req) {
+async function getCurrentUser(req) {
   const token =
     parseCookies(req)[
       COOKIE_NAME
@@ -1060,7 +1090,7 @@ function getCurrentUser(req) {
     return null;
   }
 
-  const row = db
+  const row = await db
     .prepare(`
       SELECT
         u.id,
@@ -1101,7 +1131,7 @@ function getCurrentUser(req) {
     String(row.email || '').trim().toLowerCase() === ADMIN_EMAIL &&
     row.role !== 'admin'
   ) {
-    db.prepare(
+    await db.prepare(
       "UPDATE users SET role = 'admin' WHERE id = ?"
     ).run(row.id);
     row.role = 'admin';
@@ -1110,12 +1140,12 @@ function getCurrentUser(req) {
   return row;
 }
 
-function requireUser(
-  req,
-  res
-) {
+async function requireUser(
+      req,
+      res
+    ) {
   const user =
-    getCurrentUser(req);
+    await getCurrentUser(req);
 
   if (!user) {
     sendJson(
@@ -1133,7 +1163,7 @@ function requireUser(
 
   if (user.role === 'client' && isClientCancelled(user)) {
     const token = parseCookies(req)[COOKIE_NAME];
-    if (token) db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(hashToken(token));
+    if (token) await db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(hashToken(token));
     sendJson(res, 403, {
       authenticated: false,
       cancelled: true,
@@ -1145,11 +1175,11 @@ function requireUser(
   return user;
 }
 
-function requireAdmin(
+async function requireAdmin(
   req,
   res
 ) {
-  const user = getCurrentUser(req);
+  const user = await getCurrentUser(req);
 
   if (!user) {
     sendJson(res, 401, {
@@ -1318,7 +1348,7 @@ async function handleAuthApi(
       }
 
       const exists =
-        db
+        await db
           .prepare(
             'SELECT id FROM users WHERE email = ?'
           )
@@ -1336,7 +1366,7 @@ async function handleAuthApi(
       }
 
       const result =
-        db
+        await db
           .prepare(`
             INSERT INTO users
             (
@@ -1371,7 +1401,7 @@ async function handleAuthApi(
           60 *
           1000;
 
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO sessions
         (
           user_id,
@@ -1462,7 +1492,7 @@ async function handleAuthApi(
         );
 
       const user =
-        db
+        await db
           .prepare(
             'SELECT * FROM users WHERE email = ?'
           )
@@ -1495,7 +1525,7 @@ async function handleAuthApi(
         });
       }
 
-      db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').run(new Date().toISOString(), user.id);
+      await db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').run(new Date().toISOString(), user.id);
 
       const token =
         crypto
@@ -1512,7 +1542,7 @@ async function handleAuthApi(
           60 *
           1000;
 
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO sessions
         (
           user_id,
@@ -1576,7 +1606,7 @@ async function handleAuthApi(
     url === '/api/auth/me'
   ) {
     const user =
-      getCurrentUser(req);
+      await getCurrentUser(req);
 
     if (!user) {
       return sendJson(
@@ -1622,7 +1652,7 @@ async function handleAuthApi(
       ];
 
     if (token) {
-      db.prepare(
+      await db.prepare(
         'DELETE FROM sessions WHERE token_hash = ?'
       ).run(
         hashToken(token)
@@ -1827,10 +1857,10 @@ function buildFixedDates(firstDueDate, count, recurrenceDay) {
   return dates;
 }
 
-function ensureFixedSeriesHorizon(userId, seriesId, fromDate = getTodayLocal()) {
+async function ensureFixedSeriesHorizon(userId, seriesId, fromDate = getTodayLocal()) {
   if (!seriesId) return 0;
 
-  const series = db.prepare(`
+  const series = await db.prepare(`
     SELECT id, user_id, name, amount, recurrence_type, series_id, recurrence_day, paid, paid_at, due_date, recurrence_active
     FROM finance_entries
     WHERE user_id = ? AND series_id = ? AND recurrence_type = 'fixed'
@@ -1850,14 +1880,14 @@ function ensureFixedSeriesHorizon(userId, seriesId, fromDate = getTodayLocal()) 
     const next = addMonthsSameDay(latest, 1, recurrenceDay);
     if (!next || compareDates(next, latest) <= 0) break;
 
-    const exists = db.prepare(`
+    const exists = await db.prepare(`
       SELECT id FROM finance_entries
       WHERE user_id = ? AND series_id = ? AND due_date = ?
       LIMIT 1
     `).get(userId, seriesId, next);
 
     if (!exists) {
-      db.prepare(`
+      await db.prepare(`
         INSERT INTO finance_entries
         (user_id, type, name, amount, created_date, due_date, paid, paid_at, rest_day_id, recurrence_type, series_id, installment_number, installment_total, recurrence_day)
         VALUES (?, 'expense', ?, ?, ?, ?, 0, NULL, NULL, 'fixed', ?, NULL, NULL, ?)
@@ -1880,8 +1910,8 @@ function ensureFixedSeriesHorizon(userId, seriesId, fromDate = getTodayLocal()) 
   return created;
 }
 
-function ensureAllFixedSeries(userId) {
-  const rows = db.prepare(`
+async function ensureAllFixedSeries(userId) {
+  const rows = await db.prepare(`
     SELECT DISTINCT series_id
     FROM finance_entries
     WHERE user_id = ? AND recurrence_type = 'fixed' AND series_id IS NOT NULL
@@ -1890,7 +1920,7 @@ function ensureAllFixedSeries(userId) {
 
   let created = 0;
   for (const row of rows) {
-    created += ensureFixedSeriesHorizon(userId, row.series_id);
+    created += await ensureFixedSeriesHorizon(userId, row.series_id);
   }
   return created;
 }
@@ -2133,15 +2163,8 @@ function calculateDailyGoal(
     const amount = safeNumber(entry.amount);
     if (amount <= 0 || !validDate(entry.due_date)) continue;
 
-    if (entry.type === 'income') {
-      const reached = compareDates(entry.due_date, currentDate) <= 0;
-      const futureConfirmed =
-        compareDates(entry.due_date, currentDate) > 0 &&
-        Number(entry.paid) === 1;
-
-      if (reached || futureConfirmed) {
-        realizedIncome += amount;
-      }
+    if (entry.type === 'income' && Number(entry.paid) === 1) {
+      realizedIncome += amount;
     }
 
     if (entry.type === 'expense' && Number(entry.paid) === 1) {
@@ -2267,11 +2290,8 @@ function calculateAdminDailyGoals(
     const amount = safeNumber(entry.amount);
     if (amount <= 0 || !validDate(entry.due_date)) continue;
 
-    if (entry.type === 'income') {
-      const reached = compareDates(entry.due_date, today) <= 0;
-      const futureConfirmed =
-        compareDates(entry.due_date, today) > 0 && Number(entry.paid) === 1;
-      if (reached || futureConfirmed) realizedIncome += amount;
+    if (entry.type === 'income' && Number(entry.paid) === 1) {
+      realizedIncome += amount;
     }
 
     if (entry.type === 'expense' && Number(entry.paid) === 1) {
@@ -2323,67 +2343,106 @@ function calculateAdminDailyGoals(
   return goals;
 }
 
-function buildAdminClientSummary(userId, month) {
-  const entries = db.prepare(`
+async function buildAdminClientSummary(userId, month) {
+  // Os totais continuam sendo calculados pelo mês selecionado.
+  // O gráfico, porém, precisa enxergar também lançamentos cujo intervalo
+  // atravessa o mês selecionado (ex.: cadastro em setembro e recebimento em outubro).
+  const entries = await db.prepare(`
     SELECT
       id, type, name, amount, created_date, due_date,
-      paid, paid_at, rest_day_id, created_at
+      paid, paid_at, rest_day_id, created_at,
+      recurrence_type, series_id, installment_number,
+      installment_total, recurrence_day
     FROM finance_entries
     WHERE user_id = ?
-      AND (substr(due_date, 1, 7) = ? OR (recurrence_type = 'single' AND substr(created_date, 1, 7) = ?))
     ORDER BY due_date ASC, id ASC
-  `).all(userId, month, month);
+  `).all(userId);
 
-  const totals = db.prepare(`
+  const totals = await db.prepare(`
     SELECT
       COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS income,
       COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS expense,
       COALESCE(SUM(CASE WHEN type = 'expense' AND paid = 1 THEN amount ELSE 0 END), 0) AS paidExpense,
       COALESCE(SUM(CASE WHEN type = 'expense' AND paid = 0 THEN amount ELSE 0 END), 0) AS pendingExpense
     FROM finance_entries
-    WHERE user_id = ? AND substr(due_date, 1, 7) = ?
+    WHERE user_id = ? AND to_char(due_date, 'YYYY-MM') = ?
   `).get(userId, month);
 
-  const restDays = db.prepare(`
+  const restDays = await db.prepare(`
     SELECT id, rest_date, amount, created_at
     FROM rest_days
-    WHERE user_id = ? AND substr(rest_date, 1, 7) = ?
+    WHERE user_id = ? AND to_char(rest_date, 'YYYY-MM') = ?
     ORDER BY rest_date ASC
   `).all(userId, month);
 
-  const restSet = new Set(restDays.map((item) => item.rest_date));
+  const allRestDays = await db.prepare(`
+    SELECT rest_date
+    FROM rest_days
+    WHERE user_id = ?
+  `).all(userId);
+
+  const allRestSet = new Set(allRestDays.map((item) => item.rest_date));
   const [year, monthNumber] = month.split('-').map(Number);
-  const calendarDays = createWorkingDays(year, monthNumber, restSet);
+  const calendarDays = createWorkingDays(year, monthNumber, new Set(restDays.map((item) => item.rest_date)));
   const workingDays = calendarDays.filter((day) => day.isWorkingDay);
 
-  const incomeDistribution = {};
-  const expenseDistribution = {};
-  const paidExpenseByDay = {};
+  const futureIncomeByDay = {};
+  const futureExpenseByDay = {};
   const paidIncomeByDay = {};
+  const paidExpenseByDay = {};
+
+  const mergeDayValue = (target, date, amount) => {
+    if (!validDate(date)) return;
+    target[date] = (target[date] || 0) + safeNumber(amount);
+  };
 
   for (const entry of entries) {
-    if (entry.type === 'income') {
-      mergeDistribution(
-        incomeDistribution,
-        calculateIncomeDistribution(entry, workingDays)
-      );
+    const createdDate = String(entry.created_date || '').slice(0, 10);
+    const dueDate = String(entry.due_date || '').slice(0, 10);
+    const paid = Number(entry.paid) === 1;
 
-      if (Number(entry.paid) === 1 && validDate(entry.due_date)) {
-        paidIncomeByDay[entry.due_date] =
-          (paidIncomeByDay[entry.due_date] || 0) + safeNumber(entry.amount);
+    // Realizado = somente aquilo que foi manualmente confirmado como pago/recebido.
+    if (paid) {
+      const realizedDate = validDate(String(entry.paid_at || '').slice(0, 10))
+        ? String(entry.paid_at).slice(0, 10)
+        : dueDate;
+
+      if (entry.type === 'income') {
+        mergeDayValue(paidIncomeByDay, realizedDate, entry.amount);
+      } else if (entry.type === 'expense') {
+        mergeDayValue(paidExpenseByDay, realizedDate, entry.amount);
       }
+      continue;
     }
 
-    if (entry.type === 'expense') {
-      mergeDistribution(
-        expenseDistribution,
-        calculateExpenseDistribution(entry, workingDays)
-      );
+    // Previsto = lançamento ainda não confirmado, com data de cadastro
+    // e data de recebimento/pagamento em dias diferentes.
+    if (
+      !validDate(createdDate) ||
+      !validDate(dueDate) ||
+      compareDates(dueDate, createdDate) <= 0
+    ) {
+      continue;
+    }
 
-      if (Number(entry.paid) === 1 && validDate(entry.due_date)) {
-        paidExpenseByDay[entry.due_date] =
-          (paidExpenseByDay[entry.due_date] || 0) + safeNumber(entry.amount);
-      }
+    const intervalDays = buildWorkingDaysBetween(
+      createdDate,
+      dueDate,
+      allRestSet
+    );
+
+    if (!intervalDays.length) continue;
+
+    if (entry.type === 'income') {
+      mergeDistribution(
+        futureIncomeByDay,
+        calculateIncomeDistribution(entry, intervalDays)
+      );
+    } else if (entry.type === 'expense') {
+      mergeDistribution(
+        futureExpenseByDay,
+        calculateExpenseDistribution(entry, intervalDays)
+      );
     }
   }
 
@@ -2393,11 +2452,13 @@ function buildAdminClientSummary(userId, month) {
   const data = calendarDays.map((day) => ({
     day: day.day,
     date: day.date,
-    income: safeNumber(incomeDistribution[day.date]),
-    expense: safeNumber(expenseDistribution[day.date]) + (day.isRestDay ? safeNumber(restDays.find((item) => item.rest_date === day.date)?.amount) : 0),
+    income: safeNumber(futureIncomeByDay[day.date]) + safeNumber(paidIncomeByDay[day.date]),
+    expense: safeNumber(futureExpenseByDay[day.date]) + safeNumber(paidExpenseByDay[day.date]) + (day.isRestDay ? safeNumber(restDays.find((item) => item.rest_date === day.date)?.amount) : 0),
+    futureIncome: safeNumber(futureIncomeByDay[day.date]),
+    futureExpense: safeNumber(futureExpenseByDay[day.date]),
     paidIncome: safeNumber(paidIncomeByDay[day.date]),
     paidExpense: safeNumber(paidExpenseByDay[day.date]),
-    cashflow: safeNumber(incomeDistribution[day.date]) - safeNumber(expenseDistribution[day.date]),
+    cashflow: safeNumber(futureIncomeByDay[day.date]) - safeNumber(futureExpenseByDay[day.date]),
     realizedCashflow: safeNumber(paidIncomeByDay[day.date]) - safeNumber(paidExpenseByDay[day.date]),
     dailyGoal: safeNumber(dailyGoals[day.date]),
     isWorkingDay: day.isWorkingDay,
@@ -2410,13 +2471,23 @@ function buildAdminClientSummary(userId, month) {
   const expense = safeNumber(totals?.expense);
   const paidExpense = safeNumber(totals?.paidExpense);
   const pendingExpense = safeNumber(totals?.pendingExpense);
+  const allTimeTotals = await db.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS totalIncomeAllTime,
+      COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS totalExpenseAllTime
+    FROM finance_entries
+    WHERE user_id = ?
+  `).get(userId);
+  const totalIncomeAllTime = safeNumber(allTimeTotals?.totalIncomeAllTime);
+  const totalExpenseAllTime = safeNumber(allTimeTotals?.totalExpenseAllTime);
   const cashflow = income - expense;
+
+  // O saldo realizado nunca depende da data prevista: só entra quando paid = 1.
   const realizedIncome = entries.reduce((sum, entry) => {
-    if (entry.type !== 'income' || !validDate(entry.due_date)) return sum;
-    const reached = compareDates(entry.due_date, today) <= 0;
-    const futureConfirmed = compareDates(entry.due_date, today) > 0 && Number(entry.paid) === 1;
-    return sum + (reached || futureConfirmed ? safeNumber(entry.amount) : 0);
+    if (entry.type !== 'income' || Number(entry.paid) !== 1) return sum;
+    return sum + safeNumber(entry.amount);
   }, 0);
+
   const availableBalance = Math.max(0, realizedIncome - paidExpense);
   const futureWorkingDays = workingDays.filter((day) => compareDates(day.date, addDays(today, 1)) >= 0);
   const totalPlannedGoal = futureWorkingDays.reduce((sum, day) => sum + safeNumber(dailyGoals[day.date]), 0);
@@ -2437,7 +2508,9 @@ function buildAdminClientSummary(userId, month) {
       paidExpense,
       pendingExpense,
       realizedIncome,
-      availableBalance
+      availableBalance,
+      totalIncomeAllTime,
+      totalExpenseAllTime
     },
     data,
     entries,
@@ -2445,8 +2518,97 @@ function buildAdminClientSummary(userId, month) {
   };
 }
 
+async function recordClientChange(userId, actorUserId, action, fieldName = null, oldValue = null, newValue = null, details = null) {
+  await db.prepare(`
+    INSERT INTO client_change_log
+      (user_id, actor_user_id, action, field_name, old_value, new_value, details)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    Number(userId),
+    actorUserId ? Number(actorUserId) : null,
+    clean(action, 80),
+    fieldName ? clean(fieldName, 80) : null,
+    oldValue == null ? null : String(oldValue).slice(0, 500),
+    newValue == null ? null : String(newValue).slice(0, 500),
+    details == null ? null : String(details).slice(0, 1000)
+  );
+}
+
+function buildChangeHistoryPdf(client, changes) {
+  const pages = [];
+  const esc = (v) => pdfSafe(pdfAscii(v));
+  const labels = { name: 'Nome', email: 'E-mail', phone: 'WhatsApp', password: 'Senha', billing_status: 'Status', service: 'Serviço' };
+  const formatDateTime = (v) => {
+    if (!v) return '—';
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString('pt-BR', { timeZone: 'America/Bahia' });
+  };
+  const objects = [];
+  const addObject = (buffer) => { objects.push(buffer); return objects.length; };
+  const catalog = addObject(Buffer.alloc(0));
+  const pagesObj = addObject(Buffer.alloc(0));
+  const fontRegular = addObject(Buffer.from('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>', 'latin1'));
+  const fontBold = addObject(Buffer.from('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>', 'latin1'));
+  const pageRefs = [];
+
+  const makePage = (pageNo) => {
+    const c = [];
+    c.push('0.07 0.10 0.15 rg', '0 790 595 52 re f');
+    c.push(`1 1 1 rg BT /F2 15 Tf 38 815 Td (${esc('ROTA FINANCEIRA')}) Tj ET`);
+    c.push(`0.75 0.80 0.86 rg BT /F1 8 Tf 38 798 Td (${esc('HISTORICO DE ALTERACOES DO CLIENTE')}) Tj ET`);
+    c.push(`0.85 0.88 0.92 rg BT /F2 9 Tf 520 814 Td (${String(pageNo).padStart(2,'0')}) Tj ET`);
+    c.push(`0.10 0.14 0.20 rg BT /F2 18 Tf 38 758 Td (${esc(client.name || 'Cliente')}) Tj ET`);
+    c.push(`0.40 0.43 0.48 rg BT /F1 9 Tf 38 742 Td (${esc(client.email || '—')}) Tj ET`);
+    c.push(`0.40 0.43 0.48 rg BT /F1 8 Tf 38 726 Td (${esc('Gerado em: ' + formatDateTime(new Date().toISOString()))}) Tj ET`);
+    return c;
+  };
+
+  let pageNo = 1, c = makePage(pageNo), y = 690;
+  const pushLine = (line, bold=false) => {
+    if (y < 65) { pages.push(c); c = makePage(++pageNo); y = 690; }
+    for (const wrapped of pdfWrap(line, 96)) {
+      if (y < 65) { pages.push(c); c = makePage(++pageNo); y = 690; }
+      c.push(`0.16 0.18 0.22 rg BT /F${bold?2:1} ${bold?9:8} Tf 42 ${y} Td (${esc(wrapped)}) Tj ET`);
+      y -= 13;
+    }
+  };
+
+  if (!changes.length) pushLine('Nenhuma alteracao registrada para este cliente.', true);
+  for (const item of changes) {
+    const field = labels[item.field_name] || item.field_name || 'Registro';
+    pushLine(`${formatDateTime(item.created_at)} — ${item.action}`, true);
+    if (item.field_name) pushLine(`Campo: ${field}`);
+    if (item.field_name === 'password') pushLine('A senha foi alterada. Os valores de senha nao sao armazenados no historico.');
+    else {
+      if (item.old_value != null) pushLine(`Anterior: ${item.old_value || '—'}`);
+      if (item.new_value != null) pushLine(`Novo: ${item.new_value || '—'}`);
+    }
+    if (item.details) pushLine(`Detalhes: ${item.details}`);
+    y -= 7;
+  }
+  pages.push(c);
+
+  for (const commands of pages) {
+    const content = Buffer.from(commands.join('\n') + '\n', 'latin1');
+    const contentObj = addObject(Buffer.from(`<< /Length ${content.length} >>\nstream\n`, 'latin1'));
+    objects[contentObj - 1] = Buffer.concat([objects[contentObj - 1], content, Buffer.from('endstream', 'latin1')]);
+    const pageObj = addObject(Buffer.from(`<< /Type /Page /Parent ${pagesObj} 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${fontRegular} 0 R /F2 ${fontBold} 0 R >> >> /Contents ${contentObj} 0 R >>`, 'latin1'));
+    pageRefs.push(pageObj);
+  }
+  objects[catalog - 1] = Buffer.from(`<< /Type /Catalog /Pages ${pagesObj} 0 R >>`, 'latin1');
+  objects[pagesObj - 1] = Buffer.from(`<< /Type /Pages /Kids [${pageRefs.map(ref => `${ref} 0 R`).join(' ')}] /Count ${pageRefs.length} >>`, 'latin1');
+  const chunks = [Buffer.from('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n', 'latin1')];
+  const offsets = [0]; let offset = chunks[0].length;
+  objects.forEach((obj, index) => { offsets.push(offset); const h=Buffer.from(`${index+1} 0 obj\n`,'latin1'); const f=Buffer.from('\nendobj\n','latin1'); chunks.push(h,obj,f); offset += h.length+obj.length+f.length; });
+  const xrefOffset=offset; let xref=`xref\n0 ${objects.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<offsets.length;i++) xref += `${String(offsets[i]).padStart(10,'0')} 00000 n \n`;
+  xref += `trailer\n<< /Size ${objects.length+1} /Root ${catalog} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  chunks.push(Buffer.from(xref,'latin1'));
+  return Buffer.concat(chunks);
+}
+
 async function handleAdminApi(req, res, url, parsedUrl) {
-  const admin = requireAdmin(req, res);
+  const admin = await requireAdmin(req, res);
   if (!admin) return true;
 
   const month = parsedUrl.searchParams.get('month');
@@ -2455,15 +2617,15 @@ async function handleAdminApi(req, res, url, parsedUrl) {
     if (!validMonth(month)) {
       return sendJson(res, 400, { error: 'Mês inválido.' });
     }
-    const clients = db.prepare(`
+    const clients = await db.prepare(`
       SELECT id, name, email, phone, created_at, billing_status, last_login_at
       FROM users
       WHERE role = 'client'
-      ORDER BY name COLLATE NOCASE ASC
+      ORDER BY lower(name) ASC
     `).all();
 
-    const result = clients.map((client) => {
-      const summary = buildAdminClientSummary(client.id, month);
+    const result = await Promise.all(clients.map(async (client) => {
+      const summary = await buildAdminClientSummary(client.id, month);
       const status = publicClientStatus(client);
       const active = !!client.last_login_at &&
         (Date.now() - new Date(String(client.last_login_at).replace(' ', 'T')).getTime()) <= 30 * 24 * 60 * 60 * 1000;
@@ -2478,7 +2640,7 @@ async function handleAdminApi(req, res, url, parsedUrl) {
         active,
         totals: summary.totals
       };
-    });
+    }));
 
     const aggregate = result.reduce((acc, client) => {
       acc.total += 1;
@@ -2494,7 +2656,12 @@ async function handleAdminApi(req, res, url, parsedUrl) {
   const reportMatch = url.match(/^\/api\/admin\/clients\/(\d+)\/report$/);
   if (req.method === 'GET' && reportMatch) {
     const clientId = Number(reportMatch[1]);
-    const client = db.prepare(`
+    const requestedMonth = parsedUrl.searchParams.get('month') || getTodayLocal().slice(0, 7);
+    if (!validMonth(requestedMonth)) {
+      return sendJson(res, 400, { error: 'Mês inválido.' });
+    }
+
+    const client = await db.prepare(`
       SELECT id, name, email, phone, created_at, billing_status, last_login_at
       FROM users
       WHERE id = ? AND role = 'client'
@@ -2504,62 +2671,40 @@ async function handleAdminApi(req, res, url, parsedUrl) {
       return sendJson(res, 404, { error: 'Cliente não encontrado.' });
     }
 
-    const entries = db.prepare(`
-      SELECT id, type, name, amount, created_date, due_date, paid, paid_at, rest_day_id, created_at
+    const today = getTodayLocal();
+    const createdDate = String(client.created_at || '').slice(0, 10);
+    const createdMonth = createdDate.slice(0, 7);
+    const summary = await buildAdminClientSummary(clientId, requestedMonth);
+
+    const entries = await db.prepare(`
+      SELECT type, amount, due_date
       FROM finance_entries
       WHERE user_id = ?
       ORDER BY due_date ASC, id ASC
     `).all(clientId);
 
-    const restDays = db.prepare(`
-      SELECT id, rest_date, amount, created_at
+    const restDays = await db.prepare(`
+      SELECT rest_date
       FROM rest_days
       WHERE user_id = ?
       ORDER BY rest_date ASC, id ASC
     `).all(clientId);
 
-    const createdDate = String(client.created_at || '').slice(0, 10);
-    const today = getTodayLocal();
-    const createdMonth = createdDate.slice(0, 7);
-    const currentMonth = today.slice(0, 7);
-
-    const totals = entries.reduce((acc, entry) => {
-      const amount = safeNumber(entry.amount);
-      if (entry.type === 'income') {
-        acc.income += amount;
-        if (Number(entry.paid) === 1) acc.paidIncome += amount;
-      } else if (entry.type === 'expense') {
-        acc.expense += amount;
-        if (Number(entry.paid) === 1) acc.paidExpense += amount;
-        else acc.pendingExpense += amount;
-      }
-      return acc;
-    }, { income: 0, expense: 0, paidIncome: 0, paidExpense: 0, pendingExpense: 0 });
-
-    totals.cashflow = totals.income - totals.expense;
-    totals.confirmedCashflow = totals.paidIncome - totals.paidExpense;
-
     const monthly = [];
-    if (validMonth(createdMonth) && validMonth(currentMonth)) {
+    if (validMonth(createdMonth) && validMonth(today.slice(0, 7))) {
       let cursor = createdMonth;
-      while (cursor <= currentMonth) {
-        const monthEntries = entries.filter(entry => { const date = String(entry.due_date || '').slice(0, 10); return date >= createdDate && date <= today && date.slice(0, 7) === cursor; });
-        const income = monthEntries.filter(e => e.type === 'income').reduce((sum, e) => sum + safeNumber(e.amount), 0);
-        const expense = monthEntries.filter(e => e.type === 'expense').reduce((sum, e) => sum + safeNumber(e.amount), 0);
-        const paidIncome = monthEntries.filter(e => e.type === 'income' && Number(e.paid) === 1).reduce((sum, e) => sum + safeNumber(e.amount), 0);
-        const paidExpense = monthEntries.filter(e => e.type === 'expense' && Number(e.paid) === 1).reduce((sum, e) => sum + safeNumber(e.amount), 0);
-        const pendingExpense = monthEntries.filter(e => e.type === 'expense' && Number(e.paid) !== 1).reduce((sum, e) => sum + safeNumber(e.amount), 0);
-        const restCount = restDays.filter(r => { const date = String(r.rest_date || '').slice(0, 10); return date >= createdDate && date <= today && date.slice(0, 7) === cursor; }).length;
+      const lastMonth = today.slice(0, 7);
+      while (cursor <= lastMonth) {
+        const monthEntries = entries.filter((entry) => String(entry.due_date || '').slice(0, 7) === cursor);
+        const income = monthEntries.filter((e) => e.type === 'income').reduce((sum, e) => sum + safeNumber(e.amount), 0);
+        const expense = monthEntries.filter((e) => e.type === 'expense').reduce((sum, e) => sum + safeNumber(e.amount), 0);
+        const restCount = restDays.filter((r) => String(r.rest_date || '').slice(0, 7) === cursor).length;
 
         monthly.push({
           month: cursor,
           income,
           expense,
           cashflow: income - expense,
-          paidIncome,
-          paidExpense,
-          confirmedCashflow: paidIncome - paidExpense,
-          pendingExpense,
           restDays: restCount
         });
 
@@ -2569,54 +2714,57 @@ async function handleAdminApi(req, res, url, parsedUrl) {
       }
     }
 
-    // O relatório considera exclusivamente a janela de cadastro do cliente.
-    const periodEntries = entries.filter((entry) => {
-      const date = String(entry.due_date || '').slice(0, 10);
-      return validDate(date) && date >= createdDate && date <= today;
-    });
-    const periodRestDays = restDays.filter((day) => {
-      const date = String(day.rest_date || '').slice(0, 10);
-      return validDate(date) && date >= createdDate && date <= today;
-    });
-
-    const periodTotals = periodEntries.reduce((acc, entry) => {
-      const amount = safeNumber(entry.amount);
-      if (entry.type === 'income') {
-        acc.income += amount;
-        if (Number(entry.paid) === 1) acc.paidIncome += amount;
-      } else if (entry.type === 'expense') {
-        acc.expense += amount;
-        if (Number(entry.paid) === 1) acc.paidExpense += amount;
-        else acc.pendingExpense += amount;
-      }
-      return acc;
-    }, { income: 0, expense: 0, paidIncome: 0, paidExpense: 0, pendingExpense: 0 });
-    periodTotals.cashflow = periodTotals.income - periodTotals.expense;
-    periodTotals.confirmedCashflow = periodTotals.paidIncome - periodTotals.paidExpense;
-
     const report = {
       generated_at: new Date().toISOString(),
       client: { ...client, status: publicClientStatus(client) },
-      period: { start: createdDate, end: today, startMonth: createdMonth, endMonth: currentMonth },
-      totals: periodTotals,
-      entries: periodEntries,
-      restDays: periodRestDays,
+      period: {
+        start: createdDate,
+        end: today,
+        startMonth: createdMonth,
+        endMonth: today.slice(0, 7)
+      },
+      totals: summary.totals,
+      summary,
       monthly
     };
 
     try {
       const pdf = buildClientReportPdf(report);
-      return sendPdf(res, 200, pdf, pdfFileName(client.name, currentMonth));
+      return sendPdf(res, 200, pdf, pdfFileName(client.name, requestedMonth));
     } catch (error) {
       console.error('Erro ao gerar relatório PDF:', error);
       return sendJson(res, 500, { error: 'Não foi possível gerar o relatório PDF.' });
     }
   }
 
+  const historyMatch = url.match(/^\/api\/admin\/clients\/(\d+)\/change-history$/);
+  if (req.method === 'GET' && historyMatch) {
+    const clientId = Number(historyMatch[1]);
+    const client = await db.prepare(`
+      SELECT id, name, email, phone, created_at
+      FROM users WHERE id = ? AND role = 'client'
+    `).get(clientId);
+    if (!client) return sendJson(res, 404, { error: 'Cliente não encontrado.' });
+    const changes = await db.prepare(`
+      SELECT action, field_name, old_value, new_value, details, created_at
+      FROM client_change_log
+      WHERE user_id = ?
+      ORDER BY created_at DESC, id DESC
+    `).all(clientId);
+    try {
+      const pdf = buildChangeHistoryPdf(client, changes);
+      const base = String(client.name || 'Cliente').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'_').replace(/^_+|_+$/g,'') || 'Cliente';
+      return sendPdf(res, 200, pdf, `Historico_Alteracoes_${base}.pdf`);
+    } catch (error) {
+      console.error('Erro ao gerar histórico de alterações:', error);
+      return sendJson(res, 500, { error: 'Não foi possível gerar o histórico de alterações.' });
+    }
+  }
+
   const statusMatch = url.match(/^\/api\/admin\/clients\/(\d+)\/status$/);
   if (req.method === 'PATCH' && statusMatch) {
     const clientId = Number(statusMatch[1]);
-    const client = db.prepare(`
+    const client = await db.prepare(`
       SELECT id, name, email, phone, created_at, billing_status, last_login_at
       FROM users
       WHERE id = ? AND role = 'client'
@@ -2635,9 +2783,13 @@ async function handleAdminApi(req, res, url, parsedUrl) {
       }
 
       const billingStatus = requested === 'auto' ? null : requested;
-      db.prepare('UPDATE users SET billing_status = ? WHERE id = ?').run(billingStatus, clientId);
+      const oldBillingStatus = client.billing_status || null;
+      await db.prepare('UPDATE users SET billing_status = ? WHERE id = ?').run(billingStatus, clientId);
+      if (String(oldBillingStatus || '') !== String(billingStatus || '')) {
+        await recordClientChange(clientId, admin.id, 'Status do cliente alterado pelo administrador', 'billing_status', oldBillingStatus || 'Automático', billingStatus || 'Automático');
+      }
 
-      const updated = db.prepare(`
+      const updated = await db.prepare(`
         SELECT id, name, email, phone, created_at, billing_status, last_login_at
         FROM users WHERE id = ? AND role = 'client'
       `).get(clientId);
@@ -2665,7 +2817,7 @@ async function handleAdminApi(req, res, url, parsedUrl) {
       return sendJson(res, 400, { error: 'Mês inválido.' });
     }
     const clientId = Number(match[1]);
-    const client = db.prepare(`
+    const client = await db.prepare(`
       SELECT id, name, email, phone, created_at, billing_status, last_login_at
       FROM users
       WHERE id = ? AND role = 'client'
@@ -2680,8 +2832,130 @@ async function handleAdminApi(req, res, url, parsedUrl) {
         ...client,
         status: publicClientStatus(client)
       },
-      summary: buildAdminClientSummary(clientId, month)
+      summary: await buildAdminClientSummary(clientId, month)
     });
+  }
+
+  return false;
+}
+
+/* =========================================================
+   PERFIL DO CLIENTE
+========================================================= */
+
+async function handleProfileApi(req, res, url) {
+  if (url !== '/api/profile') return false;
+
+  const user = await requireUser(req, res);
+  if (!user) return true;
+  const userId = Number(user.id);
+
+  if (req.method === 'GET') {
+    const current = await db.prepare(`
+      SELECT id, name, email, phone, role
+      FROM users WHERE id = ?
+    `).get(userId);
+    return sendJson(res, 200, { user: current });
+  }
+
+  if (req.method === 'PUT') {
+    try {
+      const body = await readBody(req);
+      const name = clean(body.name, 100);
+      const email = clean(body.email, 160).toLowerCase();
+      const phone = clean(body.phone, 30);
+      const newPassword = String(body.password || '');
+
+      if (name.length < 2) return sendJson(res, 400, { error: 'Informe um nome válido.' });
+      if (!validEmail(email)) return sendJson(res, 400, { error: 'Informe um e-mail válido.' });
+      if (newPassword && (newPassword.length < 8 || newPassword.length > 128)) {
+        return sendJson(res, 400, { error: 'A nova senha deve ter entre 8 e 128 caracteres.' });
+      }
+
+      const current = await db.prepare(`SELECT id, name, email, phone FROM users WHERE id = ?`).get(userId);
+      const duplicate = await db.prepare(`SELECT id FROM users WHERE lower(email) = lower(?) AND id <> ?`).get(email, userId);
+      if (duplicate) return sendJson(res, 409, { error: 'Este e-mail já está sendo utilizado por outra conta.' });
+
+      if (newPassword) {
+        await db.prepare('UPDATE users SET name = ?, email = ?, phone = ?, password_hash = ? WHERE id = ?').run(
+          name, email, phone, passwordHash(newPassword), userId
+        );
+      } else {
+        await db.prepare('UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?').run(name, email, phone, userId);
+      }
+
+      if (String(current.name || '') !== name) await recordClientChange(userId, userId, 'Dados cadastrais atualizados pelo cliente', 'name', current.name || '', name);
+      if (String(current.email || '') !== email) await recordClientChange(userId, userId, 'Dados cadastrais atualizados pelo cliente', 'email', current.email || '', email);
+      if (String(current.phone || '') !== phone) await recordClientChange(userId, userId, 'Dados cadastrais atualizados pelo cliente', 'phone', current.phone || '', phone);
+      if (newPassword) await recordClientChange(userId, userId, 'Senha alterada pelo cliente', 'password', null, null, 'Alteração de senha concluída. O conteúdo da senha não é registrado.');
+
+      const updated = await db.prepare(`SELECT id, name, email, phone, role FROM users WHERE id = ?`).get(userId);
+      return sendJson(res, 200, { message: 'Dados cadastrais atualizados com sucesso.', user: updated });
+    } catch (err) {
+      console.error('Erro ao atualizar perfil:', err);
+      return sendJson(res, 500, { error: 'Não foi possível atualizar os dados cadastrais.' });
+    }
+  }
+
+  return false;
+}
+
+/* =========================================================
+   SERVIÇOS DO CLIENTE
+========================================================= */
+
+async function handleServicesApi(req, res, url) {
+  const user = await requireUser(req, res);
+  if (!user) return true;
+  const userId = Number(user.id);
+
+  if (req.method === 'GET' && url === '/api/services') {
+    const services = await pool.query(`
+      SELECT
+        s.id, s.slug, s.name, s.description, s.price,
+        CASE
+          WHEN s.default_acquired = TRUE OR us.user_id IS NOT NULL THEN TRUE
+          ELSE FALSE
+        END AS acquired
+      FROM services s
+      LEFT JOIN user_services us
+        ON us.service_id = s.id AND us.user_id = $1
+      WHERE s.active = TRUE
+      ORDER BY s.id ASC
+    `, [userId]);
+
+    return sendJson(res, 200, {
+      services: services.rows.map((item) => ({
+        ...item,
+        price: Number(item.price || 0),
+        acquired: item.acquired === true
+      }))
+    });
+  }
+
+  const purchaseMatch = url.match(/^\/api\/services\/(\d+)\/purchase$/);
+  if (req.method === 'POST' && purchaseMatch) {
+    const serviceId = Number(purchaseMatch[1]);
+    const service = await db.prepare(`
+      SELECT id, active FROM services WHERE id = ?
+    `).get(serviceId);
+
+    if (!service || service.active !== true) {
+      return sendJson(res, 404, { error: 'Serviço não encontrado.' });
+    }
+
+    const existingService = await db.prepare('SELECT user_id FROM user_services WHERE user_id = ? AND service_id = ?').get(userId, serviceId);
+    await pool.query(`
+      INSERT INTO user_services (user_id, service_id)
+      VALUES ($1, $2)
+      ON CONFLICT (user_id, service_id) DO NOTHING
+    `, [userId, serviceId]);
+    if (!existingService) {
+      const serviceInfo = await db.prepare('SELECT name FROM services WHERE id = ?').get(serviceId);
+      await recordClientChange(userId, userId, 'Serviço adquirido pelo cliente', 'service', null, serviceInfo?.name || `Serviço ${serviceId}`);
+    }
+
+    return sendJson(res, 200, { message: 'Serviço adquirido com sucesso.' });
   }
 
   return false;
@@ -2698,7 +2972,7 @@ async function handleFinanceApi(
   parsedUrl
 ) {
   const user =
-    requireUser(
+    await requireUser(
       req,
       res
     );
@@ -2709,6 +2983,46 @@ async function handleFinanceApi(
 
   const userId =
     Number(user.id);
+
+  /* =======================================================
+     LEMBRETES DE LANÇAMENTOS VENCIDOS / VENCENDO HOJE
+  ======================================================= */
+
+  if (
+    req.method === 'GET' &&
+    url === '/api/finance/reminders'
+  ) {
+    const today = getTodayLocal();
+
+    const entries = await db.prepare(`
+      SELECT
+        id,
+        type,
+        name,
+        amount,
+        due_date,
+        paid
+      FROM finance_entries
+      WHERE
+        user_id = ?
+        AND paid = 0
+        AND due_date <= ?
+      ORDER BY
+        due_date ASC,
+        id ASC
+    `).all(userId, today);
+
+    const income = entries.filter((entry) => entry.type === 'income');
+    const expense = entries.filter((entry) => entry.type === 'expense');
+
+    return sendJson(res, 200, {
+      today,
+      hasReminders: entries.length > 0,
+      income,
+      expense,
+      total: entries.length
+    });
+  }
 
   /* =======================================================
      LISTAR LANÇAMENTOS
@@ -2737,7 +3051,7 @@ async function handleFinanceApi(
     }
 
     const entries =
-      db
+      await db
         .prepare(`
           SELECT
             id,
@@ -2755,11 +3069,7 @@ async function handleFinanceApi(
 
           WHERE
             user_id = ?
-            AND substr(
-              due_date,
-              1,
-              7
-            ) = ?
+            AND to_char(due_date, 'YYYY-MM') = ?
 
           ORDER BY
             due_date ASC,
@@ -2911,9 +3221,9 @@ async function handleFinanceApi(
         rowsToCreate.push({ date: dueDate, installmentNumber: null, installmentTotal: null });
       }
 
-      db.exec('BEGIN');
+      await db.exec('BEGIN');
       try {
-        const insert = db.prepare(`
+        const insert = await db.prepare(`
           INSERT INTO finance_entries
           (user_id, type, name, amount, created_date, due_date, paid, paid_at, rest_day_id, recurrence_type, series_id, installment_number, installment_total, recurrence_day)
           VALUES (?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?)
@@ -2926,13 +3236,13 @@ async function handleFinanceApi(
           );
           if (firstEntryId === null) firstEntryId = Number(result.lastInsertRowid);
         }
-        db.exec('COMMIT');
+        await db.exec('COMMIT');
       } catch (err) {
-        db.exec('ROLLBACK');
+        await db.exec('ROLLBACK');
         throw err;
       }
 
-      const entry = db.prepare(`
+      const entry = await db.prepare(`
         SELECT id, type, name, amount, created_date, due_date, paid, paid_at, rest_day_id,
                recurrence_type, series_id, installment_number, installment_total, recurrence_day, created_at
         FROM finance_entries
@@ -3001,7 +3311,7 @@ async function handleFinanceApi(
 
     try {
       const entry =
-        db
+        await db
           .prepare(`
             SELECT
               id,
@@ -3075,7 +3385,7 @@ async function handleFinanceApi(
       const paidAt =
         new Date().toISOString();
 
-      db
+      await db
         .prepare(`
           UPDATE finance_entries
 
@@ -3096,7 +3406,7 @@ async function handleFinanceApi(
         );
 
       const updatedEntry =
-        db
+        await db
           .prepare(`
             SELECT
               id,
@@ -3207,7 +3517,7 @@ async function handleFinanceApi(
       }
 
       const entry =
-        db
+        await db
           .prepare(`
             SELECT
               id,
@@ -3261,7 +3571,7 @@ async function handleFinanceApi(
         );
       }
 
-      db
+      await db
         .prepare(`
           UPDATE finance_entries
 
@@ -3281,7 +3591,7 @@ async function handleFinanceApi(
         );
 
       const updatedEntry =
-        db
+        await db
           .prepare(`
             SELECT
               id,
@@ -3370,7 +3680,7 @@ async function handleFinanceApi(
 
     try {
       const entry =
-        db
+        await db
           .prepare(`
             SELECT
               id,
@@ -3437,7 +3747,7 @@ async function handleFinanceApi(
       const paidAt =
         new Date().toISOString();
 
-      db
+      await db
         .prepare(`
           UPDATE finance_entries
 
@@ -3456,11 +3766,11 @@ async function handleFinanceApi(
         );
 
       if (entry.recurrence_type === 'fixed' && entry.series_id) {
-        ensureFixedSeriesHorizon(userId, entry.series_id, getTodayLocal());
+        await ensureFixedSeriesHorizon(userId, entry.series_id, getTodayLocal());
       }
 
       const updatedEntry =
-        db
+        await db
           .prepare(`
             SELECT
               id,
@@ -3549,7 +3859,7 @@ async function handleFinanceApi(
 
     try {
       const entry =
-        db
+        await db
           .prepare(`
             SELECT
               id,
@@ -3597,7 +3907,7 @@ async function handleFinanceApi(
         );
       }
 
-      db
+      await db
         .prepare(`
           UPDATE finance_entries
 
@@ -3615,7 +3925,7 @@ async function handleFinanceApi(
         );
 
       const updatedEntry =
-        db
+        await db
           .prepare(`
             SELECT
               id,
@@ -3784,7 +4094,7 @@ async function handleFinanceApi(
       }
 
       const existing =
-        db
+        await db
           .prepare(`
             SELECT
               id,
@@ -3835,7 +4145,7 @@ async function handleFinanceApi(
       }
 
       const result =
-        db
+        await db
           .prepare(`
             UPDATE finance_entries
 
@@ -3876,7 +4186,7 @@ async function handleFinanceApi(
       }
 
       const entry =
-        db
+        await db
           .prepare(`
             SELECT
               id,
@@ -3945,7 +4255,7 @@ async function handleFinanceApi(
     const id = Number(entryMatch[1]);
 
     try {
-      const existing = db.prepare(`
+      const existing = await db.prepare(`
         SELECT id, type, due_date, recurrence_type, series_id, rest_day_id
         FROM finance_entries
         WHERE id = ? AND user_id = ?
@@ -3959,17 +4269,17 @@ async function handleFinanceApi(
         return sendJson(res, 400, { error: 'A despesa automática de dia de descanso deve ser removida pelo cadastro do descanso.' });
       }
 
-      db.exec('BEGIN');
+      await db.exec('BEGIN');
       try {
-        db.prepare(`UPDATE finance_entries SET recurrence_active = 0 WHERE user_id = ? AND series_id = ?`).run(userId, existing.series_id);
-        const result = db.prepare(`
+        await db.prepare(`UPDATE finance_entries SET recurrence_active = 0 WHERE user_id = ? AND series_id = ?`).run(userId, existing.series_id);
+        const result = await db.prepare(`
           DELETE FROM finance_entries
           WHERE user_id = ? AND series_id = ? AND due_date >= ? AND rest_day_id IS NULL
         `).run(userId, existing.series_id, existing.due_date);
-        db.exec('COMMIT');
+        await db.exec('COMMIT');
         return sendJson(res, 200, { message: 'Esta despesa e todas as ocorrências futuras foram excluídas.', deleted: Number(result.changes || 0) });
       } catch (err) {
-        db.exec('ROLLBACK');
+        await db.exec('ROLLBACK');
         throw err;
       }
     } catch (err) {
@@ -3993,7 +4303,7 @@ async function handleFinanceApi(
 
     try {
       const existing =
-        db
+        await db
           .prepare(`
             SELECT
               id,
@@ -4036,7 +4346,7 @@ async function handleFinanceApi(
       }
 
       const result =
-        db
+        await db
           .prepare(`
             DELETE FROM finance_entries
 
@@ -4115,10 +4425,10 @@ async function handleFinanceApi(
       );
     }
 
-    ensureAllFixedSeries(userId);
+    await ensureAllFixedSeries(userId);
 
     const entries =
-      db
+      await db
         .prepare(`
           SELECT
             id,
@@ -4143,19 +4453,11 @@ async function handleFinanceApi(
             user_id = ?
 
             AND (
-              substr(
-                due_date,
-                1,
-                7
-              ) = ?
+              to_char(due_date, 'YYYY-MM') = ?
 
               OR (
                 recurrence_type = 'single'
-                AND substr(
-                  created_date,
-                  1,
-                  7
-                ) = ?
+                AND to_char(created_date, 'YYYY-MM') = ?
               )
             )
 
@@ -4170,7 +4472,7 @@ async function handleFinanceApi(
         );
 
     const totals =
-      db
+      await db
         .prepare(`
           SELECT
 
@@ -4227,11 +4529,7 @@ async function handleFinanceApi(
           WHERE
             user_id = ?
 
-            AND substr(
-              due_date,
-              1,
-              7
-            ) = ?
+            AND to_char(due_date, 'YYYY-MM') = ?
         `)
         .get(
           userId,
@@ -4239,7 +4537,7 @@ async function handleFinanceApi(
         );
 
     const restDays =
-      db
+      await db
         .prepare(`
           SELECT
             id,
@@ -4252,11 +4550,7 @@ async function handleFinanceApi(
           WHERE
             user_id = ?
 
-            AND substr(
-              rest_date,
-              1,
-              7
-            ) = ?
+            AND to_char(rest_date, 'YYYY-MM') = ?
 
           ORDER BY
             rest_date ASC
@@ -4295,7 +4589,7 @@ async function handleFinanceApi(
           day.isWorkingDay
       );
 
-    const goalEntries = db.prepare(`
+    const goalEntries = await db.prepare(`
       SELECT id, type, name, amount, created_date, due_date, paid, paid_at,
              recurrence_type, series_id, installment_number, installment_total, recurrence_day
       FROM finance_entries
@@ -4303,7 +4597,7 @@ async function handleFinanceApi(
       ORDER BY due_date ASC, id ASC
     `).all(userId);
 
-    const goalRestRows = db.prepare(`
+    const goalRestRows = await db.prepare(`
       SELECT rest_date FROM rest_days
       WHERE user_id = ?
     `).all(userId);
@@ -4426,35 +4720,8 @@ async function handleFinanceApi(
         ) => {
           if (
             entry.type !==
-            'income'
-          ) {
-            return total;
-          }
-
-          if (
-            !validDate(
-              entry.due_date
-            )
-          ) {
-            return total;
-          }
-
-          const dateAlreadyReached =
-            compareDates(
-              entry.due_date,
-              today
-            ) <= 0;
-
-          const futureConfirmed =
-            compareDates(
-              entry.due_date,
-              today
-            ) > 0 &&
-            Number(entry.paid) === 1;
-
-          if (
-            !dateAlreadyReached &&
-            !futureConfirmed
+            'income' ||
+            Number(entry.paid) !== 1
           ) {
             return total;
           }
@@ -4542,7 +4809,7 @@ async function handleFinanceApi(
     }
 
     const restDays =
-      db
+      await db
         .prepare(`
           SELECT
             id,
@@ -4555,11 +4822,7 @@ async function handleFinanceApi(
           WHERE
             user_id = ?
 
-            AND substr(
-              rest_date,
-              1,
-              7
-            ) = ?
+            AND to_char(rest_date, 'YYYY-MM') = ?
 
           ORDER BY
             rest_date ASC
@@ -4632,7 +4895,7 @@ async function handleFinanceApi(
       }
 
       const existing =
-        db
+        await db
           .prepare(`
             SELECT
               id
@@ -4671,7 +4934,7 @@ async function handleFinanceApi(
       =====================================================
       */
 
-      db.exec('BEGIN');
+      await db.exec('BEGIN');
 
       try {
         const result =
@@ -4787,7 +5050,7 @@ async function handleFinanceApi(
               );
         }
 
-        db.exec('COMMIT');
+        await db.exec('COMMIT');
 
         console.log(
           'Dia de descanso cadastrado:',
@@ -4818,7 +5081,7 @@ async function handleFinanceApi(
           }
         );
       } catch (transactionError) {
-        db.exec('ROLLBACK');
+        await db.exec('ROLLBACK');
 
         throw transactionError;
       }
@@ -4859,7 +5122,7 @@ async function handleFinanceApi(
 
     try {
       const restDay =
-        db
+        await db
           .prepare(`
             SELECT
               id,
@@ -4900,10 +5163,10 @@ async function handleFinanceApi(
       =====================================================
       */
 
-      db.exec('BEGIN');
+      await db.exec('BEGIN');
 
       try {
-        db
+        await db
           .prepare(`
             DELETE FROM finance_entries
 
@@ -4935,7 +5198,7 @@ async function handleFinanceApi(
             result.changes || 0
           ) === 0
         ) {
-          db.exec('ROLLBACK');
+          await db.exec('ROLLBACK');
 
           return sendJson(
             res,
@@ -4947,7 +5210,7 @@ async function handleFinanceApi(
           );
         }
 
-        db.exec('COMMIT');
+        await db.exec('COMMIT');
 
         console.log(
           'Dia de descanso excluído:',
@@ -4963,7 +5226,7 @@ async function handleFinanceApi(
           }
         );
       } catch (transactionError) {
-        db.exec('ROLLBACK');
+        await db.exec('ROLLBACK');
 
         throw transactionError;
       }
@@ -4988,6 +5251,38 @@ async function handleFinanceApi(
 }
 
 /* =========================================================
+   PROTEÇÃO DE ORIGEM / CSRF
+========================================================= */
+
+function isSameOriginRequest(req) {
+  const origin = String(req.headers.origin || '').trim();
+  if (!origin) return true;
+
+  const host = String(req.headers.host || '').trim();
+  if (!host) return false;
+
+  try {
+    const parsedOrigin = new URL(origin);
+    return parsedOrigin.host === host;
+  } catch {
+    return false;
+  }
+}
+
+function requireSameOrigin(req, res) {
+  if (isSameOriginRequest(req)) return true;
+
+  sendJson(res, 403, {
+    error: 'Origem da requisição não autorizada.'
+  });
+  return false;
+}
+
+function isStateChangingMethod(method) {
+  return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(String(method || '').toUpperCase());
+}
+
+/* =========================================================
    API PRINCIPAL
 ========================================================= */
 
@@ -4998,6 +5293,10 @@ async function handleApi(
 ) {
   const url =
     parsedUrl.pathname;
+
+  if (isStateChangingMethod(req.method) && !requireSameOrigin(req, res)) {
+    return;
+  }
 
   if (
     url.startsWith(
@@ -5016,6 +5315,16 @@ async function handleApi(
     ) {
       return;
     }
+  }
+
+  if (url === '/api/profile') {
+    const result = await handleProfileApi(req, res, url);
+    if (result !== false) return;
+  }
+
+  if (url === '/api/services' || url.startsWith('/api/services/')) {
+    const result = await handleServicesApi(req, res, url);
+    if (result !== false) return;
   }
 
   if (
@@ -5075,135 +5384,89 @@ function serveStatic(
   res,
   url
 ) {
-  let pathname =
-    decodeURIComponent(
-      url.pathname
-    );
+  let pathname;
+
+  try {
+    pathname = decodeURIComponent(url.pathname);
+  } catch {
+    return sendJson(res, 400, { error: 'Caminho inválido.' });
+  }
+
+  if (pathname === '/') pathname = '/index.html';
+
+  // Nunca exponha arquivos internos, ocultos, bancos, logs ou configuração.
+  const normalized = pathname.replace(/\\/g, '/');
+  const relative = normalized.replace(/^\/+/, '');
 
   if (
-    pathname === '/'
+    !relative ||
+    relative.includes('..') ||
+    relative.split('/').some((part) => part.startsWith('.')) ||
+    /(^|\/)(node_modules|\.git)(\/|$)/i.test(relative) ||
+    /(?:^|\/)(?:\.env(?:\..*)?|package(?:-lock)?\.json|pnpm-lock\.yaml|yarn\.lock|server[^/]*\.js|rota_financeira\.sqlite(?:-[^/]*)?|.*\.(?:sqlite|sqlite3|db|db3|wal|shm|log|bak|backup|pem|key|crt))$/i.test(relative)
   ) {
-    pathname =
-      '/index.html';
+    return sendJson(res, 404, { error: 'Página não encontrada.' });
   }
 
-  if (
-    pathname.includes('..')
-  ) {
-    return sendJson(
-      res,
-      400,
-      {
-        error:
-          'Caminho inválido.'
-      }
-    );
+  const file = path.resolve(PUBLIC_ROOT, relative);
+  const root = path.resolve(PUBLIC_ROOT);
+  const prefix = root.endsWith(path.sep) ? root : root + path.sep;
+
+  if (file !== root && !file.startsWith(prefix)) {
+    return sendJson(res, 403, { error: 'Acesso negado.' });
   }
 
-  const file =
-    path.join(
-      ROOT,
-      pathname
-    );
+  const ext = path.extname(file).toLowerCase();
+  const allowedTypes = {
+    '.html': 'text/html; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.otf': 'font/otf'
+  };
 
-  const allowed =
-    path
-      .resolve(file)
-      .startsWith(
-        path.resolve(ROOT)
-      );
-
-  if (!allowed) {
-    return sendJson(
-      res,
-      403,
-      {
-        error:
-          'Acesso negado.'
-      }
-    );
+  if (!Object.prototype.hasOwnProperty.call(allowedTypes, ext)) {
+    return sendJson(res, 404, { error: 'Página não encontrada.' });
   }
 
-  fs.stat(
-    file,
-    (err, stat) => {
-      if (
-        err ||
-        !stat.isFile()
-      ) {
-        res.writeHead(
-          404,
-          {
-            'Content-Type':
-              'text/html; charset=utf-8'
-          }
-        );
+  const headers = {
+    'Content-Type': allowedTypes[ext],
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+    'Cross-Origin-Resource-Policy': 'same-origin',
+    'Cache-Control': ext === '.html' ? 'no-store' : 'public, max-age=3600'
+  };
 
-        return res.end(
-          '<h1>404</h1><p>Página não encontrada.</p>'
-        );
-      }
+  if (IS_PRODUCTION) {
+    headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
+  }
 
-      const ext =
-        path
-          .extname(file)
-          .toLowerCase();
+  fs.stat(file, (err, stat) => {
+    if (err || !stat.isFile()) {
+      res.writeHead(404, headers);
+      return res.end('<h1>404</h1><p>Página não encontrada.</p>');
+    }
 
-      const types = {
-        '.html':
-          'text/html; charset=utf-8',
+    if (ext === '.html') {
+      fs.readFile(file, 'utf8', (readErr, html) => {
+        if (readErr) {
+          res.writeHead(500, headers);
+          return res.end('<h1>500</h1><p>Não foi possível carregar a página.</p>');
+        }
 
-        '.css':
-          'text/css; charset=utf-8',
-
-        '.js':
-          'application/javascript; charset=utf-8',
-
-        '.png':
-          'image/png',
-
-        '.jpg':
-          'image/jpeg',
-
-        '.jpeg':
-          'image/jpeg',
-
-        '.webp':
-          'image/webp',
-
-        '.ico':
-          'image/x-icon'
-      };
-
-      const headers = {
-        'Content-Type':
-          types[ext] ||
-          'application/octet-stream',
-
-        'X-Content-Type-Options':
-          'nosniff',
-
-        'X-Frame-Options':
-          'SAMEORIGIN',
-
-        'Referrer-Policy':
-          'strict-origin-when-cross-origin'
-      };
-
-      /*
-        Controle visual da Área do Administrador.
-        A autorização real continua sendo feita por requireAdmin();
-        este trecho apenas garante que o link administrativo não
-        apareça para clientes comuns.
-      */
-      if (ext === '.html') {
-        fs.readFile(file, 'utf8', (readErr, html) => {
-          if (readErr) {
-            res.writeHead(500, headers);
-            return res.end('<h1>500</h1><p>Não foi possível carregar a página.</p>');
-          }
-
-          const adminVisibilityScript = `
+        const adminVisibilityScript = `
 <script data-rota-admin-visibility>
 (async function(){
   try {
@@ -5219,28 +5482,102 @@ function serveStatic(
         text.includes('área do administrador') ||
         text.includes('área administrativa') ||
         text === 'administrador';
-      if (adminItem) {
-        el.style.display = isAdmin ? '' : 'none';
-      }
+      if (adminItem) el.style.display = isAdmin ? '' : 'none';
     });
+  } catch (_) {}
+})();
+</script>
+<script data-rota-finance-reminders>
+(async function(){
+  try {
+    const auth = await fetch('/api/auth/me', { credentials: 'same-origin' });
+    const session = await auth.json().catch(() => ({}));
+    if (!session || !session.authenticated || !session.user) return;
+
+    const response = await fetch('/api/finance/reminders', { credentials: 'same-origin' });
+    if (!response.ok) return;
+    const data = await response.json().catch(() => ({}));
+    if (!data.hasReminders) return;
+
+    const existing = document.getElementById('rotaFinanceReminder');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'rotaFinanceReminder';
+    overlay.style.cssText = ['position:fixed','inset:0','z-index:99999','display:flex','align-items:center','justify-content:center','padding:20px','background:rgba(0,0,0,.58)','box-sizing:border-box'].join(';');
+
+    const box = document.createElement('div');
+    box.style.cssText = ['width:min(520px,100%)','background:#fff','border-radius:16px','padding:26px','box-sizing:border-box','box-shadow:0 20px 60px rgba(0,0,0,.25)','font-family:Arial,sans-serif','color:#172033','position:relative'].join(';');
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.textContent = '×';
+    close.setAttribute('aria-label', 'Fechar');
+    close.style.cssText = 'position:absolute;right:14px;top:10px;border:0;background:transparent;font-size:28px;cursor:pointer;color:#667085;line-height:1';
+    close.addEventListener('click', function(){ overlay.remove(); });
+
+    const title = document.createElement('div');
+    title.textContent = 'Atenção ao seu planejamento';
+    title.style.cssText = 'font-size:20px;font-weight:700;margin:0 32px 10px 0';
+
+    const intro = document.createElement('p');
+    intro.textContent = 'Você tem lançamentos que precisam ser confirmados ou atualizados:';
+    intro.style.cssText = 'margin:0 0 16px;color:#667085;line-height:1.5';
+
+    const list = document.createElement('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:10px;margin-bottom:18px';
+
+    function addGroup(label, items) {
+      if (!items || !items.length) return;
+      const group = document.createElement('div');
+      group.style.cssText = 'padding:12px 14px;border-radius:10px;background:#f7f8fa';
+      const heading = document.createElement('strong');
+      heading.textContent = label;
+      heading.style.cssText = 'display:block;margin-bottom:6px';
+      group.appendChild(heading);
+      items.forEach(function(item){
+        const row = document.createElement('div');
+        const date = String(item.due_date || '');
+        const amount = Number(item.amount || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+        row.textContent = item.name + ' — ' + amount + (date === data.today ? ' — vence hoje' : ' — vencido');
+        row.style.cssText = 'font-size:14px;line-height:1.45;margin-top:5px;color:#344054';
+        group.appendChild(row);
+      });
+      list.appendChild(group);
+    }
+
+    addGroup('Ganhos', data.income);
+    addGroup('Despesas', data.expense);
+
+    const note = document.createElement('p');
+    note.textContent = 'Acesse “Meu planejamento” para confirmar o recebimento/pagamento ou editar a informação. Esta mensagem é apenas um lembrete e não bloqueia a plataforma.';
+    note.style.cssText = 'margin:0;color:#667085;font-size:13px;line-height:1.5';
+
+    box.appendChild(close);
+    box.appendChild(title);
+    box.appendChild(intro);
+    box.appendChild(list);
+    box.appendChild(note);
+    overlay.appendChild(box);
+    overlay.addEventListener('click', function(event){ if (event.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
   } catch (_) {}
 })();
 </script>`;
 
-          const output = html.includes('</body>')
-            ? html.replace('</body>', adminVisibilityScript + '\n</body>')
-            : html + adminVisibilityScript;
+        const output = html.includes('</body>')
+          ? html.replace('</body>', adminVisibilityScript + '\n</body>')
+          : html + adminVisibilityScript;
 
-          res.writeHead(200, headers);
-          res.end(output);
-        });
-        return;
-      }
-
-      res.writeHead(200, headers);
-      fs.createReadStream(file).pipe(res);
+        res.writeHead(200, headers);
+        res.end(output);
+      });
+      return;
     }
-  );
+
+    res.writeHead(200, headers);
+    fs.createReadStream(file).pipe(res);
+  });
 }
 
 /* =========================================================
@@ -5302,11 +5639,18 @@ const server =
     }
   );
 
-server.listen(
-  PORT,
-  () => {
-    console.log(
-      `Rota Financeira rodando em http://localhost:${PORT}`
+initializeDatabase()
+  .then(() => {
+    server.listen(
+      PORT,
+      () => {
+        console.log(
+          `Rota Financeira rodando em http://localhost:${PORT}`
+        );
+      }
     );
-  }
-);
+  })
+  .catch((err) => {
+    console.error('Falha ao inicializar o PostgreSQL:', err);
+    process.exit(1);
+  });

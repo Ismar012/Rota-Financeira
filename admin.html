@@ -11,7 +11,7 @@
 <body>
   <header class="header">
     <nav class="nav">
-      <a class="logo-text" href="/dashboard.html">ROTA <span>FINANCEIRA</span></a>
+      <a class="logo-text" href="#" id="backLogo">ROTA <span>FINANCEIRA</span></a>
       <div class="nav-actions">
         <span id="adminName" class="admin-badge">Administrador</span>
         <button id="logout" class="btn btn-outline" type="button">Sair</button>
@@ -67,18 +67,20 @@
             <p id="detailEmail" class="muted"></p>
             <p id="detailMeta" class="status-meta"></p>
           </div>
-          <div class="detail-actions"><button id="exportReport" class="btn btn-gold" type="button">Baixar relatório</button><button id="closeDetail" class="btn btn-outline" type="button">← Voltar para clientes</button></div>
+          <div class="detail-actions"><button id="exportReport" class="btn btn-gold" type="button">Baixar relatório</button><button id="exportChangeHistory" class="btn btn-outline" type="button">Histórico de alterações</button><button id="closeDetail" class="btn btn-outline" type="button">← Voltar para clientes</button></div>
         </div>
 
         <section class="admin-summary-grid detail-summary">
           <article class="admin-summary-card"><span>Ganhos</span><strong id="detailIncome">R$ 0,00</strong><small>no mês selecionado</small></article>
           <article class="admin-summary-card"><span>Gastos líquidos</span><strong id="detailExpense">R$ 0,00</strong><small>despesas do mês</small></article>
-          <article class="admin-summary-card highlight"><span>Fluxo de caixa</span><strong id="detailCashflow">R$ 0,00</strong><small>ganhos − gastos</small></article>
+          <article class="admin-summary-card highlight"><span>Fluxo de caixa</span><strong id="detailCashflow">R$ 0,00</strong><small>seu saldo atual</small></article>
           <article class="admin-summary-card"><span>Meta total prevista</span><strong id="detailGoal">R$ 0,00</strong><small>dias futuros de trabalho</small></article>
           <article class="admin-summary-card"><span>Dias de trabalho</span><strong id="detailWorking">0</strong><small>no mês</small></article>
           <article class="admin-summary-card"><span>Dias de descanso</span><strong id="detailRest">0</strong><small>marcados pelo cliente</small></article>
           <article class="admin-summary-card"><span>Disponíveis</span><strong id="detailAvailable">0</strong><small>dias futuros para trabalho</small></article>
           <article class="admin-summary-card"><span>Gastos pendentes</span><strong id="detailPending">R$ 0,00</strong><small>ainda não pagos</small></article>
+          <article class="admin-summary-card"><span>Ganhos totais</span><strong id="detailTotalIncome">R$ 0,00</strong><small>todos os ganhos cadastrados</small></article>
+          <article class="admin-summary-card"><span>Gastos totais</span><strong id="detailTotalExpense">R$ 0,00</strong><small>todos os gastos cadastrados</small></article>
         </section>
 
         <section class="chart-card admin-chart-card">
@@ -103,5 +105,11 @@
   </main>
 
   <script src="/admin.js"></script>
+<script>
+document.getElementById('backLogo')?.addEventListener('click', function (event) {
+    event.preventDefault();
+    window.history.back();
+});
+</script>
 </body>
 </html>

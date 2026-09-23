@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meus serviços | Rota Financeira</title>
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/servicos.css">
+</head>
+<body>
+<header class="header"><nav class="nav"><a class="logo-text" href="#" id="backLogo">ROTA <span>FINANCEIRA</span></a><div class="nav-actions"><button id="logout" class="btn btn-outline" type="button">Sair</button></div></nav></header>
+<main class="client-area"><div class="client-container">
+<section class="page-head"><div><div class="eyebrow">Minha área</div><h1>Meus serviços</h1><p class="muted">Consulte os serviços disponíveis e veja quais já fazem parte do seu perfil.</p></div></section>
+<section id="servicesGrid" class="services-grid"></section><p id="feedback" class="notice"></p>
+</div></main>
+<script src="/servicos.js"></script>
+<script>
+document.getElementById('backLogo')?.addEventListener('click', function (event) {
+    event.preventDefault();
+    window.history.back();
+});
+</script>
+</body></html>

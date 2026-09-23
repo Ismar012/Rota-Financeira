@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Entrar | Rota Financeira</title><link rel="stylesheet" href="styles.css"></head>
 <body>
-<header class="header"><nav class="nav"><a class="logo-text" href="/">ROTA <span>FINANCEIRA</span></a><a class="btn btn-outline" href="contato.html">Fale conosco</a></nav></header>
+<header class="header"><nav class="nav"><a class="logo-text" href="index.html">ROTA <span>FINANCEIRA</span></a><a class="btn btn-outline" href="contato.html">Fale conosco</a></nav></header>
 <main class="login-wrap"><section class="auth">
 <img class="auth-logo" src="logo-rota.png" alt="Rota Financeira"><h1>Bem-vindo de volta</h1><p class="auth-sub">Acesse sua área da Rota Financeira.</p>
 <form id="loginForm">
@@ -10,7 +10,7 @@
 <div class="field"><label for="senha">SENHA</label><input id="senha" type="password" autocomplete="current-password" placeholder="Sua senha" required></div>
 <button class="btn btn-gold" type="submit">ENTRAR</button><p id="feedback" class="notice"></p>
 </form>
-<div class="auth-foot">Ainda não possui uma conta? <a href="cadastro.html">Criar cadastro</a></div><div class="auth-foot"><a href="/">← Voltar para a página inicial</a></div>
+<div class="auth-foot">Ainda não possui uma conta? <a href="cadastro.html">Criar cadastro</a></div><div class="auth-foot"><a href="index.html">← Voltar para a página inicial</a></div>
 </section></main>
 <script>
 document.getElementById('loginForm').addEventListener('submit', async (e) => {e.preventDefault(); const f=e.currentTarget,b=document.querySelector('#feedback'); b.textContent='Entrando...';

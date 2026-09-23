@@ -1,156 +1,89 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Minha área | Rota Financeira</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
-
 <body>
-
 <header class="header">
   <nav class="nav">
-    <a class="logo-text" href="/">ROTA <span>FINANCEIRA</span></a>
-
-
-<button id="logout" class="btn btn-outline">
-  Sair
-</button>
-
-
+    <a class="logo-text" href="#" id="backLogo">ROTA <span>FINANCEIRA</span></a>
+    <div class="nav-actions">
+        <button id="logout" class="btn btn-outline">Sair</button>
+    </div>
   </nav>
 </header>
-
 <main class="page">
   <div class="container">
-
-
-<div class="page-head">
-  <div class="eyebrow">Área do cliente</div>
-
-  <h1 class="title">
-    Olá, <span id="name">cliente</span>
-  </h1>
-
-  <p class="muted">
-    Sua área exclusiva está pronta. Aqui vamos concentrar seu acompanhamento financeiro, serviços e próximos passos.
-  </p>
-</div>
-
-<div class="cards">
-
-  <a class="card card-link" href="/planejamento.html">
-    <div class="card-num">01</div>
-
-    <h3>Meu planejamento</h3>
-
-    <p>
-      Metas, receitas, despesas e acompanhamento da sua evolução financeira.
-    </p>
-
-    <span class="card-arrow">
-      Abrir planejamento →
-    </span>
-  </a>
-
-  <a class="card card-link" href="#">
-    <div class="card-num">02</div>
-
-    <h3>Meus serviços</h3>
-
-    <p>
-      Consulte os serviços contratados e acompanhe seu relacionamento com a Rota.
-    </p>
-
-    <span class="card-arrow muted-link">
-      Em breve
-    </span>
-  </a>
-
-  <a class="card card-link" href="#">
-    <div class="card-num">03</div>
-
-    <h3>Meu perfil</h3>
-
-    <p>
-      Conta criada com autenticação real e sessão protegida.
-    </p>
-
-    <span class="card-arrow muted-link">
-      Em breve
-    </span>
-  </a>
-
-</div>
-
-<p id="feedback" class="notice"></p>
-
-
+    <div class="page-head">
+      <div class="eyebrow">Área do cliente</div>
+      <h1 class="title">Olá, <span id="name">cliente</span></h1>
+      <p class="muted">
+        Sua área exclusiva está pronta. Aqui vamos concentrar seu acompanhamento financeiro, serviços e próximos passos.
+      </p>
+    </div>
+    <div class="cards">
+      <a class="card card-link" href="/planejamento.html">
+        <div class="card-num">01</div>
+        <h3>Meu planejamento</h3>
+        <p>Metas, receitas, despesas e acompanhamento da sua evolução financeira.</p>
+        <span class="card-arrow">Abrir planejamento →</span>
+      </a>
+      <a class="card card-link" href="/servicos.html">
+        <div class="card-num">02</div>
+        <h3>Meus serviços</h3>
+        <p>Consulte os serviços contratados e acompanhe seu relacionamento com a Rota.</p>
+        <span class="card-arrow">Abrir serviços →</span>
+      </a>
+      <a class="card card-link" href="/perfil.html">
+        <div class="card-num">03</div>
+        <h3>Meu perfil</h3>
+        <p>Conta criada com autenticação real e sessão protegida.</p>
+        <span class="card-arrow">Abrir perfil →</span>
+      </a>
+    </div>
+    <p id="feedback" class="notice"></p>
   </div>
 </main>
-
 <script>
 (async function () {
-
   try {
-
-    const response = await fetch('/api/auth/me', {
-      credentials: 'same-origin'
-    });
-
+    const response = await fetch('/api/auth/me', { credentials: 'same-origin' });
     if (!response.ok) {
       window.location.href = '/login.html';
       return;
     }
-
     const data = await response.json();
-
     if (!data.authenticated || !data.user) {
       window.location.href = '/login.html';
       return;
     }
-
     const nameElement = document.getElementById('name');
-
     if (nameElement) {
-      nameElement.textContent =
-        data.user.name.split(' ')[0];
+      nameElement.textContent = data.user.name.split(' ')[0];
     }
-
   } catch (error) {
-
     console.error('Erro ao verificar sessão:', error);
     window.location.href = '/login.html';
-
   }
-
 })();
 
-
 document.getElementById('logout').addEventListener('click', async function () {
-
   try {
-
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      credentials: 'same-origin'
-    });
-
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
   } catch (error) {
-
     console.error('Erro ao sair:', error);
-
   } finally {
-
     window.location.href = '/login.html';
-
   }
+});
 
+document.getElementById('backLogo')?.addEventListener('click', function (event) {
+  event.preventDefault();
+  window.history.back();
 });
 </script>
-
 </body>
 </html>

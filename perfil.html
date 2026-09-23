@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Meu perfil | Rota Financeira</title>
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/perfil.css">
+</head>
+<body>
+<header class="header"><nav class="nav"><a class="logo-text" href="/dashboard.html">ROTA <span>FINANCEIRA</span></a><button id="logout" class="btn btn-outline" type="button">Sair</button></nav></header>
+<main class="page"><div class="container">
+<div class="page-head"><div class="eyebrow">Minha área</div><h1 class="title">Meu perfil</h1><p class="muted">Consulte e atualize seus dados cadastrais. As alterações ficam registradas com segurança no seu histórico.</p></div>
+<section class="auth profile-card">
+<form id="profileForm">
+<div class="profile-grid">
+<div class="field"><label for="name">NOME COMPLETO</label><input id="name" type="text" required maxlength="100" autocomplete="name"></div>
+<div class="field"><label for="email">E-MAIL</label><input id="email" type="email" required maxlength="160" autocomplete="email"></div>
+<div class="field"><label for="phone">WHATSAPP</label><input id="phone" type="tel" maxlength="30" autocomplete="tel"></div>
+<div class="field"><label for="password">NOVA SENHA</label><input id="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="Deixe em branco para manter a atual"><small class="field-help">A senha atual nunca é exibida. Preencha somente se quiser alterá-la.</small></div>
+</div>
+<button class="btn btn-gold" type="submit">SALVAR ALTERAÇÕES</button>
+<p id="feedback" class="notice"></p>
+</form>
+</section>
+</div></main>
+<script src="/perfil.js"></script>
+</body></html>
