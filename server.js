@@ -5598,6 +5598,9 @@ function serveStatic(
 <script data-rota-finance-reminders>
 (async function(){
   try {
+      // O lembrete financeiro só pode ser executado no Dashboard.
+    if (window.location.pathname !== '/dashboard.html') return;
+    
     const auth = await fetch('/api/auth/me', { credentials: 'same-origin' });
     const session = await auth.json().catch(() => ({}));
     if (!session || !session.authenticated || !session.user) return;
