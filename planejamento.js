@@ -186,44 +186,87 @@
     showModal('modal');
   }
 
-  function renderEntries() {
-    const section = $('entriesSection');
-    const list = $('entriesList');
-    if (!section || !list) return;
+function renderEntries() {
+  const section = $('entriesSection');
+  const list = $('entriesList');
+  if (!section || !list) return;
 
-    if (!state.entries.length) {
-      section.classList.add('hidden');
-      list.innerHTML = '';
-      return;
+  if (!state.entries.length) {
+    section.classList.add('hidden');
+    list.innerHTML = '';
+    return;
+  }
+
+  section.classList.remove('hidden');
+
+  const filter = $('entriesFilter')?.value || 'all';
+
+  const filteredEntries = state.entries.filter((entry) => {
+    const isIncome = entry.type === 'income';
+    const paid = Number(entry.paid) === 1;
+
+    if (filter === 'income-paid') {
+      return isIncome && paid;
     }
 
-    section.classList.remove('hidden');
-    list.innerHTML = state.entries.map((entry) => {
-      const isIncome = entry.type === 'income';
-      const paid = Number(entry.paid) === 1;
-      const status = isIncome ? (paid ? 'Recebido' : 'Pendente') : (paid ? 'Pago' : 'Pendente');
-      const date = entry.due_date ? dateFormatter.format(new Date(`${entry.due_date}T00:00:00`)) : '—';
-      const action = paid
-        ? `<button type="button" class="secondary-btn entry-status-btn" data-action="undo-${isIncome ? 'receive' : 'pay'}" data-id="${entry.id}">${isIncome ? 'Desfazer recebimento' : 'Desfazer pagamento'}</button>`
-        : `<button type="button" class="secondary-btn entry-status-btn" data-action="${isIncome ? 'receive' : 'pay'}" data-id="${entry.id}">${isIncome ? 'Confirmar recebimento' : 'Confirmar pagamento'}</button>`;
+    if (filter === 'income-pending') {
+      return isIncome && !paid;
+    }
 
-      return `
-        <article class="entry-row">
-          <div class="entry-main">
-            <strong>${esc(entry.name)}</strong>
-            <small>${isIncome ? 'Ganho' : 'Despesa'} · ${esc(date)}</small>
-          </div>
-          <div class="entry-value ${isIncome ? 'positive' : 'negative'}">${fmt(entry.amount)}</div>
-          <span class="status-pill ${paid ? 'work' : 'weekend'}">${status}</span>
-          <div class="entry-actions">
-            ${action}
-            <button type="button" class="secondary-btn" data-action="edit" data-id="${entry.id}">Editar</button>
-            <button type="button" class="secondary-btn danger" data-action="delete" data-id="${entry.id}">Excluir</button>
-            ${!isIncome && (entry.recurrence_type === 'fixed' || entry.recurrence_type === 'installment') && entry.series_id ? `<button type="button" class="secondary-btn danger" data-action="delete-future" data-id="${entry.id}">Excluir próximas</button>` : ''}
-          </div>
-        </article>`;
-    }).join('');
+    if (filter === 'expense-paid') {
+      return !isIncome && paid;
+    }
+
+    if (filter === 'expense-pending') {
+      return !isIncome && !paid;
+    }
+
+    return true;
+  });
+
+  if (!filteredEntries.length) {
+    list.innerHTML = `
+      <p class="muted">
+        Nenhum lançamento encontrado neste filtro.
+      </p>
+    `;
+    return;
   }
+
+  list.innerHTML = filteredEntries.map((entry) => {
+    const isIncome = entry.type === 'income';
+    const paid = Number(entry.paid) === 1;
+    const status = isIncome ? (paid ? 'Recebido' : 'Pendente') : (paid ? 'Pago' : 'Pendente');
+    const date = entry.due_date ? dateFormatter.format(new Date(`${entry.due_date}T00:00:00`)) : '—';
+
+    const action = paid
+      ? `<button type="button" class="secondary-btn entry-status-btn" data-action="undo-${isIncome ? 'receive' : 'pay'}" data-id="${entry.id}">${isIncome ? 'Desfazer recebimento' : 'Desfazer pagamento'}</button>`
+      : `<button type="button" class="secondary-btn entry-status-btn" data-action="${isIncome ? 'receive' : 'pay'}" data-id="${entry.id}">${isIncome ? 'Confirmar recebimento' : 'Confirmar pagamento'}</button>`;
+
+    return `
+      <article class="entry-row">
+        <div class="entry-main">
+          <strong>${esc(entry.name)}</strong>
+          <small>${isIncome ? 'Ganho' : 'Despesa'} · ${esc(date)}</small>
+        </div>
+
+        <div class="entry-value ${isIncome ? 'positive' : 'negative'}">
+          ${fmt(entry.amount)}
+        </div>
+
+        <span class="status-pill ${paid ? 'work' : 'weekend'}">
+          ${status}
+        </span>
+
+        <div class="entry-actions">
+          ${action}
+          <button type="button" class="secondary-btn" data-action="edit" data-id="${entry.id}">Editar</button>
+          <button type="button" class="secondary-btn danger" data-action="delete" data-id="${entry.id}">Excluir</button>
+          ${!isIncome && (entry.recurrence_type === 'fixed' || entry.recurrence_type === 'installment') && entry.series_id ? `<button type="button" class="secondary-btn danger" data-action="delete-future" data-id="${entry.id}">Excluir próximas</button>` : ''}
+        </div>
+      </article>`;
+  }).join('');
+}
 
   function renderRestDays() {
     const section = $('restSection');
@@ -619,6 +662,10 @@ async function saveEntry(event) {
     window.location.href = '/admin.html';
   });
 
+  $('entriesFilter')?.addEventListener('change', () => {
+  renderEntries();
+});
+  
   $('entriesList')?.addEventListener('click', (event) => {
     const button = event.target.closest('button[data-action]');
     if (!button) return;
