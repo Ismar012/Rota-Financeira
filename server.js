@@ -3294,9 +3294,8 @@ for (let i = 0; i < rowsToCreate.length; i++) {
       Number(result.lastInsertRowid);
   }
 }
-          if (firstEntryId === null) firstEntryId = Number(result.lastInsertRowid);
-        }
-        await db.exec('COMMIT');
+
+await db.exec('COMMIT');
       } catch (err) {
         await db.exec('ROLLBACK');
         throw err;
