@@ -201,29 +201,33 @@ function renderEntries() {
 
   const filter = $('entriesFilter')?.value || 'all';
 
-  const filteredEntries = state.entries.filter((entry) => {
-    const isIncome = entry.type === 'income';
-    const paid = Number(entry.paid) === 1;
+const filteredEntries = state.entries.filter((entry) => {
+  const isIncome = entry.type === 'income';
+  const paid = Number(entry.paid) === 1;
+  const isRestDay = entry.rest_day_id != null;
 
-    if (filter === 'income-paid') {
-      return isIncome && paid;
-    }
+  if (filter === 'income-paid') {
+    return isIncome && paid && !isRestDay;
+  }
 
-    if (filter === 'income-pending') {
-      return isIncome && !paid;
-    }
+  if (filter === 'income-pending') {
+    return isIncome && !paid && !isRestDay;
+  }
 
-    if (filter === 'expense-paid') {
-      return !isIncome && paid;
-    }
+  if (filter === 'rest-day') {
+    return isRestDay;
+  }
 
-    if (filter === 'expense-pending') {
-      return !isIncome && !paid;
-    }
+  if (filter === 'expense-paid') {
+    return !isIncome && paid && !isRestDay;
+  }
 
-    return true;
-  });
+  if (filter === 'expense-pending') {
+    return !isIncome && !paid && !isRestDay;
+  }
 
+  return true;
+});
   if (!filteredEntries.length) {
     list.innerHTML = `
       <p class="muted">
