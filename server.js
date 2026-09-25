@@ -2357,8 +2357,7 @@ async function buildAdminClientSummary(userId, month) {
   const entries = await db.prepare(`
     SELECT
       id, type, name, amount, created_date, due_date,
-      paid, paid_at, rest_day_id, created_at,
-      recurrence_type, series_id, installment_number,
+      paid, paid_at, paid_date, rest_day_id, created_at,      recurrence_type, series_id, installment_number,
       installment_total, recurrence_day
     FROM finance_entries
     WHERE user_id = ?
@@ -2410,9 +2409,18 @@ async function buildAdminClientSummary(userId, month) {
 
     // Realizado = somente aquilo que foi manualmente confirmado como pago/recebido.
     if (paid) {
-      const realizedDate = validDate(String(entry.paid_at || '').slice(0, 10))
-        ? String(entry.paid_at).slice(0, 10)
-        : dueDate;
+const paidDate =
+  String(entry.paid_date || '').slice(0, 10);
+
+const paidAtDate =
+  String(entry.paid_at || '').slice(0, 10);
+
+const realizedDate =
+  validDate(paidDate)
+    ? paidDate
+    : validDate(paidAtDate)
+      ? paidAtDate
+      : dueDate;
 
       if (entry.type === 'income') {
         mergeDayValue(paidIncomeByDay, realizedDate, entry.amount);
@@ -3806,185 +3814,245 @@ if (
     }
   }
 
-  /* =======================================================
-     PAGAR DESPESA
-  ======================================================= */
+ /* =======================================================
+   PAGAR DESPESA
+======================================================= */
 
-  const paymentMatch =
-    url.match(
-      /^\/api\/finance\/entries\/(\d+)\/pay$/
+const paymentMatch =
+  url.match(
+    /^\/api\/finance\/entries\/(\d+)\/pay$/
+  );
+
+if (
+  (
+    req.method === 'POST' ||
+    req.method === 'PUT' ||
+    req.method === 'PATCH'
+  ) &&
+  paymentMatch
+) {
+  const id =
+    Number(
+      paymentMatch[1]
     );
 
-  if (
-    (
-      req.method === 'POST' ||
-      req.method === 'PUT' ||
-      req.method === 'PATCH'
-    ) &&
-    paymentMatch
-  ) {
-    const id =
-      Number(
-        paymentMatch[1]
+  try {
+
+    // Data efetiva informada pelo cliente no pop-up.
+    const body =
+      await readBody(req);
+
+    const actualDate =
+      clean(
+        body.actual_date,
+        10
       );
 
-    try {
-      const entry =
-        await db
-          .prepare(`
-            SELECT
-              id,
-              type,
-              name,
-              amount,
-              created_date,
-              due_date,
-              paid,
-              paid_at,
-              rest_day_id,
-              recurrence_type,
-              series_id
+    if (
+      !validDate(actualDate) ||
+      !parseDate(actualDate)
+    ) {
+      return sendJson(
+        res,
+        400,
+        {
+          error:
+            'Informe uma data válida para o pagamento.'
+        }
+      );
+    }
 
-            FROM finance_entries
-
-            WHERE
-              id = ?
-              AND user_id = ?
-          `)
-          .get(
-            id,
-            userId
-          );
-
-      if (!entry) {
-        return sendJson(
-          res,
-          404,
-          {
-            error:
-              'Lançamento não encontrado.'
-          }
-        );
-      }
-
-      if (
-        entry.type !== 'expense'
-      ) {
-        return sendJson(
-          res,
-          400,
-          {
-            error:
-              'Somente despesas podem ser confirmadas como pagas.'
-          }
-        );
-      }
-
-      if (
-        Number(entry.paid) === 1
-      ) {
-        return sendJson(
-          res,
-          200,
-          {
-            message:
-              'Esta despesa já está marcada como paga.',
-            entry
-          }
-        );
-      }
-
-      const paidAt =
-        new Date().toISOString();
-
+    const entry =
       await db
         .prepare(`
-          UPDATE finance_entries
+          SELECT
+            id,
+            type,
+            name,
+            amount,
+            created_date,
+            due_date,
+            paid,
+            paid_at,
+            paid_date,
+            rest_day_id,
+            recurrence_type,
+            series_id,
+            installment_number,
+            installment_total,
+            recurrence_day,
+            created_at
 
-          SET
-            paid = 1,
-            paid_at = ?
+          FROM finance_entries
 
           WHERE
             id = ?
             AND user_id = ?
         `)
-        .run(
-          paidAt,
+        .get(
           id,
           userId
         );
 
-      if (entry.recurrence_type === 'fixed' && entry.series_id) {
-        await ensureFixedSeriesHorizon(userId, entry.series_id, getTodayLocal());
-      }
-
-      const updatedEntry =
-        await db
-          .prepare(`
-            SELECT
-              id,
-              type,
-              name,
-              amount,
-              created_date,
-              due_date,
-              paid,
-              paid_at,
-              rest_day_id,
-              recurrence_type,
-              series_id,
-              installment_number,
-              installment_total,
-              recurrence_day,
-              created_at
-
-            FROM finance_entries
-
-            WHERE
-              id = ?
-              AND user_id = ?
-          `)
-          .get(
-            id,
-            userId
-          );
-
-      console.log(
-        'Pagamento confirmado:',
-        updatedEntry
+    if (!entry) {
+      return sendJson(
+        res,
+        404,
+        {
+          error:
+            'Lançamento não encontrado.'
+        }
       );
+    }
 
+    if (
+      entry.type !== 'expense'
+    ) {
+      return sendJson(
+        res,
+        400,
+        {
+          error:
+            'Somente despesas podem ser confirmadas como pagas.'
+        }
+      );
+    }
+
+    /*
+      Proteção contra confirmação repetida.
+      Se já estiver paga, nenhuma data será alterada.
+    */
+    if (
+      Number(entry.paid) === 1
+    ) {
       return sendJson(
         res,
         200,
         {
           message:
-            'Pagamento confirmado com sucesso.',
-
-          entry:
-            updatedEntry,
-
-          paid: true
-        }
-      );
-    } catch (err) {
-      console.error(
-        'Erro ao confirmar pagamento:',
-        err
-      );
-
-      return sendJson(
-        res,
-        500,
-        {
-          error:
-            'Não foi possível confirmar o pagamento.'
+            'Esta despesa já está marcada como paga.',
+          entry,
+          paid: true,
+          duplicate: true
         }
       );
     }
-  }
 
+    const paidAt =
+      new Date().toISOString();
+
+    /*
+      due_date NÃO é alterada.
+
+      due_date  = vencimento/data original
+      paid_date = dia efetivo do pagamento
+      paid_at   = momento técnico da confirmação
+    */
+    await db
+      .prepare(`
+        UPDATE finance_entries
+
+        SET
+          paid = 1,
+          paid_at = ?,
+          paid_date = ?
+
+        WHERE
+          id = ?
+          AND user_id = ?
+          AND paid = 0
+      `)
+      .run(
+        paidAt,
+        actualDate,
+        id,
+        userId
+      );
+
+    /*
+      Mantém exatamente a regra já existente
+      das despesas fixas: sempre preservar
+      o horizonte de lançamentos futuros.
+    */
+    if (
+      entry.recurrence_type === 'fixed' &&
+      entry.series_id
+    ) {
+      await ensureFixedSeriesHorizon(
+        userId,
+        entry.series_id,
+        getTodayLocal()
+      );
+    }
+
+    const updatedEntry =
+      await db
+        .prepare(`
+          SELECT
+            id,
+            type,
+            name,
+            amount,
+            created_date,
+            due_date,
+            paid,
+            paid_at,
+            paid_date,
+            rest_day_id,
+            recurrence_type,
+            series_id,
+            installment_number,
+            installment_total,
+            recurrence_day,
+            created_at
+
+          FROM finance_entries
+
+          WHERE
+            id = ?
+            AND user_id = ?
+        `)
+        .get(
+          id,
+          userId
+        );
+
+    console.log(
+      'Pagamento confirmado:',
+      updatedEntry
+    );
+
+    return sendJson(
+      res,
+      200,
+      {
+        message:
+          'Pagamento confirmado com sucesso.',
+
+        entry:
+          updatedEntry,
+
+        paid: true
+      }
+    );
+
+  } catch (err) {
+
+    console.error(
+      'Erro ao confirmar pagamento:',
+      err
+    );
+
+    return sendJson(
+      res,
+      500,
+      {
+        error:
+          'Não foi possível confirmar o pagamento.'
+      }
+    );
+  }
+}
   /* =======================================================
      DESFAZER PAGAMENTO
   ======================================================= */
@@ -4589,6 +4657,7 @@ if (
             due_date,
             paid,
             paid_at,
+            paid_date,
             rest_day_id,
             recurrence_type,
             series_id,
