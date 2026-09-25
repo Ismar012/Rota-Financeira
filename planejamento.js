@@ -207,23 +207,20 @@ const filteredEntries = state.entries.filter((entry) => {
   const isRestDay = entry.rest_day_id != null;
 
   if (filter === 'income-paid') {
-    return isIncome && paid && !isRestDay;
+    return isIncome && paid ;
   }
 
   if (filter === 'income-pending') {
-    return isIncome && !paid && !isRestDay;
+    return isIncome && !paid ;
   }
 
-  if (filter === 'rest-day') {
-    return isRestDay;
-  }
 
   if (filter === 'expense-paid') {
-    return !isIncome && paid && !isRestDay;
+    return !isIncome && paid ;
   }
 
   if (filter === 'expense-pending') {
-    return !isIncome && !paid && !isRestDay;
+    return !isIncome && !paid ;
   }
 
   return true;
