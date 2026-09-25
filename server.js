@@ -2364,16 +2364,88 @@ async function buildAdminClientSummary(userId, month) {
     ORDER BY due_date ASC, id ASC
   `).all(userId);
 
-  const totals = await db.prepare(`
-    SELECT
-      COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS income,
-      COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS expense,
-      COALESCE(SUM(CASE WHEN type = 'expense' AND paid = 1 THEN amount ELSE 0 END), 0) AS paidExpense,
-      COALESCE(SUM(CASE WHEN type = 'expense' AND paid = 0 THEN amount ELSE 0 END), 0) AS pendingExpense
-    FROM finance_entries
-    WHERE user_id = ? AND to_char(due_date, 'YYYY-MM') = ?
-  `).get(userId, month);
+const totals = await db.prepare(`
+  SELECT
+    COALESCE(
+      SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END),
+      0
+    ) AS income,
 
+    COALESCE(
+      SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END),
+      0
+    ) AS expense,
+
+    COALESCE(
+      SUM(
+        CASE
+          WHEN type = 'expense' AND paid = 0
+          THEN amount
+          ELSE 0
+        END
+      ),
+      0
+    ) AS pendingExpense
+
+  FROM finance_entries
+  WHERE
+    user_id = ?
+    AND to_char(due_date, 'YYYY-MM') = ?
+`).get(userId, month);
+
+const realizedExpenseTotals = await db.prepare(`
+  SELECT
+    COALESCE(
+      SUM(amount),
+      0
+    ) AS paidExpense
+  FROM finance_entries
+  WHERE
+    user_id = ?
+    AND type = 'expense'
+    AND paid = 1
+    AND to_char(
+      COALESCE(
+        paid_date,
+        paid_at::date,
+        due_date
+      ),
+      'YYYY-MM'
+    ) = ?
+`).get(userId, month);
+
+  const realizedIncomeTotals =
+  await db
+    .prepare(`
+      SELECT
+        COALESCE(
+          SUM(amount),
+          0
+        ) AS realizedIncome
+
+      FROM finance_entries
+
+      WHERE
+        user_id = ?
+
+        AND type = 'income'
+
+        AND paid = 1
+
+        AND to_char(
+          COALESCE(
+            paid_date,
+            paid_at::date,
+            due_date
+          ),
+          'YYYY-MM'
+        ) = ?
+    `)
+    .get(
+      userId,
+      month
+    );
+  
   const restDays = await db.prepare(`
     SELECT id, rest_date, amount, created_at
     FROM rest_days
@@ -2484,7 +2556,7 @@ const realizedDate =
 
   const income = safeNumber(totals?.income);
   const expense = safeNumber(totals?.expense);
-  const paidExpense = safeNumber(totals?.paidExpense);
+  const paidExpense = safeNumber(realizedExpenseTotals?.paidExpense);
   const pendingExpense = safeNumber(totals?.pendingExpense);
   const allTimeTotals = await db.prepare(`
     SELECT
@@ -2497,11 +2569,10 @@ const realizedDate =
   const totalExpenseAllTime = safeNumber(allTimeTotals?.totalExpenseAllTime);
   const cashflow = income - expense;
 
-  // O saldo realizado nunca depende da data prevista: só entra quando paid = 1.
-  const realizedIncome = entries.reduce((sum, entry) => {
-    if (entry.type !== 'income' || Number(entry.paid) !== 1) return sum;
-    return sum + safeNumber(entry.amount);
-  }, 0);
+const realizedIncome =
+  safeNumber(
+    realizedIncomeTotals?.realizedIncome
+  );
 
   const availableBalance = Math.max(0, realizedIncome - paidExpense);
   const futureWorkingDays = workingDays.filter((day) => compareDates(day.date, addDays(today, 1)) >= 0);
@@ -3077,6 +3148,7 @@ async function handleFinanceApi(
             due_date,
             paid,
             paid_at,
+            paid_date,
             rest_day_id,
             created_at
 
@@ -3638,181 +3710,160 @@ if (
       /^\/api\/finance\/entries\/(\d+)\/unreceive$/
     );
 
-  if (
-    (
-      req.method === 'POST' ||
-      req.method === 'PUT' ||
-      req.method === 'PATCH'
-    ) &&
-    unreceiveMatch
-  ) {
-    const id =
-      Number(
-        unreceiveMatch[1]
-      );
+if (
+  (
+    req.method === 'POST' ||
+    req.method === 'PUT' ||
+    req.method === 'PATCH'
+  ) &&
+  unreceiveMatch
+) {
+  const id =
+    Number(
+      unreceiveMatch[1]
+    );
 
-    try {
-      const body =
-        await readBody(req);
-
-      const newDueDate =
-        clean(
-          body.due_date,
-          10
-        );
-
-      if (
-        !validDate(newDueDate)
-      ) {
-        return sendJson(
-          res,
-          400,
-          {
-            error:
-              'Informe uma nova data de recebimento válida.'
-          }
-        );
-      }
-
-      const entry =
-        await db
-          .prepare(`
-            SELECT
-              id,
-              type,
-              name,
-              amount,
-              created_date,
-              due_date,
-              paid,
-              paid_at,
-              rest_day_id,
-              recurrence_type,
-              series_id,
-              installment_number,
-              installment_total,
-              recurrence_day,
-              created_at
-
-            FROM finance_entries
-
-            WHERE
-              id = ?
-              AND user_id = ?
-          `)
-          .get(
-            id,
-            userId
-          );
-
-      if (!entry) {
-        return sendJson(
-          res,
-          404,
-          {
-            error:
-              'Ganho não encontrado.'
-          }
-        );
-      }
-
-      if (
-        entry.type !== 'income'
-      ) {
-        return sendJson(
-          res,
-          400,
-          {
-            error:
-              'Somente ganhos podem ter o recebimento desfeito.'
-          }
-        );
-      }
-
+  try {
+    const entry =
       await db
         .prepare(`
-          UPDATE finance_entries
+          SELECT
+            id,
+            type,
+            name,
+            amount,
+            created_date,
+            due_date,
+            paid,
+            paid_at,
+            paid_date,
+            rest_day_id,
+            recurrence_type,
+            series_id,
+            installment_number,
+            installment_total,
+            recurrence_day,
+            created_at
 
-          SET
-            due_date = ?,
-            paid = 0,
-            paid_at = NULL
+          FROM finance_entries
 
           WHERE
             id = ?
             AND user_id = ?
         `)
-        .run(
-          newDueDate,
+        .get(
           id,
           userId
         );
 
-      const updatedEntry =
-        await db
-          .prepare(`
-            SELECT
-              id,
-              type,
-              name,
-              amount,
-              created_date,
-              due_date,
-              paid,
-              paid_at,
-              rest_day_id,
-              recurrence_type,
-              series_id,
-              installment_number,
-              installment_total,
-              recurrence_day,
-              created_at
-
-            FROM finance_entries
-
-            WHERE
-              id = ?
-              AND user_id = ?
-          `)
-          .get(
-            id,
-            userId
-          );
-
-      console.log(
-        'Recebimento desfeito:',
-        updatedEntry
-      );
-
+    if (!entry) {
       return sendJson(
         res,
-        200,
-        {
-          message:
-            'Recebimento desfeito e nova data registrada com sucesso.',
-
-          entry:
-            updatedEntry,
-
-          received: false
-        }
-      );
-    } catch (err) {
-      console.error(
-        'Erro ao desfazer recebimento:',
-        err
-      );
-
-      return sendJson(
-        res,
-        500,
+        404,
         {
           error:
-            'Não foi possível desfazer o recebimento.'
+            'Ganho não encontrado.'
         }
       );
     }
+
+    if (
+      entry.type !== 'income'
+    ) {
+      return sendJson(
+        res,
+        400,
+        {
+          error:
+            'Somente ganhos podem ter o recebimento desfeito.'
+        }
+      );
+    }
+
+    await db
+      .prepare(`
+        UPDATE finance_entries
+
+        SET
+          paid = 0,
+          paid_at = NULL,
+          paid_date = NULL
+
+        WHERE
+          id = ?
+          AND user_id = ?
+      `)
+      .run(
+        id,
+        userId
+      );
+
+    const updatedEntry =
+      await db
+        .prepare(`
+          SELECT
+            id,
+            type,
+            name,
+            amount,
+            created_date,
+            due_date,
+            paid,
+            paid_at,
+            paid_date,
+            rest_day_id,
+            recurrence_type,
+            series_id,
+            installment_number,
+            installment_total,
+            recurrence_day,
+            created_at
+
+          FROM finance_entries
+
+          WHERE
+            id = ?
+            AND user_id = ?
+        `)
+        .get(
+          id,
+          userId
+        );
+
+    console.log(
+      'Recebimento desfeito:',
+      updatedEntry
+    );
+
+    return sendJson(
+      res,
+      200,
+      {
+        message:
+          'Recebimento desfeito com sucesso.',
+
+        entry:
+          updatedEntry,
+
+        received: false
+      }
+    );
+  } catch (err) {
+    console.error(
+      'Erro ao desfazer recebimento:',
+      err
+    );
+
+    return sendJson(
+      res,
+      500,
+      {
+        error:
+          'Não foi possível desfazer o recebimento.'
+      }
+    );
   }
+}
 
  /* =======================================================
    PAGAR DESPESA
@@ -4131,7 +4182,8 @@ if (
 
           SET
             paid = 0,
-            paid_at = NULL
+            paid_at = NULL,
+            paid_date = NULL
 
           WHERE
             id = ?
@@ -4154,7 +4206,8 @@ if (
               due_date,
               paid,
               paid_at,
-              rest_day_id,
+              paid_date,
+              rest_day_id
               recurrence_type,
               series_id,
               installment_number,
@@ -4315,10 +4368,10 @@ if (
         await db
           .prepare(`
             SELECT
-              id,
-              paid,
-              paid_at,
-              rest_day_id
+            paid,
+            paid_at,
+            paid_date,
+            rest_day_id,
 
             FROM finance_entries
 
@@ -4690,131 +4743,89 @@ if (
           month
         );
 
-    const totals =
-      await db
-        .prepare(`
-          SELECT
+  const totals =
+  await db
+    .prepare(`
+      SELECT
 
-            COALESCE(
-              SUM(
-                CASE
-                  WHEN type = 'income'
-                  THEN amount
-                  ELSE 0
-                END
-              ),
-              0
-            ) AS income,
+        COALESCE(
+          SUM(
+            CASE
+              WHEN type = 'income'
+              THEN amount
+              ELSE 0
+            END
+          ),
+          0
+        ) AS income,
 
-            COALESCE(
-              SUM(
-                CASE
-                  WHEN type = 'expense'
-                  THEN amount
-                  ELSE 0
-                END
-              ),
-              0
-            ) AS expense,
+        COALESCE(
+          SUM(
+            CASE
+              WHEN type = 'expense'
+              THEN amount
+              ELSE 0
+            END
+          ),
+          0
+        ) AS expense,
 
-            COALESCE(
-              SUM(
-                CASE
-                  WHEN
-                    type = 'expense'
-                    AND paid = 1
-                  THEN amount
-                  ELSE 0
-                END
-              ),
-              0
-            ) AS paidExpense,
+        COALESCE(
+          SUM(
+            CASE
+              WHEN
+                type = 'expense'
+                AND paid = 0
+              THEN amount
+              ELSE 0
+            END
+          ),
+          0
+        ) AS pendingExpense
 
-            COALESCE(
-              SUM(
-                CASE
-                  WHEN
-                    type = 'expense'
-                    AND paid = 0
-                  THEN amount
-                  ELSE 0
-                END
-              ),
-              0
-            ) AS pendingExpense
-
-          FROM finance_entries
-
-          WHERE
-            user_id = ?
-
-            AND to_char(due_date, 'YYYY-MM') = ?
-        `)
-        .get(
-          userId,
-          month
-        );
-
-    const restDays =
-      await db
-        .prepare(`
-          SELECT
-            id,
-            rest_date,
-            amount,
-            created_at
-
-          FROM rest_days
-
-          WHERE
-            user_id = ?
-
-            AND to_char(rest_date, 'YYYY-MM') = ?
-
-          ORDER BY
-            rest_date ASC
-        `)
-        .all(
-          userId,
-          month
-        );
-
-    const restSet =
-      new Set(
-        restDays.map(
-          (item) =>
-            item.rest_date
-        )
-      );
-
-    const [
-      year,
-      monthNumber
-    ] =
-      month
-        .split('-')
-        .map(Number);
-
-    const calendarDays =
-      createWorkingDays(
-        year,
-        monthNumber,
-        restSet
-      );
-
-    const workingDays =
-      calendarDays.filter(
-        (day) =>
-          day.isWorkingDay
-      );
-
-    const goalEntries = await db.prepare(`
-      SELECT id, type, name, amount, created_date, due_date, paid, paid_at,
-             recurrence_type, series_id, installment_number, installment_total, recurrence_day
       FROM finance_entries
-      WHERE user_id = ?
-      ORDER BY due_date ASC, id ASC
-    `).all(userId);
+
+      WHERE
+        user_id = ?
+
+        AND to_char(due_date, 'YYYY-MM') = ?
+    `)
+    .get(
+      userId,
+      month
+    );
+
+const realizedExpenseTotals =
+  await db
+    .prepare(`
+      SELECT
+        COALESCE(
+          SUM(amount),
+          0
+        ) AS paidExpense
+
+      FROM finance_entries
+
+      WHERE
+        user_id = ?
+
+        AND type = 'expense'
+
+        AND paid = 1
+
+        AND to_char(
+          COALESCE(
+            paid_date,
+            paid_at::date,
+            due_date
+          ),
+          'YYYY-MM'
+        ) = ?
+    `)
+    .get(
+      userId,
+      month
+    );
 
     const goalRestRows = await db.prepare(`
       SELECT rest_date FROM rest_days
@@ -4919,7 +4930,7 @@ if (
 
     const paidExpense =
       safeNumber(
-        totals?.paidExpense
+        realizedExpenseTotals?.paidExpense
       );
 
     const pendingExpense =
@@ -4931,29 +4942,62 @@ if (
       income -
       expense;
 
-    const realizedIncome =
-      entries.reduce(
-        (
-          total,
-          entry
-        ) => {
-          if (
-            entry.type !==
-            'income' ||
-            Number(entry.paid) !== 1
-          ) {
-            return total;
-          }
+// Ganho realizado = somente ganhos confirmados no mês selecionado.
+// Prioridade:
+// 1. paid_date = data efetiva informada pelo cliente
+// 2. paid_at   = compatibilidade com lançamentos antigos
+// 3. due_date  = último fallback
+const realizedIncome =
+  entries.reduce(
+    (
+      total,
+      entry
+    ) => {
+      if (
+        entry.type !== 'income' ||
+        Number(entry.paid) !== 1
+      ) {
+        return total;
+      }
 
-          return (
-            total +
-            safeNumber(
-              entry.amount
-            )
-          );
-        },
-        0
+      const paidDate =
+        String(
+          entry.paid_date || ''
+        ).slice(0, 10);
+
+      const paidAtDate =
+        String(
+          entry.paid_at || ''
+        ).slice(0, 10);
+
+      const dueDate =
+        String(
+          entry.due_date || ''
+        ).slice(0, 10);
+
+      const realizedDate =
+        validDate(paidDate)
+          ? paidDate
+          : validDate(paidAtDate)
+            ? paidAtDate
+            : dueDate;
+
+      if (
+        !validDate(realizedDate) ||
+        realizedDate.slice(0, 7) !== month
+      ) {
+        return total;
+      }
+
+      return (
+        total +
+        safeNumber(
+          entry.amount
+        )
       );
+    },
+    0
+  );
 
     const availableBalance =
       Math.max(
