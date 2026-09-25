@@ -308,10 +308,24 @@ const filteredEntries = state.entries.filter((entry) => {
 
   function renderChart(data) {
     if (!window.Chart || !$('financeChart')) return;
+
     const labels = data.map((item) => item.day);
-    const incomes = data.map((item) => Number(item.income || 0));
-    const expenses = data.map((item) => Number(item.expense || 0));
-    const cashflow = data.map((item) => Number(item.cashflow || 0));
+
+    const futureIncome = data.map(
+      (item) => Number(item.futureIncome || 0)
+    );
+
+    const futureExpense = data.map(
+      (item) => Number(item.futureExpense || 0)
+    );
+
+    const paidIncome = data.map(
+      (item) => Number(item.paidIncome || 0)
+    );
+
+    const paidExpense = data.map(
+      (item) => Number(item.paidExpense || 0)
+    );
 
     if (state.chart) state.chart.destroy();
 
@@ -320,24 +334,65 @@ const filteredEntries = state.entries.filter((entry) => {
       data: {
         labels,
         datasets: [
-          { label: 'Ganhos', data: incomes, borderColor: '#6BCB77', backgroundColor: '#6BCB77', borderWidth: 2, tension: 0.25, pointRadius: 2 },
-          { label: 'Despesas', data: expenses, borderColor: '#E74C3C', backgroundColor: '#E74C3C', borderWidth: 2, tension: 0.25, pointRadius: 2 },
-          { label: 'Fluxo de caixa', data: cashflow, borderColor: '#F59E0B', backgroundColor: '#F59E0B', borderWidth: 2, tension: 0.25, pointRadius: 2 }
+          {
+            label: 'Ganho previsto',
+            data: futureIncome,
+            borderColor: '#3498DB',
+            backgroundColor: '#3498DB',
+            borderWidth: 2,
+            tension: 0.25,
+            pointRadius: 2
+          },
+          {
+            label: 'Despesa prevista',
+            data: futureExpense,
+            borderColor: '#F59E0B',
+            backgroundColor: '#F59E0B',
+            borderWidth: 2,
+            tension: 0.25,
+            pointRadius: 2
+          },
+          {
+            label: 'Ganho realizado',
+            data: paidIncome,
+            borderColor: '#27AE60',
+            backgroundColor: '#27AE60',
+            borderWidth: 2,
+            tension: 0.25,
+            pointRadius: 2
+          },
+          {
+            label: 'Gasto realizado',
+            data: paidExpense,
+            borderColor: '#E74C3C',
+            backgroundColor: '#E74C3C',
+            borderWidth: 2,
+            tension: 0.25,
+            pointRadius: 2
+          }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
         plugins: {
           tooltip: {
             callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`
+              label: (ctx) =>
+                `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`
             }
           }
         },
         scales: {
-          y: { ticks: { callback: (value) => fmt(value) } }
+          y: {
+            ticks: {
+              callback: (value) => fmt(value)
+            }
+          }
         }
       }
     });
