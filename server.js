@@ -4207,7 +4207,7 @@ if (
               paid,
               paid_at,
               paid_date,
-              rest_day_id
+              rest_day_id,
               recurrence_type,
               series_id,
               installment_number,
@@ -4698,6 +4698,11 @@ if (
 
     await ensureAllFixedSeries(userId);
 
+    /*
+      Lista exibida ao cliente:
+      mantém a regra original de trazer lançamentos do mês previsto
+      e lançamentos únicos cadastrados no mês.
+    */
     const entries =
       await db
         .prepare(`
@@ -4743,163 +4748,471 @@ if (
           month
         );
 
-  const totals =
-  await db
-    .prepare(`
-      SELECT
-
-        COALESCE(
-          SUM(
-            CASE
-              WHEN type = 'income'
-              THEN amount
-              ELSE 0
-            END
-          ),
-          0
-        ) AS income,
-
-        COALESCE(
-          SUM(
-            CASE
-              WHEN type = 'expense'
-              THEN amount
-              ELSE 0
-            END
-          ),
-          0
-        ) AS expense,
-
-        COALESCE(
-          SUM(
-            CASE
-              WHEN
-                type = 'expense'
-                AND paid = 0
-              THEN amount
-              ELSE 0
-            END
-          ),
-          0
-        ) AS pendingExpense
-
-      FROM finance_entries
-
-      WHERE
-        user_id = ?
-
-        AND to_char(due_date, 'YYYY-MM') = ?
-    `)
-    .get(
-      userId,
-      month
-    );
-
-const realizedExpenseTotals =
-  await db
-    .prepare(`
-      SELECT
-        COALESCE(
-          SUM(amount),
-          0
-        ) AS paidExpense
-
-      FROM finance_entries
-
-      WHERE
-        user_id = ?
-
-        AND type = 'expense'
-
-        AND paid = 1
-
-        AND to_char(
-          COALESCE(
+    /*
+      Lançamentos usados nos cálculos do gráfico.
+      Precisamos enxergar também lançamentos cujo intervalo cruza meses
+      e lançamentos realizados em data diferente da data prevista.
+    */
+    const calculationEntries =
+      await db
+        .prepare(`
+          SELECT
+            id,
+            type,
+            name,
+            amount,
+            created_date,
+            due_date,
+            paid,
+            paid_at,
             paid_date,
-            paid_at::date,
-            due_date
-          ),
-          'YYYY-MM'
-        ) = ?
-    `)
-    .get(
-      userId,
+            rest_day_id,
+            recurrence_type,
+            series_id,
+            installment_number,
+            installment_total,
+            recurrence_day,
+            created_at
+
+          FROM finance_entries
+
+          WHERE
+            user_id = ?
+
+          ORDER BY
+            due_date ASC,
+            id ASC
+        `)
+        .all(userId);
+
+    /*
+      Previsto continua vinculado à data original (due_date).
+      Não usamos paid_date para alterar o planejamento original.
+    */
+    const totals =
+      await db
+        .prepare(`
+          SELECT
+            COALESCE(
+              SUM(
+                CASE
+                  WHEN type = 'income'
+                  THEN amount
+                  ELSE 0
+                END
+              ),
+              0
+            ) AS income,
+
+            COALESCE(
+              SUM(
+                CASE
+                  WHEN type = 'expense'
+                  THEN amount
+                  ELSE 0
+                END
+              ),
+              0
+            ) AS expense,
+
+            COALESCE(
+              SUM(
+                CASE
+                  WHEN
+                    type = 'expense'
+                    AND paid = 0
+                  THEN amount
+                  ELSE 0
+                END
+              ),
+              0
+            ) AS pendingExpense
+
+          FROM finance_entries
+
+          WHERE
+            user_id = ?
+            AND to_char(due_date, 'YYYY-MM') = ?
+        `)
+        .get(
+          userId,
+          month
+        );
+
+    /*
+      Gasto realizado no mês = somente despesas confirmadas como pagas.
+      Prioridade da data realizada:
+      1. paid_date informada pelo cliente
+      2. paid_at para compatibilidade com registros antigos
+      3. due_date como último fallback
+    */
+    const realizedExpenseTotals =
+      await db
+        .prepare(`
+          SELECT
+            COALESCE(
+              SUM(amount),
+              0
+            ) AS paidExpense
+
+          FROM finance_entries
+
+          WHERE
+            user_id = ?
+            AND type = 'expense'
+            AND paid = 1
+            AND to_char(
+              COALESCE(
+                paid_date,
+                paid_at::date,
+                due_date
+              ),
+              'YYYY-MM'
+            ) = ?
+        `)
+        .get(
+          userId,
+          month
+        );
+
+    /*
+      Ganho realizado no mês = somente ganhos confirmados como recebidos,
+      usando a mesma regra de data efetiva.
+    */
+    const realizedIncomeTotals =
+      await db
+        .prepare(`
+          SELECT
+            COALESCE(
+              SUM(amount),
+              0
+            ) AS realizedIncome
+
+          FROM finance_entries
+
+          WHERE
+            user_id = ?
+            AND type = 'income'
+            AND paid = 1
+            AND to_char(
+              COALESCE(
+                paid_date,
+                paid_at::date,
+                due_date
+              ),
+              'YYYY-MM'
+            ) = ?
+        `)
+        .get(
+          userId,
+          month
+        );
+
+    const restDays =
+      await db
+        .prepare(`
+          SELECT
+            id,
+            rest_date,
+            amount,
+            created_at
+
+          FROM rest_days
+
+          WHERE
+            user_id = ?
+            AND to_char(rest_date, 'YYYY-MM') = ?
+
+          ORDER BY
+            rest_date ASC
+        `)
+        .all(
+          userId,
+          month
+        );
+
+    const allRestRows =
+      await db
+        .prepare(`
+          SELECT rest_date
+          FROM rest_days
+          WHERE user_id = ?
+        `)
+        .all(userId);
+
+    const allRestSet =
+      new Set(
+        allRestRows.map(
+          (row) => row.rest_date
+        )
+      );
+
+    const restSet =
+      new Set(
+        restDays.map(
+          (item) => item.rest_date
+        )
+      );
+
+    const [
+      year,
+      monthNumber
+    ] =
       month
-    );
+        .split('-')
+        .map(Number);
 
-    const goalRestRows = await db.prepare(`
-      SELECT rest_date FROM rest_days
-      WHERE user_id = ?
-    `).all(userId);
-    const goalRestSet = new Set(goalRestRows.map((row) => row.rest_date));
+    const calendarDays =
+      createWorkingDays(
+        year,
+        monthNumber,
+        restSet
+      );
 
-    const incomeDistribution =
-      {};
+    const workingDays =
+      calendarDays.filter(
+        (day) => day.isWorkingDay
+      );
 
-    const expenseDistribution =
-      {};
+    const goalEntries =
+      await db
+        .prepare(`
+          SELECT
+            id,
+            type,
+            name,
+            amount,
+            created_date,
+            due_date,
+            paid,
+            paid_at,
+            paid_date,
+            recurrence_type,
+            series_id,
+            installment_number,
+            installment_total,
+            recurrence_day
 
-    entries.forEach(
-      (entry) => {
-        if (
-          entry.type ===
-          'income'
+          FROM finance_entries
+
+          WHERE user_id = ?
+
+          ORDER BY
+            due_date ASC,
+            id ASC
+        `)
+        .all(userId);
+
+    const goalRestRows =
+      await db
+        .prepare(`
+          SELECT rest_date
+          FROM rest_days
+          WHERE user_id = ?
+        `)
+        .all(userId);
+
+    const goalRestSet =
+      new Set(
+        goalRestRows.map(
+          (row) => row.rest_date
+        )
+      );
+
+    const futureIncomeByDay = {};
+    const futureExpenseByDay = {};
+    const paidIncomeByDay = {};
+    const paidExpenseByDay = {};
+
+    const mergeDayValue =
+      (target, date, amount) => {
+        if (!validDate(date)) {
+          return;
+        }
+
+        target[date] =
+          (target[date] || 0) +
+          safeNumber(amount);
+      };
+
+    for (const entry of calculationEntries) {
+      const createdDate =
+        String(
+          entry.created_date || ''
+        ).slice(0, 10);
+
+      const dueDate =
+        String(
+          entry.due_date || ''
+        ).slice(0, 10);
+
+      const paid =
+        Number(entry.paid) === 1;
+
+      /*
+        Realizado aparece exclusivamente na data efetiva de confirmação.
+        Ele não permanece distribuído como previsto.
+      */
+      if (paid) {
+        const paidDate =
+          String(
+            entry.paid_date || ''
+          ).slice(0, 10);
+
+        const paidAtDate =
+          String(
+            entry.paid_at || ''
+          ).slice(0, 10);
+
+        const realizedDate =
+          validDate(paidDate)
+            ? paidDate
+            : validDate(paidAtDate)
+              ? paidAtDate
+              : dueDate;
+
+        if (entry.type === 'income') {
+          mergeDayValue(
+            paidIncomeByDay,
+            realizedDate,
+            entry.amount
+          );
+        } else if (
+          entry.type === 'expense'
         ) {
-          mergeDistribution(
-            incomeDistribution,
-            calculateIncomeDistribution(
-              entry,
-              workingDays
-            )
+          mergeDayValue(
+            paidExpenseByDay,
+            realizedDate,
+            entry.amount
           );
         }
 
-        if (
-          entry.type ===
-          'expense'
-        ) {
-          mergeDistribution(
-            expenseDistribution,
-            calculateExpenseDistribution(
-              entry,
-              workingDays
-            )
-          );
-        }
+        continue;
       }
-    );
+
+      /*
+        Previsto = lançamento ainda pendente.
+        A distribuição usa o intervalo original entre cadastro e vencimento,
+        sem substituir due_date pela data efetiva.
+      */
+      if (
+        !validDate(createdDate) ||
+        !validDate(dueDate)
+      ) {
+        continue;
+      }
+
+      const intervalDays =
+        buildWorkingDaysBetween(
+          createdDate,
+          dueDate,
+          allRestSet
+        );
+
+      if (!intervalDays.length) {
+        if (entry.type === 'income') {
+          mergeDayValue(
+            futureIncomeByDay,
+            dueDate,
+            entry.amount
+          );
+        } else if (
+          entry.type === 'expense'
+        ) {
+          mergeDayValue(
+            futureExpenseByDay,
+            dueDate,
+            entry.amount
+          );
+        }
+
+        continue;
+      }
+
+      if (entry.type === 'income') {
+        mergeDistribution(
+          futureIncomeByDay,
+          calculateIncomeDistribution(
+            entry,
+            intervalDays
+          )
+        );
+      } else if (
+        entry.type === 'expense'
+      ) {
+        mergeDistribution(
+          futureExpenseByDay,
+          calculateExpenseDistribution(
+            entry,
+            intervalDays
+          )
+        );
+      }
+    }
 
     const dailyData =
       calendarDays.map(
         (day) => {
-          const income =
+          const futureIncome =
             safeNumber(
-              incomeDistribution[
+              futureIncomeByDay[
                 day.date
               ]
             );
 
-          const expense =
+          const futureExpense =
             safeNumber(
-              expenseDistribution[
+              futureExpenseByDay[
                 day.date
               ]
             );
 
-          const cashflow =
-            income -
-            expense;
+          const paidIncome =
+            safeNumber(
+              paidIncomeByDay[
+                day.date
+              ]
+            );
+
+          const paidExpense =
+            safeNumber(
+              paidExpenseByDay[
+                day.date
+              ]
+            );
 
           return {
             day: day.day,
             date: day.date,
-            income,
-            expense,
-            cashflow,
+
+            // Compatibilidade com o front atual.
+            income:
+              futureIncome +
+              paidIncome,
+
+            expense:
+              futureExpense +
+              paidExpense,
+
+            cashflow:
+              futureIncome -
+              futureExpense,
+
+            futureIncome,
+            futureExpense,
+            paidIncome,
+            paidExpense,
+
+            realizedCashflow:
+              paidIncome -
+              paidExpense,
+
             isWorkingDay:
               day.isWorkingDay,
+
             isWeekend:
               day.isWeekend,
+
             isRestDay:
               day.isRestDay
           };
@@ -4938,66 +5251,14 @@ const realizedExpenseTotals =
         totals?.pendingExpense
       );
 
+    const realizedIncome =
+      safeNumber(
+        realizedIncomeTotals?.realizedIncome
+      );
+
     const cashflow =
       income -
       expense;
-
-// Ganho realizado = somente ganhos confirmados no mês selecionado.
-// Prioridade:
-// 1. paid_date = data efetiva informada pelo cliente
-// 2. paid_at   = compatibilidade com lançamentos antigos
-// 3. due_date  = último fallback
-const realizedIncome =
-  entries.reduce(
-    (
-      total,
-      entry
-    ) => {
-      if (
-        entry.type !== 'income' ||
-        Number(entry.paid) !== 1
-      ) {
-        return total;
-      }
-
-      const paidDate =
-        String(
-          entry.paid_date || ''
-        ).slice(0, 10);
-
-      const paidAtDate =
-        String(
-          entry.paid_at || ''
-        ).slice(0, 10);
-
-      const dueDate =
-        String(
-          entry.due_date || ''
-        ).slice(0, 10);
-
-      const realizedDate =
-        validDate(paidDate)
-          ? paidDate
-          : validDate(paidAtDate)
-            ? paidAtDate
-            : dueDate;
-
-      if (
-        !validDate(realizedDate) ||
-        realizedDate.slice(0, 7) !== month
-      ) {
-        return total;
-      }
-
-      return (
-        total +
-        safeNumber(
-          entry.amount
-        )
-      );
-    },
-    0
-  );
 
     const availableBalance =
       Math.max(
