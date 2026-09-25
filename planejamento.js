@@ -549,29 +549,26 @@ async function changeEntryStatus(id, action) {
     // Data atual preenchida automaticamente.
     $('confirmActualDate').value = todayLocal();
 
-    if (action === 'receive') {
+if (action === 'receive') {
 
-      $('confirmDateEyebrow').textContent = 'Confirmar recebimento';
-      $('confirmDateTitle').textContent = 'Confirmar recebimento';
+  $('confirmDateEyebrow').textContent = '';
+  $('confirmDateTitle').textContent = 'Confirmar recebimento';
 
-      $('confirmDateQuestion').textContent =
-        'Em qual dia você recebeu este ganho?';
+  $('confirmDateQuestion').textContent =
+    'Em qual dia você recebeu este ganho?';
 
-      $('confirmDateSubmit').textContent =
-        'Confirmar recebimento';
+  $('confirmDateSubmit').textContent = 'Confirmar';
 
-    } else {
+} else {
 
-      $('confirmDateEyebrow').textContent = 'Confirmar pagamento';
-      $('confirmDateTitle').textContent = 'Confirmar pagamento';
+  $('confirmDateEyebrow').textContent = '';
+  $('confirmDateTitle').textContent = 'Confirmar pagamento';
 
-      $('confirmDateQuestion').textContent =
-        'Em qual dia você pagou esta despesa?';
+  $('confirmDateQuestion').textContent =
+    'Em qual dia você pagou esta despesa?';
 
-      $('confirmDateSubmit').textContent =
-        'Confirmar pagamento';
-    }
-
+  $('confirmDateSubmit').textContent = 'Confirmar';
+}
     showModal('confirmDateModal');
     return;
   }
