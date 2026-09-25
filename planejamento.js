@@ -204,7 +204,6 @@ function renderEntries() {
 const filteredEntries = state.entries.filter((entry) => {
   const isIncome = entry.type === 'income';
   const paid = Number(entry.paid) === 1;
-  const isRestDay = entry.rest_day_id != null;
 
   if (filter === 'income-paid') {
     return isIncome && paid ;
@@ -476,28 +475,167 @@ async function saveEntry(event) {
   }
 }
 
-  async function changeEntryStatus(id, action) {
-    const routes = {
-      receive: `/api/finance/entries/${id}/receive`,
-      'undo-receive': `/api/finance/entries/${id}/unreceive`,
-      pay: `/api/finance/entries/${id}/pay`,
-      'undo-pay': `/api/finance/entries/${id}/unpay`
-    };
+  
+async function changeEntryStatus(id, action) {
 
-    const route = routes[action];
-    if (!route) return;
+  // Confirmação de ganho ou despesa:
+  // primeiro abre o modal para informar a data efetiva.
+  if (action === 'receive' || action === 'pay') {
 
-    try {
-      await api(route, { method: 'POST' });
-      await loadSummary();
-    } catch (error) {
-      if (error.status === 401 || error.status === 403) {
-        window.location.href = '/login.html';
-        return;
-      }
-      feedback(error.message, 'error');
+    const entry = state.entries.find(
+      (item) => Number(item.id) === Number(id)
+    );
+
+    if (!entry) return;
+
+    $('confirmEntryId').value = id;
+    $('confirmEntryAction').value = action;
+
+    // Data atual preenchida automaticamente.
+    $('confirmActualDate').value = todayLocal();
+
+    if (action === 'receive') {
+
+      $('confirmDateEyebrow').textContent = 'Confirmar recebimento';
+      $('confirmDateTitle').textContent = 'Confirmar recebimento';
+
+      $('confirmDateQuestion').textContent =
+        'Em qual dia você recebeu este ganho?';
+
+      $('confirmDateSubmit').textContent =
+        'Confirmar recebimento';
+
+    } else {
+
+      $('confirmDateEyebrow').textContent = 'Confirmar pagamento';
+      $('confirmDateTitle').textContent = 'Confirmar pagamento';
+
+      $('confirmDateQuestion').textContent =
+        'Em qual dia você pagou esta despesa?';
+
+      $('confirmDateSubmit').textContent =
+        'Confirmar pagamento';
+    }
+
+    showModal('confirmDateModal');
+    return;
+  }
+
+  // Desfazer continua separado.
+  const routes = {
+    'undo-receive': `/api/finance/entries/${id}/unreceive`,
+    'undo-pay': `/api/finance/entries/${id}/unpay`
+  };
+
+  const route = routes[action];
+  if (!route) return;
+
+  try {
+
+    await api(route, {
+      method: 'POST'
+    });
+
+    await loadSummary();
+
+  } catch (error) {
+
+    if (error.status === 401 || error.status === 403) {
+      window.location.href = '/login.html';
+      return;
+    }
+
+    feedback(
+      error.message || 'Não foi possível atualizar o lançamento.',
+      'error'
+    );
+  }
+}
+
+
+async function confirmEntryDate(event) {
+
+  event.preventDefault();
+
+  const form = event.currentTarget;
+
+  // BLOQUEIO CONTRA CLIQUE DUPLO.
+  if (form.dataset.saving === 'true') {
+    return;
+  }
+
+  const id = Number($('confirmEntryId').value);
+  const action = $('confirmEntryAction').value;
+  const actualDate = $('confirmActualDate').value;
+
+  if (
+    !id ||
+    !actualDate ||
+    (action !== 'receive' && action !== 'pay')
+  ) {
+    feedback(
+      'Informe uma data válida.',
+      'error'
+    );
+    return;
+  }
+
+  form.dataset.saving = 'true';
+
+  const submitButton = $('confirmDateSubmit');
+
+  if (submitButton) {
+    submitButton.disabled = true;
+  }
+
+  // Fecha imediatamente após o primeiro clique válido.
+  hideModal('confirmDateModal');
+
+  const route =
+    action === 'receive'
+      ? `/api/finance/entries/${id}/receive`
+      : `/api/finance/entries/${id}/pay`;
+
+  try {
+
+    await api(route, {
+      method: 'POST',
+      body: JSON.stringify({
+        actual_date: actualDate
+      })
+    });
+
+    feedback(
+      action === 'receive'
+        ? 'Recebimento confirmado com sucesso.'
+        : 'Pagamento confirmado com sucesso.',
+      'success'
+    );
+
+    await loadSummary();
+
+  } catch (error) {
+
+    if (error.status === 401 || error.status === 403) {
+      window.location.href = '/login.html';
+      return;
+    }
+
+    feedback(
+      error.message ||
+        'Não foi possível confirmar o lançamento.',
+      'error'
+    );
+
+  } finally {
+
+    form.dataset.saving = 'false';
+
+    if (submitButton) {
+      submitButton.disabled = false;
     }
   }
+}
 
   async function deleteEntry(id) {
     if (!window.confirm('Deseja realmente excluir este lançamento?')) return;
@@ -616,11 +754,15 @@ async function saveEntry(event) {
   $('addIncome')?.addEventListener('click', () => resetEntryForm('income'));
   $('addExpense')?.addEventListener('click', () => resetEntryForm('expense'));
   $('expenseRecurrence')?.addEventListener('change', () => syncExpenseRecurrenceUI('expense', false));
-  $('entryForm')?.addEventListener('submit', saveEntry);
-  $('restForm')?.addEventListener('submit', saveRest);
+$('entryForm')?.addEventListener('submit', saveEntry);
+$('restForm')?.addEventListener('submit', saveRest);
+$('confirmDateForm')?.addEventListener('submit', confirmEntryDate);
 
-  $('closeModal')?.addEventListener('click', () => hideModal('modal'));
-  $('closeRestModal')?.addEventListener('click', () => hideModal('restModal'));
+$('closeModal')?.addEventListener('click', () => hideModal('modal'));
+$('closeRestModal')?.addEventListener('click', () => hideModal('restModal'));
+$('closeConfirmDateModal')?.addEventListener('click', () => {
+  hideModal('confirmDateModal');
+});
 
   $('modal')?.addEventListener('click', (event) => {
     if (event.target === $('modal')) hideModal('modal');
@@ -630,6 +772,12 @@ async function saveEntry(event) {
     if (event.target === $('restModal')) hideModal('restModal');
   });
 
+  $('confirmDateModal')?.addEventListener('click', (event) => {
+  if (event.target === $('confirmDateModal')) {
+    hideModal('confirmDateModal');
+  }
+});
+  
   $('menuBtn')?.addEventListener('click', (event) => {
     event.stopPropagation();
     $('menu')?.classList.toggle('open');
