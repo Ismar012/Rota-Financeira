@@ -3283,7 +3283,7 @@ async function handleFinanceApi(
         );
       }
 
-      if (type === 'expense' && !['single', 'fixed', 'installment'].includes(recurrenceType)) {
+      if (type === 'expense' && !['single', 'fixed', 'installment', 'daily'].includes(recurrenceType)) {
         return sendJson(res, 400, { error: 'Tipo de despesa recorrente inválido.' });
       }
 
@@ -3305,6 +3305,21 @@ async function handleFinanceApi(
         );
       }
 
+      if (
+        type === 'expense' &&
+        recurrenceType === 'daily' &&
+        compareDates(createdDate, dueDate) > 0
+      ) {
+        return sendJson(
+          res,
+          400,
+          {
+            error:
+              'Na despesa diária, a data final deve ser igual ou posterior à data de início.'
+          }
+        );
+      }
+
       const seriesId = recurrenceType === 'single' ? null : createSeriesId();
       const recurrenceDay = parseDate(dueDate).getDate();
       const rowsToCreate = [];
@@ -3320,6 +3335,20 @@ async function handleFinanceApi(
             installmentNumber: i + 1,
             installmentTotal
           });
+        }
+      } else if (type === 'expense' && recurrenceType === 'daily') {
+        let currentDate = createdDate;
+
+        while (compareDates(currentDate, dueDate) <= 0) {
+          rowsToCreate.push({
+            date: currentDate,
+            createdDate: currentDate,
+            installmentNumber: null,
+            installmentTotal: null
+          });
+
+          currentDate = addDays(currentDate, 1);
+          if (!currentDate) break;
         }
       } else {
         rowsToCreate.push({ date: dueDate, installmentNumber: null, installmentTotal: null });
@@ -3357,7 +3386,9 @@ for (let i = 0; i < rowsToCreate.length; i++) {
     type,
     name,
     amount,
-    createdDate,
+    recurrenceType === 'daily'
+      ? row.createdDate
+      : createdDate,
     row.date,
     recurrenceType,
     seriesId,
@@ -3405,7 +3436,9 @@ await db.exec('COMMIT');
                 ? 'Despesa fixa cadastrada para os próximos 3 meses.'
                 : recurrenceType === 'installment'
                   ? `Despesa parcelada cadastrada em ${installmentTotal} parcelas.`
-                  : 'Despesa cadastrada com sucesso.',
+                  : recurrenceType === 'daily'
+                    ? `Despesa diária cadastrada em ${rowsToCreate.length} dias.`
+                    : 'Despesa cadastrada com sucesso.',
 
           entry
         }
