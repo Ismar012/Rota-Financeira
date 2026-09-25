@@ -591,6 +591,69 @@
 
 </div>
 
+    <!-- =====================================================
+     MODAL - CONFIRMAR PAGAMENTO / RECEBIMENTO
+===================================================== -->
+
+<div
+    id="confirmDateModal"
+    class="modal hidden">
+
+    <div class="modal-box">
+
+        <button
+            id="closeConfirmDateModal"
+            class="modal-close"
+            type="button"
+            aria-label="Fechar">
+            ×
+        </button>
+
+        <div
+            class="eyebrow"
+            id="confirmDateEyebrow">
+            Confirmar lançamento
+        </div>
+
+        <h2 id="confirmDateTitle">
+            Confirmar
+        </h2>
+
+        <form id="confirmDateForm">
+
+            <input
+                type="hidden"
+                id="confirmEntryId">
+
+            <input
+                type="hidden"
+                id="confirmEntryAction">
+
+            <label for="confirmActualDate">
+
+                <span id="confirmDateQuestion">
+                    Em qual dia este lançamento foi realizado?
+                </span>
+
+                <input
+                    id="confirmActualDate"
+                    type="date"
+                    required>
+
+            </label>
+
+            <button
+                id="confirmDateSubmit"
+                class="primary-btn"
+                type="submit">
+                Confirmar
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
 <!-- =========================
      MODAL — DIA DE DESCANSO
 ========================== -->
