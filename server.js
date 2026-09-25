@@ -3395,190 +3395,232 @@ await db.exec('COMMIT');
     }
   }
 
-  /* =======================================================
-     RECEBER GANHO
-  ======================================================= */
+/* =======================================================
+   RECEBER GANHO
+======================================================= */
 
-  const receiveMatch =
-    url.match(
-      /^\/api\/finance\/entries\/(\d+)\/receive$/
+const receiveMatch =
+  url.match(
+    /^\/api\/finance\/entries\/(\d+)\/receive$/
+  );
+
+if (
+  (
+    req.method === 'POST' ||
+    req.method === 'PUT' ||
+    req.method === 'PATCH'
+  ) &&
+  receiveMatch
+) {
+  const id =
+    Number(
+      receiveMatch[1]
     );
 
-  if (
-    (
-      req.method === 'POST' ||
-      req.method === 'PUT' ||
-      req.method === 'PATCH'
-    ) &&
-    receiveMatch
-  ) {
-    const id =
-      Number(
-        receiveMatch[1]
+  try {
+
+    // Data efetiva informada pelo cliente no pop-up.
+    const body =
+      await readBody(req);
+
+    const actualDate =
+      clean(
+        body.actual_date,
+        10
       );
 
-    try {
-      const entry =
-        await db
-          .prepare(`
-            SELECT
-              id,
-              type,
-              name,
-              amount,
-              created_date,
-              due_date,
-              paid,
-              paid_at,
-              rest_day_id,
-              recurrence_type,
-              series_id,
-              installment_number,
-              installment_total,
-              recurrence_day,
-              created_at
+    if (
+      !validDate(actualDate) ||
+      !parseDate(actualDate)
+    ) {
+      return sendJson(
+        res,
+        400,
+        {
+          error:
+            'Informe uma data válida para o recebimento.'
+        }
+      );
+    }
 
-            FROM finance_entries
-
-            WHERE
-              id = ?
-              AND user_id = ?
-          `)
-          .get(
-            id,
-            userId
-          );
-
-      if (!entry) {
-        return sendJson(
-          res,
-          404,
-          {
-            error:
-              'Ganho não encontrado.'
-          }
-        );
-      }
-
-      if (
-        entry.type !== 'income'
-      ) {
-        return sendJson(
-          res,
-          400,
-          {
-            error:
-              'Somente ganhos podem ser confirmados como recebidos.'
-          }
-        );
-      }
-
-      if (
-        Number(entry.paid) === 1
-      ) {
-        return sendJson(
-          res,
-          200,
-          {
-            message:
-              'Este ganho já está marcado como recebido.',
-            entry
-          }
-        );
-      }
-
-      const today =
-        getTodayLocal();
-
-      const paidAt =
-        new Date().toISOString();
-
+    const entry =
       await db
         .prepare(`
-          UPDATE finance_entries
+          SELECT
+            id,
+            type,
+            name,
+            amount,
+            created_date,
+            due_date,
+            paid,
+            paid_at,
+            paid_date,
+            rest_day_id,
+            recurrence_type,
+            series_id,
+            installment_number,
+            installment_total,
+            recurrence_day,
+            created_at
 
-          SET
-            due_date = ?,
-            paid = 1,
-            paid_at = ?
+          FROM finance_entries
 
           WHERE
             id = ?
             AND user_id = ?
         `)
-        .run(
-          today,
-          paidAt,
+        .get(
           id,
           userId
         );
 
-      const updatedEntry =
-        await db
-          .prepare(`
-            SELECT
-              id,
-              type,
-              name,
-              amount,
-              created_date,
-              due_date,
-              paid,
-              paid_at,
-              rest_day_id,
-              recurrence_type,
-              series_id,
-              installment_number,
-              installment_total,
-              recurrence_day,
-              created_at
-
-            FROM finance_entries
-
-            WHERE
-              id = ?
-              AND user_id = ?
-          `)
-          .get(
-            id,
-            userId
-          );
-
-      console.log(
-        'Ganho recebido:',
-        updatedEntry
+    if (!entry) {
+      return sendJson(
+        res,
+        404,
+        {
+          error:
+            'Ganho não encontrado.'
+        }
       );
+    }
 
+    if (
+      entry.type !== 'income'
+    ) {
+      return sendJson(
+        res,
+        400,
+        {
+          error:
+            'Somente ganhos podem ser confirmados como recebidos.'
+        }
+      );
+    }
+
+    /*
+      Proteção contra confirmação repetida.
+
+      Se o ganho já estiver recebido, não altera
+      paid_date, due_date ou qualquer outro dado.
+    */
+    if (
+      Number(entry.paid) === 1
+    ) {
       return sendJson(
         res,
         200,
         {
           message:
-            'Ganho marcado como recebido e data atualizada para hoje.',
-
-          entry:
-            updatedEntry,
-
-          received: true
-        }
-      );
-    } catch (err) {
-      console.error(
-        'Erro ao confirmar recebimento:',
-        err
-      );
-
-      return sendJson(
-        res,
-        500,
-        {
-          error:
-            'Não foi possível confirmar o recebimento.'
+            'Este ganho já está marcado como recebido.',
+          entry,
+          received: true,
+          duplicate: true
         }
       );
     }
-  }
 
+    const paidAt =
+      new Date().toISOString();
+
+    /*
+      IMPORTANTE:
+      due_date NÃO é alterada.
+
+      due_date  = data prevista/original
+      paid_date = data efetiva do recebimento
+      paid_at   = momento técnico da confirmação
+    */
+    await db
+      .prepare(`
+        UPDATE finance_entries
+
+        SET
+          paid = 1,
+          paid_at = ?,
+          paid_date = ?
+
+        WHERE
+          id = ?
+          AND user_id = ?
+          AND paid = 0
+      `)
+      .run(
+        paidAt,
+        actualDate,
+        id,
+        userId
+      );
+
+    const updatedEntry =
+      await db
+        .prepare(`
+          SELECT
+            id,
+            type,
+            name,
+            amount,
+            created_date,
+            due_date,
+            paid,
+            paid_at,
+            paid_date,
+            rest_day_id,
+            recurrence_type,
+            series_id,
+            installment_number,
+            installment_total,
+            recurrence_day,
+            created_at
+
+          FROM finance_entries
+
+          WHERE
+            id = ?
+            AND user_id = ?
+        `)
+        .get(
+          id,
+          userId
+        );
+
+    console.log(
+      'Ganho recebido:',
+      updatedEntry
+    );
+
+    return sendJson(
+      res,
+      200,
+      {
+        message:
+          'Ganho marcado como recebido com sucesso.',
+
+        entry:
+          updatedEntry,
+
+        received: true
+      }
+    );
+
+  } catch (err) {
+
+    console.error(
+      'Erro ao confirmar recebimento:',
+      err
+    );
+
+    return sendJson(
+      res,
+      500,
+      {
+        error:
+          'Não foi possível confirmar o recebimento.'
+      }
+    );
+  }
+}
   /* =======================================================
      DESFAZER RECEBIMENTO
   ======================================================= */
