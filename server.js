@@ -243,6 +243,7 @@ async function initializeDatabase() {
 
     ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS paid SMALLINT NOT NULL DEFAULT 0;
     ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+    ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS paid_date DATE;
     ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS rest_day_id BIGINT;
     ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS recurrence_type VARCHAR(30) NOT NULL DEFAULT 'single';
     ALTER TABLE finance_entries ADD COLUMN IF NOT EXISTS series_id VARCHAR(100);
