@@ -141,6 +141,24 @@
     installmentLabel?.classList.toggle('hidden', !parcelada);
     if (installmentTotal) installmentTotal.required = parcelada && !editing;
   }
+  const diaria = mode.value === 'daily';
+
+if (diaria) {
+  setLabelText($('createdDate')?.closest('label'), 'Data de início');
+  setLabelText($('dueLabel'), 'Data final');
+} else {
+  setLabelText(
+    $('createdDate')?.closest('label'),
+    'Data do cadastro'
+  );
+
+  setLabelText(
+    $('dueLabel'),
+    type === 'income'
+      ? 'Data de recebimento'
+      : 'Data de pagamento'
+  );
+}
 
   function syncExpenseRecurrenceFromEntry(entry) {
     if (!$('expenseRecurrence')) return;
