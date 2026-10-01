@@ -5843,6 +5843,8 @@ function isStateChangingMethod(method) {
    API PRINCIPAL
 ========================================================= */
 
+const scheduling = require('./agendamentos-api').createScheduling({pool, requireUser, requireAdmin, readBody, sendJson});
+
 async function handleApi(
   req,
   res,
@@ -5852,6 +5854,11 @@ async function handleApi(
     parsedUrl.pathname;
 
   if (isStateChangingMethod(req.method) && !requireSameOrigin(req, res)) {
+    return;
+  }
+
+  if (url.startsWith('/api/consultations') || url.startsWith('/api/admin/consultations')) {
+    await scheduling.handle(req, res, url);
     return;
   }
 
@@ -5960,7 +5967,7 @@ function serveStatic(
     relative.includes('..') ||
     relative.split('/').some((part) => part.startsWith('.')) ||
     /(^|\/)(node_modules|\.git)(\/|$)/i.test(relative) ||
-    /(?:^|\/)(?:\.env(?:\..*)?|package(?:-lock)?\.json|pnpm-lock\.yaml|yarn\.lock|server[^/]*\.js|rota_financeira\.sqlite(?:-[^/]*)?|.*\.(?:sqlite|sqlite3|db|db3|wal|shm|log|bak|backup|pem|key|crt))$/i.test(relative)
+    /(?:^|\/)(?:\.env(?:\..*)?|package(?:-lock)?\.json|pnpm-lock\.yaml|yarn\.lock|server[^/]*\.js|agendamentos-api\.js|rota_financeira\.sqlite(?:-[^/]*)?|.*\.(?:sqlite|sqlite3|db|db3|wal|shm|log|bak|backup|pem|key|crt))$/i.test(relative)
   ) {
     return sendJson(res, 404, { error: 'Página não encontrada.' });
   }
@@ -6024,6 +6031,7 @@ function serveStatic(
         }
 
         const adminVisibilityScript = `
+<script defer src="/agendamentos-menu.js"></script>
 <script data-rota-admin-visibility>
 (async function(){
   try {
@@ -6219,6 +6227,7 @@ const server =
   );
 
 initializeDatabase()
+  .then(() => scheduling.initialize())
   .then(() => {
     server.listen(
       PORT,
