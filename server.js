@@ -278,40 +278,6 @@ async function initializeDatabase() {
     WHERE paid IS NULL
   `).run();
 
-  /*
-    Normaliza ocorrências recorrentes já existentes no banco:
-    - parceladas: da 2ª parcela em diante começam no dia 01 do mês;
-    - fixas: somente a primeira ocorrência da série preserva a data
-      inicial original; as demais começam no dia 01 do próprio mês.
-
-    Isso corrige também séries criadas antes desta versão.
-  */
-  await pool.query(`
-    UPDATE finance_entries
-    SET created_date = date_trunc('month', due_date)::date
-    WHERE recurrence_type = 'installment'
-      AND COALESCE(installment_number, 1) > 1
-  `);
-
-  await pool.query(`
-    WITH ranked_fixed AS (
-      SELECT
-        id,
-        ROW_NUMBER() OVER (
-          PARTITION BY user_id, series_id
-          ORDER BY due_date ASC, id ASC
-        ) AS occurrence_number
-      FROM finance_entries
-      WHERE recurrence_type = 'fixed'
-        AND series_id IS NOT NULL
-    )
-    UPDATE finance_entries AS f
-    SET created_date = date_trunc('month', f.due_date)::date
-    FROM ranked_fixed AS r
-    WHERE f.id = r.id
-      AND r.occurrence_number > 1
-  `);
-
   if (ADMIN_EMAIL) {
     await db.prepare(
       "UPDATE users SET role = CASE WHEN lower(email) = ? THEN 'admin' ELSE 'client' END"
@@ -1936,7 +1902,7 @@ async function ensureFixedSeriesHorizon(userId, seriesId, fromDate = getTodayLoc
         userId,
         anchor.name,
         anchor.amount,
-        `${next.slice(0, 7)}-01`,
+        fromDate,
         next,
         seriesId,
         recurrenceDay
@@ -1978,21 +1944,20 @@ function getSeriesPreviousEntry(entries, entry) {
 }
 
 function getExpenseStartDate(entry, entries, currentDate) {
-  /*
-    Regra de competência da Rota Financeira:
-    - a primeira ocorrência usa a data inicial informada no cadastro;
-    - fixas e parceladas futuras são gravadas com created_date no dia 01
-      do próprio mês;
-    - uma ocorrência não depende do pagamento da anterior para começar
-      a existir no planejamento do seu próprio mês.
-  */
-  if (validDate(entry.created_date)) {
-    return entry.created_date;
+  const previous = getSeriesPreviousEntry(entries, entry);
+  if (previous) {
+    // A parcela/ocorrência seguinte só começa a formar a meta
+    // depois que a anterior for efetivamente paga.
+    if (Number(previous.paid) !== 1) return null;
+    const paidDate = String(previous.paid_at || '').slice(0, 10);
+    if (validDate(paidDate)) {
+      return addDays(paidDate, 1);
+    }
+    return addDays(previous.due_date, 1);
   }
 
-  return validDate(currentDate)
-    ? currentDate
-    : getTodayLocal();
+  const base = validDate(entry.created_date) ? entry.created_date : currentDate;
+  return addDays(base, 1);
 }
 
 function buildWorkingDaysBetween(startDate, endDate, restSet = new Set()) {
@@ -2050,8 +2015,11 @@ function calculateExpenseDistribution(
     return {};
   }
 
-  // A própria data inicial participa da distribuição.
-  let startDate = createdDate;
+  let startDate =
+    addDays(
+      createdDate,
+      1
+    );
 
   if (
     !startDate ||
@@ -2139,18 +2107,6 @@ function mergeDistribution(
    CÁLCULO DA META DINÂMICA
 ========================================================= */
 
-function isExpenseInPlanningMonth(entry, referenceDate) {
-  if (!entry || entry.type !== 'expense') return false;
-  if (!validDate(entry.due_date) || !validDate(referenceDate)) return false;
-
-  /*
-    A meta trabalha por competência mensal.
-    Uma obrigação de outubro não entra na meta de setembro, mesmo que
-    já esteja cadastrada no banco para planejamento futuro.
-  */
-  return entry.due_date.slice(0, 7) === referenceDate.slice(0, 7);
-}
-
 function calculateDailyGoal(
   dailyData,
   entries,
@@ -2186,8 +2142,7 @@ function calculateDailyGoal(
       entry.type === 'expense' &&
       Number(entry.paid) !== 1 &&
       safeNumber(entry.amount) > 0 &&
-      validDate(entry.due_date) &&
-      isExpenseInPlanningMonth(entry, currentDate)
+      validDate(entry.due_date)
     )
     .sort((a, b) => {
       const dateCompare = compareDates(a.due_date, b.due_date);
@@ -2325,10 +2280,7 @@ function calculateAdminDailyGoals(
   today
 ) {
   const goals = {};
-  const currentDate = validDate(today) ? today : getTodayLocal();
-  const tomorrow = addDays(currentDate, 1);
-
-  if (!tomorrow) return goals;
+  const tomorrow = addDays(today, 1);
 
   const futureWorkingDays = workingDays.filter(
     (day) => compareDates(day.date, tomorrow) >= 0
@@ -2355,19 +2307,12 @@ function calculateAdminDailyGoals(
   }
 
   const availableBalance = Math.max(0, realizedIncome - paidExpenses);
-
-  /*
-    Só entram na meta as despesas da competência do mês corrente.
-    Fixas/parceladas de meses seguintes continuam no banco, mas só
-    passam a formar meta quando o mês delas começar.
-  */
   const pendingExpenses = entries.filter(
     (entry) =>
       entry.type === 'expense' &&
       Number(entry.paid) !== 1 &&
       safeNumber(entry.amount) > 0 &&
-      validDate(entry.due_date) &&
-      isExpenseInPlanningMonth(entry, currentDate)
+      validDate(entry.due_date)
   );
 
   const totalPending = pendingExpenses.reduce(
@@ -2387,23 +2332,8 @@ function calculateAdminDailyGoals(
     const remaining = safeNumber(expense.amount) * remainingFactor;
     if (remaining <= 0) continue;
 
-    const expenseStart = getExpenseStartDate(
-      expense,
-      entries,
-      currentDate
-    );
-
-    if (!expenseStart) continue;
-
-    const effectiveStart =
-      compareDates(expenseStart, tomorrow) < 0
-        ? tomorrow
-        : expenseStart;
-
     const eligibleDays = futureWorkingDays.filter(
-      (day) =>
-        compareDates(day.date, effectiveStart) >= 0 &&
-        compareDates(day.date, expense.due_date) <= 0
+      (day) => compareDates(day.date, expense.due_date) <= 0
     );
 
     const days = eligibleDays.length
@@ -3397,32 +3327,11 @@ async function handleFinanceApi(
 
       if (type === 'expense' && recurrenceType === 'fixed') {
         const dates = buildFixedDates(dueDate, 3, recurrenceDay);
-
-        dates.forEach((date, index) => {
-          rowsToCreate.push({
-            date,
-            createdDate:
-              index === 0
-                ? createdDate
-                : `${date.slice(0, 7)}-01`,
-            installmentNumber: null,
-            installmentTotal: null
-          });
-        });
+        dates.forEach((date) => rowsToCreate.push({ date, installmentNumber: null, installmentTotal: null }));
       } else if (type === 'expense' && recurrenceType === 'installment') {
         for (let i = 0; i < installmentTotal; i++) {
-          const installmentDueDate = addMonthsSameDay(
-            dueDate,
-            i,
-            recurrenceDay
-          );
-
           rowsToCreate.push({
-            date: installmentDueDate,
-            createdDate:
-              i === 0
-                ? createdDate
-                : `${installmentDueDate.slice(0, 7)}-01`,
+            date: addMonthsSameDay(dueDate, i, recurrenceDay),
             installmentNumber: i + 1,
             installmentTotal
           });
@@ -3477,7 +3386,9 @@ for (let i = 0; i < rowsToCreate.length; i++) {
     type,
     name,
     amount,
-    row.createdDate || createdDate,
+    recurrenceType === 'daily'
+      ? row.createdDate
+      : createdDate,
     row.date,
     recurrenceType,
     seriesId,
