@@ -1,0 +1,7 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agendar consultoria | Rota Financeira</title><link rel="stylesheet" href="/agendamentos.css"></head><body>
+<header><nav><a class="logo" href="/planejamento.html">ROTA <span>FINANCEIRA</span></a><a href="/planejamento.html">← Voltar ao planejamento</a></nav></header>
+<main><h1>Agendar consultoria</h1><p class="muted">Escolha um horário disponível. Cada consultoria dura uma hora e deve ser agendada a partir de depois de amanhã. Horários da Bahia.</p>
+<section class="box"><form id="bookingForm"><div class="grid"><label>Dia disponível<select id="day" required disabled><option value="">Carregando…</option></select></label><label>Horário<select id="slot" required disabled><option value="">Selecione um dia</option></select></label></div><div class="actions"><button id="confirm" disabled>Confirmar agendamento</button></div></form><p id="feedback" class="feedback" role="status" aria-live="polite"></p></section>
+<section class="box"><h2>Meus agendamentos</h2><div id="bookings">Carregando…</div></section></main>
+<dialog id="confirmation" aria-labelledby="confirmationTitle"><h2 id="confirmationTitle">Agendamento confirmado</h2><p>Seu agendamento foi confirmado. Nossa equipe entrará em contato com você.</p><form method="dialog"><button autofocus>OK</button></form></dialog>
+<script src="/agendamentos.js"></script></body></html>

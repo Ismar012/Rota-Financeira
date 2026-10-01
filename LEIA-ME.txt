@@ -1,0 +1,62 @@
+ROTA FINANCEIRA — AGENDAMENTO DE CONSULTORIAS
+
+INSTALAÇÃO
+1. Guarde uma cópia do server.js atual e faça backup do banco antes de atualizar.
+2. Substitua apenas server.js pelo arquivo deste pacote.
+3. Coloque agendamentos-api.js na mesma pasta do server.js.
+4. Coloque os outros cinco arquivos (agendamentos-menu.js, agendamentos.js,
+   agendamentos.css, agendamento.html e agendamentos-admin.html) na pasta pública
+   do site. São cinco arquivos públicos, além do módulo e do servidor.
+   Se PUBLIC_DIR não estiver configurado, a pasta pública é a do server.js.
+5. Não substitua planejamento.js, planejamento.html, admin.js, admin.html ou os
+   estilos existentes. A integração do menu e do sino é feita pelo servidor.
+6. Reinicie o servidor ou publique a atualização pelo processo habitual.
+   O servidor cria automaticamente duas tabelas novas no PostgreSQL.
+   Usa a dependência pg que o projeto já utiliza, sem novas dependências.
+
+COMO USAR
+Administrador: abra Meu planejamento > três pontinhos > Área de agendamentos.
+Também há um menu de três pontinhos e um sino no cabeçalho de admin.html.
+Escolha cadastrar um dia, replicar até uma data ou cadastrar sequência de dias.
+Na replicação, selecione os dias da semana. Na sequência, entram todos os dias.
+Informe início, fim e quantidade de consultorias por dia. Os horários são
+consecutivos de uma hora, a partir do início. Ex.: 09:00–17:00 e quantidade 4
+liberam 09:00, 10:00, 11:00 e 12:00, com término da última às 13:00.
+Salvar reaplica o modelo aos dias selecionados. Reservas existentes são
+preservadas; se o modelo retirar um horário reservado, a operação é rejeitada.
+Dias fora da seleção permanecem como estavam.
+
+Cliente: Meu planejamento > três pontinhos > Agendar consultoria.
+O cliente escolhe um dos dias e horários livres e confirma. O aviso de
+confirmação aparece com OK. Os agendamentos ficam em Meus agendamentos.
+Ainda não existe cobrança, cancelamento, remarcação, e-mail automático ou
+integração com calendário. As regras comerciais poderão ser adicionadas depois.
+
+REGRAS
+Antecedência por dia de calendário, no fuso America/Bahia: hoje só pode reservar
+para depois de amanhã ou mais tarde. Não exige 48 horas corridas.
+Uma consultoria por horário. Quantidade diária limita os horários gerados.
+Todas as reservas e alterações são gravadas no PostgreSQL.
+Uma transação, uma trava compartilhada entre as operações e a restrição UNIQUE
+impedem duas reservas do mesmo horário.
+Somente administrador pode configurar disponibilidade, consultar todos os
+clientes e marcar novidades como vistas. Cliente vê apenas suas reservas.
+O sino verifica novos agendamentos ao abrir a página e a cada 60 segundos quando
+a aba está visível. O botão 'Marcar novidades exibidas como vistas' limpa as
+notificações correspondentes. Todas as contas administrativas compartilham
+esse estado. Abrir a lista, sozinho, não apaga as notificações.
+Logs de sucesso contêm tipo de operação e IDs, sem telefone ou e-mail.
+
+VALIDAÇÃO REALIZADA
+Sintaxe de todos os arquivos JavaScript; datas inválidas, virada de ano,
+fuso da Bahia, duração, quantidade diária e geração por período.
+Fluxo de reserva, conflito, rollback e bloqueio administrativo com banco simulado.
+Não houve conexão com o banco real ou execução no site em produção.
+
+TESTE APÓS INSTALAR
+1. Como admin, cadastre três horários em uma data a partir de depois de amanhã.
+2. Como cliente, confira que hoje e amanhã não aparecem; reserve um horário.
+3. Confirme que o aviso com OK aparece e a reserva consta em Meus agendamentos.
+4. Como admin, confira o sino e a lista com nome, telefone e e-mail do cliente.
+5. Como outro cliente, confira que o horário reservado não está disponível.
+6. Confira que planejamento, serviços, perfil e relatórios continuam funcionando.
