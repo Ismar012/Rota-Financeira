@@ -466,7 +466,7 @@ function buildClientReportPdf(report) {
     ['Ganhos do mes', money(totals.income)],
     ['Gastos liquidos do mes', money(totals.expense)],
     ['Fluxo de caixa', money(totals.cashflow)],
-    ['Meta total prevista', money(totals.totalPlannedGoal)],
+    ['Falta produzir no mes', totals.goalStatus === 'ready' ? money(totals.totalPlannedGoal) : 'Revisar planejamento'],
     ['Dias de trabalho', String(totals.workingDays)],
     ['Dias de descanso', String(totals.restDays)],
     ['Dias disponiveis', String(totals.availableWorkingDays)],
@@ -482,7 +482,8 @@ function buildClientReportPdf(report) {
   text(c, 38, 445, 'PLANEJAMENTO MENSAL', 10, true);
   line(c, 38, 435, 557, 435, 0.80, 0.82, 0.86);
   text(c, 38, 418, `Mes: ${pdfMonth(summary?.month || period.endMonth)}`, 8.5, true);
-  text(c, 38, 402, 'O detalhamento abaixo mostra o fluxo diario previsto e realizado do mes selecionado.', 8, false, 0.42, 0.45, 0.50);
+  text(c, 38, 402, 'Meta futura = projecao; meta passada = registro preservado. Sem registro = historico indisponivel.', 8, false, 0.42, 0.45, 0.50);
+  text(c, 38, 382, `Meta diaria: ${totals.dailyGoal == null ? 'Revisar planejamento' : money(totals.dailyGoal)}`, 10, true);
   footer(c);
 
   // Páginas 2+ — planejamento mensal / fluxo de caixa diário.
@@ -511,7 +512,7 @@ function buildClientReportPdf(report) {
       const realized = safeNumber(d.paidIncome) - safeNumber(d.paidExpense);
       text(c, 46, y, pdfDate(d.date), 7.5, false);
       text(c, 92, y, statusText, 7.2, false);
-      text(c, 166, y, money(d.dailyGoal), 7.2, false);
+      text(c, 166, y, (d.dailyGoal == null ? 'Sem registro' : money(d.dailyGoal)), 7.2, false);
       text(c, 246, y, money(d.futureIncome), 7.2, false);
       text(c, 334, y, money(d.futureExpense), 7.2, false);
       text(c, 422, y, money(realized), 7.2, false);
@@ -571,6 +572,35 @@ function buildClientReportPdf(report) {
 
   text(c, 38, Math.max(70, y - 18), 'Legenda: Dias = dias de trabalho / dias de descanso registrados no mes.', 7.5, false, 0.45, 0.48, 0.53);
   footer(c);
+
+  // Composição rastreável da mesma meta usada por cliente e administrador.
+  const goalPlan = summary?.goalPlan;
+  if (goalPlan) {
+    const debtRows = goalPlan.debts || [];
+    let cursor = 0;
+    do {
+      c = newPage(); header(c, pages.length);
+      text(c, 38, 758, 'COMPOSICAO DA META MENSAL', 14, true);
+      text(c, 38, 739, `Referencia: ${pdfDate(goalPlan.referenceDate)} | Meta: ${goalPlan.displayDailyGoal == null ? 'Revisar planejamento' : money(goalPlan.displayDailyGoal)}`, 9, true);
+      text(c, 38, 722, `Obrigacoes: ${money(goalPlan.pendingTotal)} | Caixa: ${money(goalPlan.availableBalance)} | Falta produzir: ${money(goalPlan.remainingTotal)}`, 8);
+      text(c, 38, 705, `Saldo inicial: ${money(goalPlan.initialBalance)} + recebidos: ${money(goalPlan.received)} - pagos: ${money(goalPlan.paid)}`, 8);
+      text(c, 38, 684, 'OBRIGACAO', 7, true); text(c, 250, 684, 'PRAZO', 7, true);
+      text(c, 335, 684, 'PENDENTE', 7, true); text(c, 412, 684, 'CAIXA', 7, true); text(c, 490, 684, 'RESTANTE', 7, true);
+      let goalY = 662, count = 0;
+      while (cursor < debtRows.length && count < 16) {
+        const d = debtRows[cursor++];
+        const nameLines = pdfWrap(d.name || 'Despesa', 35).slice(0, 2);
+        nameLines.forEach((value, i) => text(c, 38, goalY - i * 10, value, 8));
+        text(c, 250, goalY, d.deadline ? pdfDate(d.deadline) : 'Definir prazo', 8);
+        text(c, 335, goalY, money(d.amount), 8); text(c, 412, goalY, money(d.cashAllocated), 8); text(c, 490, goalY, money(d.remaining), 8);
+        goalY -= 32; count++;
+      }
+      if (!debtRows.length) text(c, 38, 650, 'Nenhuma obrigacao pendente nesta janela.', 8);
+      text(c, 38, 94, `Despesas de meses futuros fora da meta: ${money(goalPlan.excludedFutureTotal)}`, 8);
+      text(c, 38, 78, 'Caixa utilizado uma unica vez, por ordem de prazo. Deficit historico nao e somado a meta.', 8);
+      footer(c);
+    } while (cursor < debtRows.length);
+  }
 
   const objects = [];
   const addObject = (buffer) => { objects.push(buffer); return objects.length; };
@@ -960,9 +990,7 @@ function formatDateLocal(date) {
 }
 
 function getTodayLocal() {
-  return formatDateLocal(
-    new Date()
-  );
+  return require('./server-metas').todayBahia();
 }
 
 function addDays(
@@ -2107,249 +2135,6 @@ function mergeDistribution(
    CÁLCULO DA META DINÂMICA
 ========================================================= */
 
-function calculateDailyGoal(
-  dailyData,
-  entries,
-  workingDays,
-  today,
-  allRestDays = new Set()
-) {
-  const currentDate =
-    validDate(today)
-      ? today
-      : getTodayLocal();
-
-  const tomorrow =
-    addDays(currentDate, 1);
-
-  if (!tomorrow) {
-    return 0;
-  }
-
-  /*
-    Para despesas normais, mantemos todas as pendências que
-    já fazem parte do planejamento atual.
-
-    Para despesas fixas/parceladas, consideramos somente a
-    próxima ocorrência ainda não paga. Assim a meta não soma
-    simultaneamente três meses futuros da mesma obrigação.
-  */
-  const pendingSeries = new Set();
-  const pendingExpenses = [];
-
-  const orderedEntries = entries
-    .filter((entry) =>
-      entry.type === 'expense' &&
-      Number(entry.paid) !== 1 &&
-      safeNumber(entry.amount) > 0 &&
-      validDate(entry.due_date)
-    )
-    .sort((a, b) => {
-      const dateCompare = compareDates(a.due_date, b.due_date);
-      return dateCompare !== 0 ? dateCompare : Number(a.id) - Number(b.id);
-    });
-
-  orderedEntries.forEach((entry) => {
-    if (entry.recurrence_type === 'fixed' || entry.recurrence_type === 'installment') {
-      const key = entry.series_id || `entry:${entry.id}`;
-      if (pendingSeries.has(key)) return;
-      pendingSeries.add(key);
-    }
-
-    pendingExpenses.push(entry);
-  });
-
-  if (pendingExpenses.length === 0) {
-    return 0;
-  }
-
-  let realizedIncome = 0;
-  let paidExpenses = 0;
-
-  for (const entry of entries) {
-    const amount = safeNumber(entry.amount);
-    if (amount <= 0 || !validDate(entry.due_date)) continue;
-
-    if (entry.type === 'income' && Number(entry.paid) === 1) {
-      realizedIncome += amount;
-    }
-
-    if (entry.type === 'expense' && Number(entry.paid) === 1) {
-      paidExpenses += amount;
-    }
-  }
-
-  const availableBalance = Math.max(
-    0,
-    realizedIncome - paidExpenses
-  );
-
-  const totalPending = pendingExpenses.reduce(
-    (sum, entry) => sum + safeNumber(entry.amount),
-    0
-  );
-
-  if (totalPending <= 0) {
-    return 0;
-  }
-
-  const proportionalPayment = Math.min(
-    availableBalance,
-    totalPending
-  );
-
-  const remainingFactor = Math.max(
-    0,
-    1 - proportionalPayment / totalPending
-  );
-
-  const restSet =
-    allRestDays instanceof Set
-      ? allRestDays
-      : new Set();
-
-  let requiredGoal = 0;
-
-  pendingExpenses.forEach((expense) => {
-    const originalAmount = safeNumber(expense.amount);
-    const remainingAmount = originalAmount * remainingFactor;
-
-    if (remainingAmount <= 0) {
-      return;
-    }
-
-    /*
-      Despesa vencida ou para hoje: mantém a regra existente,
-      exigindo o valor restante imediatamente.
-    */
-    if (compareDates(expense.due_date, currentDate) <= 0) {
-      requiredGoal += remainingAmount;
-      return;
-    }
-
-    /*
-      A janela começa no dia seguinte à referência.
-
-      Para uma despesa fixa/parcelada que já teve uma ocorrência
-      anterior paga, getExpenseStartDate() usa o dia seguinte ao
-      pagamento anterior. Para a primeira ocorrência, usa o dia
-      seguinte ao cadastro.
-    */
-    const startDate = getExpenseStartDate(
-      expense,
-      entries,
-      currentDate
-    );
-
-    if (!startDate) {
-      return;
-    }
-
-    const effectiveStart =
-      compareDates(startDate, tomorrow) < 0
-        ? tomorrow
-        : startDate;
-
-    const availableDays = buildWorkingDaysBetween(
-      effectiveStart,
-      expense.due_date,
-      restSet
-    ).filter((day) => day.isWorkingDay);
-
-    if (availableDays.length === 0) {
-      requiredGoal += remainingAmount;
-      return;
-    }
-
-    requiredGoal +=
-      remainingAmount / availableDays.length;
-  });
-
-  return Number.isFinite(requiredGoal) && requiredGoal > 0
-    ? requiredGoal
-    : 0;
-}
-
-/* =========================================================
-   ADMINISTRADOR — RESUMO MENSAL
-========================================================= */
-
-function calculateAdminDailyGoals(
-  entries,
-  workingDays,
-  today
-) {
-  const goals = {};
-  const tomorrow = addDays(today, 1);
-
-  const futureWorkingDays = workingDays.filter(
-    (day) => compareDates(day.date, tomorrow) >= 0
-  );
-
-  if (!futureWorkingDays.length) {
-    return goals;
-  }
-
-  let realizedIncome = 0;
-  let paidExpenses = 0;
-
-  for (const entry of entries) {
-    const amount = safeNumber(entry.amount);
-    if (amount <= 0 || !validDate(entry.due_date)) continue;
-
-    if (entry.type === 'income' && Number(entry.paid) === 1) {
-      realizedIncome += amount;
-    }
-
-    if (entry.type === 'expense' && Number(entry.paid) === 1) {
-      paidExpenses += amount;
-    }
-  }
-
-  const availableBalance = Math.max(0, realizedIncome - paidExpenses);
-  const pendingExpenses = entries.filter(
-    (entry) =>
-      entry.type === 'expense' &&
-      Number(entry.paid) !== 1 &&
-      safeNumber(entry.amount) > 0 &&
-      validDate(entry.due_date)
-  );
-
-  const totalPending = pendingExpenses.reduce(
-    (sum, entry) => sum + safeNumber(entry.amount),
-    0
-  );
-
-  if (totalPending <= 0) return goals;
-
-  const proportionalPayment = Math.min(availableBalance, totalPending);
-  const remainingFactor = Math.max(
-    0,
-    1 - proportionalPayment / totalPending
-  );
-
-  for (const expense of pendingExpenses) {
-    const remaining = safeNumber(expense.amount) * remainingFactor;
-    if (remaining <= 0) continue;
-
-    const eligibleDays = futureWorkingDays.filter(
-      (day) => compareDates(day.date, expense.due_date) <= 0
-    );
-
-    const days = eligibleDays.length
-      ? eligibleDays
-      : [futureWorkingDays[0]];
-
-    const daily = remaining / days.length;
-
-    for (const day of days) {
-      goals[day.date] = (goals[day.date] || 0) + daily;
-    }
-  }
-
-  return goals;
-}
-
 async function buildAdminClientSummary(userId, month) {
   // Os totais continuam sendo calculados pelo mês selecionado.
   // O gráfico, porém, precisa enxergar também lançamentos cujo intervalo
@@ -2534,7 +2319,7 @@ const realizedDate =
   }
 
   const today = getTodayLocal();
-  const dailyGoals = calculateAdminDailyGoals(entries, workingDays, today);
+  const dailyGoals = {};
 
   const data = calendarDays.map((day) => ({
     day: day.day,
@@ -2578,13 +2363,13 @@ const realizedIncome =
   const futureWorkingDays = workingDays.filter((day) => compareDates(day.date, addDays(today, 1)) >= 0);
   const totalPlannedGoal = futureWorkingDays.reduce((sum, day) => sum + safeNumber(dailyGoals[day.date]), 0);
 
-  return {
+  const result = {
     month,
     totals: {
       income,
       expense,
       cashflow,
-      dailyGoal: calculateDailyGoal(data, entries, workingDays, today),
+      dailyGoal: null,
       totalPlannedGoal,
       workingDays: workingDays.length,
       restDays: restDays.length,
@@ -2602,6 +2387,8 @@ const realizedIncome =
     entries,
     restDays
   };
+  result.goalPlan = await goals.apply(userId, month, result.data, result.totals);
+  return result;
 }
 
 async function recordClientChange(userId, actorUserId, action, fieldName = null, oldValue = null, newValue = null, details = null) {
@@ -5255,14 +5042,7 @@ if (
     const today =
       getTodayLocal();
 
-    const dailyGoal =
-      calculateDailyGoal(
-        dailyData,
-        goalEntries,
-        workingDays,
-        today,
-        goalRestSet
-      );
+    const dailyGoal = null;
 
     const income =
       safeNumber(
@@ -5300,10 +5080,7 @@ if (
           paidExpense
       );
 
-    return sendJson(
-      res,
-      200,
-      {
+    const result = {
         month,
 
         totals: {
@@ -5335,8 +5112,9 @@ if (
         entries,
 
         restDays
-      }
-    );
+    };
+    result.goalPlan = await goals.apply(userId, month, result.data, result.totals);
+    return sendJson(res, 200, result);
   }
 
   /* =======================================================
@@ -5843,6 +5621,8 @@ function isStateChangingMethod(method) {
    API PRINCIPAL
 ========================================================= */
 
+const goals = require('./server-metas').createGoals({pool, requireUser, requireAdmin, readBody, sendJson, recordClientChange});
+
 const scheduling = require('./agendamentos-api').createScheduling({pool, requireUser, requireAdmin, readBody, sendJson});
 
 async function handleApi(
@@ -5856,6 +5636,8 @@ async function handleApi(
   if (isStateChangingMethod(req.method) && !requireSameOrigin(req, res)) {
     return;
   }
+
+  if (await goals.handle(req, res, url) !== false) return;
 
   if (url.startsWith('/api/consultations') || url.startsWith('/api/admin/consultations')) {
     await scheduling.handle(req, res, url);
@@ -6010,7 +5792,7 @@ function serveStatic(
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
     'Cross-Origin-Opener-Policy': 'same-origin',
     'Cross-Origin-Resource-Policy': 'same-origin',
-    'Cache-Control': ext === '.html' ? 'no-store' : 'public, max-age=3600'
+    'Cache-Control': ext === '.html' ? 'no-store' : 'no-cache'
   };
 
   if (IS_PRODUCTION) {
@@ -6141,6 +5923,9 @@ function serveStatic(
 </script>`;
 
 let scriptToInject = adminVisibilityScript;
+if (['/planejamento.html', '/admin.html'].includes(pathname)) {
+  scriptToInject += '<link rel="stylesheet" href="/meta-mensal.css?v=20261009"><script src="/meta-mensal.js?v=20261009"></script>';
+}
 
 // O lembrete financeiro só deve existir no Dashboard.
 // Nas demais páginas, removemos apenas o bloco do lembrete,
@@ -6228,7 +6013,9 @@ const server =
 
 initializeDatabase()
   .then(() => scheduling.initialize())
+  .then(() => goals.initialize())
   .then(() => {
+    goals.start();
     server.listen(
       PORT,
       () => {
