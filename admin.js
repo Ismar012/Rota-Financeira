@@ -53,30 +53,22 @@ async function loadClients() {
 }
 
 function renderAggregate(totals) {
-  setText('clientCount', state.clients.length);
-  setText('aggregateIncome', fmt(totals.income));
-  setText('aggregateExpense', fmt(totals.expense));
-  setText('aggregateCashflow', fmt(totals.cashflow));
-  setClass('aggregateCashflow', cashClass(totals.cashflow));
+  setText('clientCount', totals.total ?? state.clients.length);
+  setText('activeCount', totals.active ?? 0);
+  setText('payingCount', totals.pagantes ?? 0);
+  setText('freeTrialCount', totals.freeTrial ?? 0);
 }
-
 function renderClients() {
-  const search = $('clientSearch');
-  const query = search ? search.value.trim().toLowerCase() : '';
+  const query = $('clientSearch')?.value.trim().toLowerCase() || '';
   const rows = state.clients.filter(c => `${c.name} ${c.email}`.toLowerCase().includes(query));
-  const clientsBody = $('clientsBody');
-  if (!clientsBody) return;
-  clientsBody.innerHTML = rows.map(client => `
-    <tr data-client-id="${client.id}">
-      <td><span class="client-name">${esc(client.name)}</span><span class="client-email">${esc(client.email)}</span></td>
-      <td class="money">${fmt(client.totals.income)}</td>
-      <td class="money">${fmt(client.totals.expense)}</td>
-      <td class="money ${cashClass(client.totals.cashflow)}">${fmt(client.totals.cashflow)}</td>
-      <td>${client.totals.workingDays}</td>
-      <td>${client.totals.restDays}</td>
-      <td class="row-arrow">→</td>
-    </tr>`).join('');
-  clientsBody.querySelectorAll('tr').forEach(row => row.addEventListener('click', () => openClient(Number(row.dataset.clientId))));
+  const body=$('clientsBody');if(!body)return;
+  const labels={free:'Free',trial:'Trial',pagante:'Pagante',inadimplente:'Inadimplente',cancelado:'Cancelado'};
+  body.innerHTML=rows.map(c=>{const status=c.status||{};return `<tr data-client-id="${Number(c.id)}">
+  <td><span class="client-name">${esc(c.name)}</span><span class="client-email">${esc(c.email)}</span></td>
+  <td><span class="status-badge status-${esc(status.status)}">${esc(labels[status.status]||status.status)}</span><br><select class="status-select" data-status-id="${Number(c.id)}" aria-label="Status de ${esc(c.name)}">${[['auto','Automático'],['pagante','Pagante'],['inadimplente','Inadimplente'],['cancelado','Cancelado']].map(([v,l])=>`<option value="${v}" ${v===(status.billingStatus||'auto')?'selected':''}>${l}</option>`).join('')}</select></td>
+  <td>${c.active?'Ativo':'Sem acesso recente'}</td><td>${status.manual?'Manual':`${Number(status.daysRemaining)||0} dias`}</td><td>${esc(String(c.created_at||'').slice(0,10))}</td><td>${esc(String(c.last_login_at||'—').slice(0,16))}</td><td>→</td></tr>`;}).join('');
+  body.querySelectorAll('tr').forEach(row=>row.onclick=e=>{if(!e.target.closest('select'))openClient(Number(row.dataset.clientId));});
+  body.querySelectorAll('select').forEach(select=>select.onchange=async()=>{select.disabled=true;try{await api(`/api/admin/clients/${select.dataset.statusId}/status`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:select.value})});await loadClients();}catch(e){setText('clientsFeedback',e.message);await loadClients();}finally{select.disabled=false;}});
 }
 
 async function openClient(id) {
@@ -98,11 +90,15 @@ function renderDetail(client, summary) {
   const t = summary.totals || {};
   setText('detailName', client?.name || 'Cliente');
   setText('detailEmail', client?.email || '');
-  setText('detailIncome', fmt(t.income));
+  setText('detailStatus', client?.status?.status || '');
+  setText('detailIncome', fmt(t.realizedIncome ?? t.income));
   setText('detailExpense', fmt(t.expense));
   setText('detailCashflow', fmt(t.cashflow));
   setClass('detailCashflow', cashClass(t.cashflow));
   setText('detailGoal', fmt(t.totalPlannedGoal));
+  const goalCard = $('detailGoal')?.closest('article');
+  if (goalCard?.querySelector('span')) goalCard.querySelector('span').textContent = 'Falta produzir no mês';
+  if (goalCard?.querySelector('small')) goalCard.querySelector('small').textContent = 'obrigações da janela mensal menos caixa';
   setText('detailWorking', t.workingDays ?? 0);
   setText('detailRest', t.restDays ?? 0);
   setText('detailAvailable', t.availableWorkingDays ?? 0);
@@ -112,6 +108,8 @@ function renderDetail(client, summary) {
   setText('detailMonthLabel', monthLabel(summary.month));
   renderChart(summary.data);
   renderDailyTable(summary.data);
+  window.rotaGoalContext = {plan:summary.goalPlan, admin:true, clientId:state.selectedClientId};
+  document.dispatchEvent(new CustomEvent('rota-goal', {detail:window.rotaGoalContext}));
 }
 
 function renderChart(data) {
@@ -160,7 +158,7 @@ function renderDailyTable(data) {
   dailyBody.innerHTML = rows.map((d, index) => {
     const date = new Date(`${d.date}T00:00:00`);
     const weekday = new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(date).replace('.', '');
-    const isPast = d.date < new Date().toISOString().slice(0,10);
+    const isPast = d.date < new Intl.DateTimeFormat('en-CA', {timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     const status = d.isRestDay ? '<span class="status-pill rest">Descanso</span>' : (d.isWeekend ? '<span class="status-pill weekend">Disponível</span>' : '<span class="status-pill work">Trabalho</span>');
     const work = d.isRestDay ? '<span class="rest-mark">—</span>' : '<span class="work-check">✓</span>';
     const goal = d.dailyGoal;
@@ -171,11 +169,11 @@ function renderDailyTable(data) {
       <td>${esc(weekday)}</td>
       <td>${status}</td>
       <td>${work}</td>
-      <td class="money gold">${fmt(goal)}</td>
+      <td class="money gold">${goal == null ? 'Sem registro' : `<button type="button" class="meta-day-button" data-goal-date="${d.date}">${fmt(goal)}</button>`}${d.goalRevised != null ? '<small>Revisão disponível</small>' : ''}</td>
       <td class="money">${fmt(d.expense)}</td>
-      <td class="money">${fmt(d.paidIncome || d.income)}</td>
+      <td class="money">${fmt(d.paidIncome ?? d.income)}</td>
       <td class="money">${fmt(d.paidExpense)}</td>
-      <td class="money ${cashClass(realizedFlow || d.cashflow)}">${fmt(realizedFlow || d.cashflow)}</td>
+      <td class="money ${cashClass(realizedFlow ?? d.cashflow)}">${fmt(realizedFlow ?? d.cashflow)}</td>
     </tr>`;
   }).join('');
 }
@@ -208,3 +206,7 @@ if ($('logout')) $('logout').addEventListener('click', async () => { await api('
   if (!(await checkAdmin())) return;
   setMonth(isoMonth());
 })();
+
+document.addEventListener('rota-goal-reload', e => {
+  if (e.detail?.summary) renderDetail(e.detail.client, e.detail.summary);
+});
