@@ -313,11 +313,15 @@ const filteredEntries = state.entries.filter((entry) => {
       </article>`).join('');
   }
 
+  document.addEventListener('rota-goal-reload', () => loadSummary());
+
   function renderSummary(data) {
     const totals = data.totals || {};
-    $('dailyGoal').textContent = fmt(totals.dailyGoal);
+    $('dailyGoal').textContent = totals.dailyGoal == null ? 'Revisar planejamento' : fmt(totals.dailyGoal);
+    window.rotaGoalContext = {plan:data.goalPlan, admin:false};
+    document.dispatchEvent(new CustomEvent('rota-goal', {detail:window.rotaGoalContext}));
     $('workingDays').textContent = `${Number(totals.availableWorkingDays ?? totals.workingDays ?? 0)} dias disponíveis`;
-    $('totalIncome').textContent = fmt(totals.income);
+    $('totalIncome').textContent = fmt(totals.realizedIncome ?? totals.income);
     $('totalExpense').textContent = fmt(totals.expense);
     const moneyToday = Number(totals.availableBalance ?? totals.cashflow ?? 0);
     $('totalCashflow').textContent = fmt(moneyToday);
