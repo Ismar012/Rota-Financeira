@@ -1,0 +1,125 @@
+ROTA FINANCEIRA — ATUALIZAÇÃO DA META MENSAL
+
+Este é um pacote de atualização, não uma cópia completa do projeto.
+Substitua/adicone somente os arquivos deste pacote. Preserve todos os demais.
+
+ARQUIVOS
+server.js: servidor atual atualizado; mantém os módulos existentes.
+server-metas.js: novo cálculo e persistência de base, prazos e metas registradas.
+planejamento.html e planejamento.js: tela do cliente integrada.
+admin.js: administrador integrado, status/acessos e composição diária.
+meta-mensal.js e meta-mensal.css: interface compartilhada, carregada pelo servidor.
+tests/meta-mensal.test.cjs: testes do cálculo; não é necessário publicar.
+
+Não foi necessário substituir admin.html, admin.css, planejamento.css ou
+styles.css. Os estilos novos ficam em meta-mensal.css. O dashboard de acesso
+às três áreas permanece como está. O HTML do administrador enviado já possui
+os elementos usados. Seu admin.js enviado estava usando a tabela financeira
+anterior; agora usa os status/acessos do HTML atual.
+
+ANTES DE ATUALIZAR
+1. Faça backup do banco PostgreSQL e guarde uma cópia dos arquivos atuais.
+2. Em uma cópia local ou serviço de teste, coloque server.js e server-metas.js
+   na mesma pasta. Mantenha agendamentos-api.js e os demais arquivos existentes.
+3. Coloque os arquivos de tela na pasta onde estão atualmente as páginas.
+   Por padrão tudo fica na raiz; se PUBLIC_DIR estiver definido, os arquivos
+   de tela devem ir nessa pasta, e os dois arquivos server na raiz do servidor.
+4. Não é necessário alterar package.json ou adicionar dependências.
+5. Execute: node tests/meta-mensal.test.cjs
+6. Inicie o servidor com a configuração de teste e confira cliente/admin.
+   Não conecte uma instância de teste ao banco de produção.
+
+PUBLICAÇÃO
+Envie todos os arquivos de execução juntos em um único commit/deploy.
+Não substitua o projeto inteiro por este pacote. Não altere .env, segredos,
+DATABASE_URL ou ADMIN_EMAIL. O servidor continua dependendo de pg e do módulo
+agendamentos-api.js que já existem no seu projeto.
+
+Na inicialização, são criadas três tabelas adicionais com IF NOT EXISTS:
+goal_settings, goal_regularizations e goal_snapshots. Nenhum lançamento
+financeiro existente é apagado, marcado como pago ou renegociado automaticamente.
+Um deploy pode reiniciar brevemente o serviço. A atualização não foi aplicada
+à plataforma pública nem ao banco real.
+
+PRIMEIRA CONFIGURAÇÃO DE CADA CLIENTE
+1. Abra o cliente no administrador, no mês atual.
+2. Em “Data inicial e saldo real do planejamento”, informe a data do marco zero
+   e o dinheiro existente no INÍCIO dessa data, antes das movimentações do dia.
+3. Entradas/saídas confirmadas nessa data e depois dela serão adicionadas/
+   descontadas automaticamente. Não informe como saldo inicial um dinheiro
+   que também está cadastrado como recebimento após o marco zero.
+4. As dívidas anteriores ainda não pagas continuam pendentes. Confira se as
+   dívidas substituídas por renegociação foram devidamente encerradas, para
+   que a dívida antiga e as novas parcelas não contem juntas.
+5. Defina um prazo para cada despesa vencida. O vencimento original fica intacto.
+6. Clique em “Ver composição” e confira cada obrigação e a origem do caixa.
+
+Sem base configurada, sem prazo de uma pendência, com caixa inconsistente ou
+sem dias antes de um vencimento, a meta aparece como “Revisar planejamento”.
+Os totais exibidos nesses casos servem à revisão; não são uma meta validada.
+Uma regularização após o mês fica sinalizada como fora da janela; não é
+escondida nem automaticamente cobrada toda no dia seguinte.
+
+REGRA DO CÁLCULO
+Entra todo valor de despesa não paga que vence até o fim do mês selecionado,
+respeitando a data de cadastro efetiva. Meses futuros ficam fora. Todas as
+parcelas devidas dentro do mês entram, sem somar as parcelas dos outros meses.
+
+Caixa = saldo inicial + ganhos recebidos desde a data inicial - pagamentos
+confirmados desde a data inicial. Usa paid_date, depois paid_at, depois due_date.
+Movimentações efetivas futuras não são antecipadas como caixa.
+O déficit histórico não é somado às pendências.
+
+O caixa positivo cobre primeiro os prazos mais próximos, uma única vez.
+Para cada prazo: restante acumulado / dias disponíveis até aquele prazo.
+A maior necessidade é a meta diária recomendada, arredondada para cima em
+centavos. Hoje conta, exceto descanso. Fins de semana contam exceto descanso.
+Se hoje já não puder ser trabalhado, marque descanso para não contar esse dia.
+
+O plano diário futuro mantém uma produção recomendada suficiente aos prazos
+conhecidos e ajusta o último valor para não produzir além do necessário.
+A projeção pressupõe seguir o plano; não cria recebimentos nem afirma que o
+cliente terá esse caixa. Novos lançamentos e confirmações recalculam o futuro.
+O administrador vê a mesma fórmula e o mesmo valor do cliente.
+
+HISTÓRICO
+A partir desta versão, a meta de hoje é registrada quando o resumo é consultado
+e também a cada minuto enquanto o servidor está ativo. Ao passar o dia, o
+registro anterior fica preservado. A tabela mostra “Sem registro” quando não
+há uma meta registrada — inclusive antes desta atualização ou se o serviço
+ficou suspenso naquele dia. Não recriamos metas históricas como se tivessem
+sido vistas pelo cliente. Em um serviço que dorme, não há garantia de captura
+diária sem um agendador externo ou serviço continuamente ativo.
+
+Ao clicar em uma meta registrada, o administrador vê a composição original e,
+quando diferente, uma revisão pelos lançamentos atuais e suas datas efetivas.
+Essa revisão não substitui o original. Não é uma reconstrução completa de
+versões antigas de lançamentos excluídos/editados: mostra o cálculo com o
+cadastro atual aplicado à data selecionada. O saldo inicial e descansos
+retroativos também podem gerar revisão.
+
+RELATÓRIO
+O PDF usa o mesmo cálculo mensal e inclui composição das obrigações e do caixa.
+Metas sem registro são identificadas. Indicadores históricos existentes não
+são usados para acrescentar déficit à fórmula.
+
+VALIDAÇÃO REALIZADA
+169 verificações de fórmula e isolamento: janela mensal, parcelas futuras,
+vencidos, caixa, recebimentos, pagamentos, descansos, prazos e cobertura de
+vencimentos. Teste de integração dos dois resumos e geração do PDF com banco
+simulado. Sintaxe JavaScript validada; página de composição do PDF inspecionada.
+Não houve teste com PostgreSQL real, credenciais de produção ou navegação de
+ponta a ponta nas telas completas. O navegador de testes não estava disponível
+neste ambiente. Faça a validação na cópia de teste antes de publicar.
+
+EXEMPLO
+Referência: 10/10/2026. Saldo inicial: R$300. Sem descanso.
+Pendência de R$600 até 15/10; conta de R$900 até 20/10;
+conta de R$1.500 até 31/10. Total R$3.000; falta produzir R$2.700.
+Necessidades: R$50/dia até 15/10; R$109,10/dia até 20/10;
+R$122,73/dia até 31/10. Meta recomendada: R$122,73/dia.
+
+RETORNO À VERSÃO ANTERIOR
+Se necessário, restaure o commit/arquivos anteriores. As tabelas adicionais
+podem permanecer no banco, pois a versão anterior não as utiliza. Não tente
+voltar usando somente um dos dois arquivos server: publique o conjunto inteiro.
