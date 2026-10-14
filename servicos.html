@@ -6,6 +6,7 @@
 <title>Meus serviços | Rota Financeira</title>
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/servicos.css">
+<link rel="stylesheet" href="/melhorias.css?v=20261014">
 </head>
 <body>
 <header class="header"><nav class="nav"><a class="logo-text" href="#" id="backLogo">ROTA <span>FINANCEIRA</span></a><div class="nav-actions"><button id="logout" class="btn btn-outline" type="button">Sair</button></div></nav></header>
@@ -13,11 +14,12 @@
 <section class="page-head"><div><div class="eyebrow">Minha área</div><h1>Meus serviços</h1><p class="muted">Consulte os serviços disponíveis e veja quais já fazem parte do seu perfil.</p></div></section>
 <section id="servicesGrid" class="services-grid"></section><p id="feedback" class="notice"></p>
 </div></main>
-<script src="/servicos.js"></script>
+<script src="/servicos.js?v=20261014"></script>
 <script>
 document.getElementById('backLogo')?.addEventListener('click', function (event) {
     event.preventDefault();
     window.history.back();
 });
 </script>
+<script src="/navegacao.js?v=20261014"></script>
 </body></html>

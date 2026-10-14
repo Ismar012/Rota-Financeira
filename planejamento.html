@@ -17,6 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
+<link rel="stylesheet" href="/melhorias.css?v=20261014">
 </head>
 
 <body>
@@ -231,7 +232,7 @@
             </strong>
 
             <small>
-                seu dinheiro hoje
+                saldo disponível após entradas e pagamentos
             </small>
 
         </article>
@@ -270,7 +271,8 @@
 
         <div class="chart-wrap">
 
-            <canvas id="financeChart"></canvas>
+            <p id="chartEmpty" class="chart-empty" hidden role="status">Cadastre seu primeiro lançamento para acompanhar sua evolução. Ganhos e despesas previstos aparecem antes da confirmação de recebimento ou pagamento.</p>
+            <canvas id="financeChart" aria-label="Gráfico da movimentação diária"></canvas>
 
         </div>
 
@@ -577,7 +579,7 @@
         </label>
 
 
-        <!-- SALVAR -->
+        <p class="field-explanation">Data do cadastro: início informado para distribuir o lançamento. Data de pagamento ou recebimento: prazo previsto para quitar ou receber. Exemplo: cadastro em 14/10 e pagamento em 20/10 distribui a despesa nesse intervalo. Informar a data não confirma o pagamento.</p>
 
         <button
             class="primary-btn"
@@ -739,7 +741,7 @@
      IMPORTANTE: carregar por último
 ========================== -->
 
-<script src="/planejamento.js?v=20261009-meta-mensal"></script>
+<script src="/planejamento.js?v=20261014"></script>
 <script>
 document.getElementById('backLogo')?.addEventListener('click', function (event) {
     event.preventDefault();
@@ -747,6 +749,7 @@ document.getElementById('backLogo')?.addEventListener('click', function (event) 
 });
 </script>
 
+<script src="/navegacao.js?v=20261014"></script>
 </body>
 
 </html>

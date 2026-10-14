@@ -2717,11 +2717,34 @@ async function handleAdminApi(req, res, url, parsedUrl) {
 ========================================================= */
 
 async function handleProfileApi(req, res, url) {
-  if (url !== '/api/profile') return false;
+  if (url !== '/api/profile' && url !== '/api/profile/change-history') return false;
 
   const user = await requireUser(req, res);
   if (!user) return true;
   const userId = Number(user.id);
+
+  if (url === '/api/profile/change-history') {
+    if (req.method !== 'GET') return sendJson(res, 405, { error: 'Método não permitido.' });
+    try {
+      const client = await db.prepare('SELECT id, name, email, phone, created_at FROM users WHERE id = ?').get(userId);
+      if (!client) return sendJson(res, 404, { error: 'Conta não encontrada.' });
+      const pdfRequested = new URL(req.url, 'http://localhost').searchParams.get('format') === 'pdf';
+      const changes = await db.prepare(`
+        SELECT action, field_name, old_value, new_value, details, created_at
+        FROM client_change_log WHERE user_id = ? ORDER BY created_at DESC, id DESC
+        ${pdfRequested ? '' : 'LIMIT 100'}
+      `).all(userId);
+      // Password values are never returned, even for old records.
+      const safeChanges = changes.map(item => item.field_name === 'password'
+        ? { ...item, old_value: null, new_value: null, details: 'Senha alterada. O conteúdo da senha não é exibido.' }
+        : item);
+      if (pdfRequested) return sendPdf(res, 200, buildChangeHistoryPdf(client, safeChanges), 'Meu_Historico_Alteracoes.pdf');
+      return sendJson(res, 200, { changes: safeChanges });
+    } catch (error) {
+      console.error('Erro ao carregar histórico do cliente:', error);
+      return sendJson(res, 500, { error: 'Não foi possível carregar seu histórico.' });
+    }
+  }
 
   if (req.method === 'GET') {
     const current = await db.prepare(`
@@ -5663,7 +5686,7 @@ async function handleApi(
     }
   }
 
-  if (url === '/api/profile') {
+  if (url === '/api/profile' || url === '/api/profile/change-history') {
     const result = await handleProfileApi(req, res, url);
     if (result !== false) return;
   }
@@ -5924,7 +5947,7 @@ function serveStatic(
 
 let scriptToInject = adminVisibilityScript;
 if (['/planejamento.html', '/admin.html'].includes(pathname)) {
-  scriptToInject += '<link rel="stylesheet" href="/meta-mensal.css?v=20261009"><script src="/meta-mensal.js?v=20261009"></script>';
+  scriptToInject += '<link rel="stylesheet" href="/meta-mensal.css?v=20261014"><script src="/meta-mensal.js?v=20261014"></script>';
 }
 
 // O lembrete financeiro só deve existir no Dashboard.

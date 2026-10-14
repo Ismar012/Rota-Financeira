@@ -317,7 +317,7 @@ const filteredEntries = state.entries.filter((entry) => {
 
   function renderSummary(data) {
     const totals = data.totals || {};
-    $('dailyGoal').textContent = totals.dailyGoal == null ? 'Revisar planejamento' : fmt(totals.dailyGoal);
+    $('dailyGoal').textContent = totals.dailyGoal == null ? (data.goalPlan?.status === 'needs_setup' ? 'Configure seu planejamento' : 'Revisar planejamento') : fmt(totals.dailyGoal);
     window.rotaGoalContext = {plan:data.goalPlan, admin:false};
     document.dispatchEvent(new CustomEvent('rota-goal', {detail:window.rotaGoalContext}));
     $('workingDays').textContent = `${Number(totals.availableWorkingDays ?? totals.workingDays ?? 0)} dias disponíveis`;
@@ -330,6 +330,8 @@ const filteredEntries = state.entries.filter((entry) => {
   }
 
   function renderChart(data) {
+    const empty = !data.some(item => ['futureIncome','futureExpense','paidIncome','paidExpense'].some(key => Number(item[key] || 0) !== 0));
+    if ($('chartEmpty')) $('chartEmpty').hidden = !empty;
     if (!window.Chart || !$('financeChart')) return;
 
     const labels = data.map((item) => item.day);

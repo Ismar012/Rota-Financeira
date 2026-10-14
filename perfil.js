@@ -42,6 +42,27 @@
     } catch (error) { feedback.textContent = error.message; }
   });
 
+  document.getElementById('loadHistory').addEventListener('click', async function () {
+    const content = document.getElementById('historyContent');
+    content.hidden = !content.hidden; this.setAttribute('aria-expanded', String(!content.hidden));
+    if (content.hidden) return;
+    const message = document.getElementById('historyFeedback'); message.textContent = 'Carregando histórico...';
+    try {
+      const response = await fetch('/api/profile/change-history', { credentials: 'same-origin' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Não foi possível carregar o histórico.');
+      const rows = document.getElementById('historyRows'); rows.replaceChildren();
+      for (const item of data.changes) {
+        const tr = document.createElement('tr');
+        for (const value of [new Date(item.created_at).toLocaleString('pt-BR', {timeZone:'America/Bahia'}), item.action, item.details || item.field_name || '—']) {
+          const td = document.createElement('td'); td.textContent = value; tr.appendChild(td);
+        }
+        rows.appendChild(tr);
+      }
+      message.textContent = data.changes.length ? 'Alterações mais recentes. O PDF contém o histórico completo.' : 'Nenhuma alteração registrada ainda.';
+    } catch (error) { message.textContent = error.message; }
+  });
+
   document.getElementById('logout').addEventListener('click', async () => {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
     window.location.href = '/login.html';
