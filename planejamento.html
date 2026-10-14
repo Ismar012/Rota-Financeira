@@ -11,7 +11,7 @@
 
 <!-- Estilos principais da Rota Financeira -->
 <link rel="stylesheet" href="/styles.css">
-<link rel="stylesheet" href="/planejamento.css">
+<link rel="stylesheet" href="/planejamento.css?v=20261014-fix2">
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -269,9 +269,10 @@
         </div>
 
 
+        <p id="chartEmpty" class="chart-empty" hidden role="status">Cadastre seu primeiro lançamento para acompanhar sua evolução. Ganhos e despesas previstos aparecem antes da confirmação de recebimento ou pagamento.</p>
+
         <div class="chart-wrap">
 
-            <p id="chartEmpty" class="chart-empty" hidden role="status">Cadastre seu primeiro lançamento para acompanhar sua evolução. Ganhos e despesas previstos aparecem antes da confirmação de recebimento ou pagamento.</p>
             <canvas id="financeChart" aria-label="Gráfico da movimentação diária"></canvas>
 
         </div>
@@ -741,7 +742,7 @@
      IMPORTANTE: carregar por último
 ========================== -->
 
-<script src="/planejamento.js?v=20261014"></script>
+<script src="/planejamento.js?v=20261014-fix2"></script>
 <script>
 document.getElementById('backLogo')?.addEventListener('click', function (event) {
     event.preventDefault();

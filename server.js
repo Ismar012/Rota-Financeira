@@ -278,6 +278,16 @@ async function initializeDatabase() {
     WHERE paid IS NULL
   `).run();
 
+  await pool.query(`
+    INSERT INTO finance_entries(user_id,type,name,amount,created_date,due_date,paid,rest_day_id)
+    SELECT r.user_id,'expense','Dia de descanso - ' || r.rest_date::text,r.amount,
+      (r.created_at AT TIME ZONE 'America/Bahia')::date,r.rest_date,0,r.id
+    FROM rest_days r
+    WHERE r.amount > 0 AND NOT EXISTS (
+      SELECT 1 FROM finance_entries e WHERE e.user_id=r.user_id AND e.rest_day_id=r.id
+    )
+  `);
+
   if (ADMIN_EMAIL) {
     await db.prepare(
       "UPDATE users SET role = CASE WHEN lower(email) = ? THEN 'admin' ELSE 'client' END"
@@ -2170,7 +2180,7 @@ const totals = await db.prepare(`
         END
       ),
       0
-    ) AS pendingExpense
+    ) AS "pendingExpense"
 
   FROM finance_entries
   WHERE
@@ -2183,7 +2193,7 @@ const realizedExpenseTotals = await db.prepare(`
     COALESCE(
       SUM(amount),
       0
-    ) AS paidExpense
+    ) AS "paidExpense"
   FROM finance_entries
   WHERE
     user_id = ?
@@ -2206,7 +2216,7 @@ const realizedExpenseTotals = await db.prepare(`
         COALESCE(
           SUM(amount),
           0
-        ) AS realizedIncome
+        ) AS "realizedIncome"
 
       FROM finance_entries
 
@@ -2345,8 +2355,8 @@ const realizedDate =
   const pendingExpense = safeNumber(totals?.pendingExpense);
   const allTimeTotals = await db.prepare(`
     SELECT
-      COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS totalIncomeAllTime,
-      COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS totalExpenseAllTime
+      COALESCE(SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END), 0) AS "totalIncomeAllTime",
+      COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS "totalExpenseAllTime"
     FROM finance_entries
     WHERE user_id = ?
   `).get(userId);
@@ -4214,7 +4224,7 @@ if (
             paid,
             paid_at,
             paid_date,
-            rest_day_id,
+            rest_day_id
 
             FROM finance_entries
 
@@ -4669,7 +4679,7 @@ if (
                 END
               ),
               0
-            ) AS pendingExpense
+            ) AS "pendingExpense"
 
           FROM finance_entries
 
@@ -4696,7 +4706,7 @@ if (
             COALESCE(
               SUM(amount),
               0
-            ) AS paidExpense
+            ) AS "paidExpense"
 
           FROM finance_entries
 
@@ -4729,7 +4739,7 @@ if (
             COALESCE(
               SUM(amount),
               0
-            ) AS realizedIncome
+            ) AS "realizedIncome"
 
           FROM finance_entries
 
@@ -5292,157 +5302,35 @@ if (
       =====================================================
       */
 
-      await db.exec('BEGIN');
-
+      const connection = await pool.connect();
+      let restDay, generatedExpense = null;
       try {
-        const result =
-          db
-            .prepare(`
-              INSERT INTO rest_days
-              (
-                user_id,
-                rest_date,
-                amount
-              )
-              VALUES (?, ?, ?)
-            `)
-            .run(
-              userId,
-              restDate,
-              amount
-            );
-
-        const restDayId =
-          Number(
-            result.lastInsertRowid
-          );
-
-        const restDay =
-          db
-            .prepare(`
-              SELECT
-                id,
-                rest_date,
-                amount,
-                created_at
-
-              FROM rest_days
-
-              WHERE
-                id = ?
-                AND user_id = ?
-            `)
-            .get(
-              restDayId,
-              userId
-            );
-
-        let generatedExpense =
-          null;
-
-        if (
-          amount > 0
-        ) {
-          const expenseResult =
-            db
-              .prepare(`
-                INSERT INTO finance_entries
-                (
-                  user_id,
-                  type,
-                  name,
-                  amount,
-                  created_date,
-                  due_date,
-                  paid,
-                  paid_at,
-                  rest_day_id
-                )
-                VALUES (
-                  ?,
-                  'expense',
-                  ?,
-                  ?,
-                  ?,
-                  ?,
-                  0,
-                  NULL,
-                  ?
-                )
-              `)
-              .run(
-                userId,
-                `Dia de descanso - ${restDate}`,
-                amount,
-                createdDate,
-                restDate,
-                restDayId
-              );
-
-          generatedExpense =
-            db
-              .prepare(`
-                SELECT
-                  id,
-                  type,
-                  name,
-                  amount,
-                  created_date,
-                  due_date,
-                  paid,
-                  paid_at,
-                  rest_day_id,
-                  created_at
-
-                FROM finance_entries
-
-                WHERE
-                  id = ?
-                  AND user_id = ?
-              `)
-              .get(
-                Number(
-                  expenseResult.lastInsertRowid
-                ),
-                userId
-              );
+        await connection.query('BEGIN');
+        const inserted = await connection.query(`
+          INSERT INTO rest_days(user_id, rest_date, amount)
+          VALUES($1,$2,$3) RETURNING id, rest_date, amount, created_at
+        `, [userId, restDate, amount]);
+        restDay = inserted.rows[0];
+        if (amount > 0) {
+          const expense = await connection.query(`
+            INSERT INTO finance_entries(user_id,type,name,amount,created_date,due_date,paid,rest_day_id)
+            VALUES($1,'expense',$2,$3,$4,$5,0,$6) RETURNING *
+          `, [userId, `Dia de descanso - ${restDate}`, amount, createdDate, restDate, restDay.id]);
+          generatedExpense = expense.rows[0];
         }
-
-        await db.exec('COMMIT');
-
-        console.log(
-          'Dia de descanso cadastrado:',
-          restDay
-        );
-
-        if (
-          generatedExpense
-        ) {
-          console.log(
-            'Despesa automática criada:',
-            generatedExpense
-          );
-        }
-
-        return sendJson(
-          res,
-          201,
-          {
-            message:
-              amount > 0
-                ? 'Dia de descanso cadastrado e despesa criada automaticamente.'
-                : 'Dia de descanso cadastrado com sucesso.',
-
-            restDay,
-
-            generatedExpense
-          }
-        );
-      } catch (transactionError) {
-        await db.exec('ROLLBACK');
-
-        throw transactionError;
+        await connection.query('COMMIT');
+      } catch (error) {
+        await connection.query('ROLLBACK');
+        if (error.code === '23505') return sendJson(res, 409, {error:'Este dia de descanso já está cadastrado.'});
+        throw error;
+      } finally {
+        connection.release();
       }
+      return sendJson(res, 201, {
+        message: amount > 0 ? 'Dia de descanso cadastrado e despesa criada automaticamente.' : 'Dia de descanso cadastrado com sucesso.',
+        restDay, generatedExpense
+      });
+
     } catch (err) {
       console.error(
         'Erro ao cadastrar descanso:',
@@ -5521,73 +5409,21 @@ if (
       =====================================================
       */
 
-      await db.exec('BEGIN');
-
+      const connection = await pool.connect();
       try {
-        await db
-          .prepare(`
-            DELETE FROM finance_entries
-
-            WHERE
-              user_id = ?
-              AND rest_day_id = ?
-          `)
-          .run(
-            userId,
-            id
-          );
-
-        const result =
-          db
-            .prepare(`
-              DELETE FROM rest_days
-
-              WHERE
-                id = ?
-                AND user_id = ?
-            `)
-            .run(
-              id,
-              userId
-            );
-
-        if (
-          Number(
-            result.changes || 0
-          ) === 0
-        ) {
-          await db.exec('ROLLBACK');
-
-          return sendJson(
-            res,
-            404,
-            {
-              error:
-                'Dia de descanso não encontrado.'
-            }
-          );
+        await connection.query('BEGIN');
+        await connection.query('DELETE FROM finance_entries WHERE user_id=$1 AND rest_day_id=$2', [userId,id]);
+        const result = await connection.query('DELETE FROM rest_days WHERE id=$1 AND user_id=$2', [id,userId]);
+        if (!result.rowCount) {
+          await connection.query('ROLLBACK');
+          return sendJson(res, 404, {error:'Dia de descanso não encontrado.'});
         }
+        await connection.query('COMMIT');
+      } catch (error) {
+        await connection.query('ROLLBACK'); throw error;
+      } finally { connection.release(); }
+      return sendJson(res, 200, {message:'Dia de descanso e despesa automática excluídos com sucesso.'});
 
-        await db.exec('COMMIT');
-
-        console.log(
-          'Dia de descanso excluído:',
-          restDay.rest_date
-        );
-
-        return sendJson(
-          res,
-          200,
-          {
-            message:
-              'Dia de descanso e despesa automática excluídos com sucesso.'
-          }
-        );
-      } catch (transactionError) {
-        await db.exec('ROLLBACK');
-
-        throw transactionError;
-      }
     } catch (err) {
       console.error(
         'Erro ao excluir descanso:',
@@ -5947,7 +5783,7 @@ function serveStatic(
 
 let scriptToInject = adminVisibilityScript;
 if (['/planejamento.html', '/admin.html'].includes(pathname)) {
-  scriptToInject += '<link rel="stylesheet" href="/meta-mensal.css?v=20261014"><script src="/meta-mensal.js?v=20261014"></script>';
+  scriptToInject += '<link rel="stylesheet" href="/meta-mensal.css?v=20261014-fix2"><script src="/meta-mensal.js?v=20261014-fix2"></script>';
 }
 
 // O lembrete financeiro só deve existir no Dashboard.

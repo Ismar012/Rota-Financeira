@@ -6,7 +6,7 @@ const cents = v => Math.round((Number(v) || 0) * 100);
 const money = v => v / 100;
 const add = (d,n) => new Date(Date.parse(d+'T12:00:00Z')+n*86400000).toISOString().slice(0,10);
 const monthEnd = m => new Date(Date.UTC(Number(m.slice(0,4)),Number(m.slice(5,7)),0,12)).toISOString().slice(0,10);
-function todayBahia() { const p = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date()); const get=t=>p.find(x=>x.type===t).value; return `${get('year')}-${get('month')}-${get('day')}`; }
+function todayBahia(date = new Date()) { const p = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date); const get=t=>p.find(x=>x.type===t).value; return `${get('year')}-${get('month')}-${get('day')}`; }
 function compute({entries,restDays=[],settings,regularizations=[],month,today=todayBahia()}) {
   const first=month+'-01',last=monthEnd(month), reference=today>last?last:(today<first?first:today);
   const start=settings?iso(settings.start_date):reference;
@@ -17,7 +17,11 @@ function compute({entries,restDays=[],settings,regularizations=[],month,today=to
   // paid_date é a data contábil efetiva; confirmação posterior não muda o dia de caixa.
   const effective=e=>{const d=iso(e.paid_date)||iso(e.paid_at)||iso(e.due_date);return d;};
   const cutoff=reference>today?today:reference;
-  const exists=e=>valid(iso(e.created_date))&&iso(e.created_date)<=cutoff;
+  // Daily occurrences are known as soon as their series is registered.
+  // Their own created_date still controls the daily expense distribution.
+  const seriesStarts=new Map();
+  for(const e of entries){if(e.recurrence_type!=='daily'||!e.series_id)continue;const d=iso(e.created_date);if(valid(d)&&(!seriesStarts.has(e.series_id)||d<seriesStarts.get(e.series_id)))seriesStarts.set(e.series_id,d);}
+  const exists=e=>{if(e.recurrence_type==='daily'){const timestamp=new Date(e.created_at);const registered=e.created_at&&!Number.isNaN(timestamp.getTime())?todayBahia(timestamp):null;const d=registered||(e.series_id?seriesStarts.get(e.series_id):iso(e.created_date));return valid(d)&&d<=cutoff;}const d=iso(e.created_date);return valid(d)&&d<=cutoff;};
   const isPaid=e=>Number(e.paid)===1&&valid(effective(e))&&effective(e)<=cutoff;
   let received=0,spent=0;
   for(const e of entries){if(!exists(e)||!isPaid(e))continue;const d=effective(e);if(d<start||d>reference)continue;if(e.type==='income')received+=cents(e.amount);if(e.type==='expense')spent+=cents(e.amount);}

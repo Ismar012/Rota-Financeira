@@ -111,6 +111,8 @@
 
   function setLabelText(label, text) {
     if (!label) return;
+    const input = label.querySelector('input');
+    if (input) input.setAttribute('aria-label', text);
     for (const node of label.childNodes) {
       if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
         node.textContent = `\n            ${text}\n\n            `;
