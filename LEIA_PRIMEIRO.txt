@@ -1,0 +1,40 @@
+ROTA FINANCEIRA - CORRECOES DA VALIDACAO
+
+ARQUIVOS COMPLETOS PARA SUBSTITUIR
+- server.js
+- planejamento.js
+- planejamento.html
+
+ARQUIVO NOVO OBRIGATORIO
+- finance-audit.js (coloque na mesma pasta do server.js)
+
+COMO APLICAR NO GITHUB / RENDER
+1. Guarde uma copia dos arquivos atuais.
+2. Extraia este ZIP.
+3. No repositorio Ismar012/Rota-Financeira, substitua os tres arquivos acima e adicione finance-audit.js, todos na raiz.
+4. Faca um unico commit com os quatro arquivos. Nao envie somente o server.js: ele depende do novo finance-audit.js.
+5. Aguarde o deploy do Render concluir. Se o deploy automatico estiver desligado, use Manual Deploy > Deploy latest commit.
+6. Abra o planejamento e atualize com Ctrl+F5.
+7. Na conta de teste, cadastre um ganho, confirme e desfaca o recebimento. Confira o historico do perfil e seu PDF.
+
+ALTERACOES
+- O historico passa a registrar cadastros, edicoes, pagamentos, recebimentos, reversoes e exclusoes de lancamentos e descansos.
+- O registro de historico ocorre na mesma transacao da alteracao. Operacoes desfeitas por rollback nao geram registros persistentes.
+- As ocorrencias automaticas das despesas fixas tambem sao registradas. O historico nao presume que toda operacao automatica foi feita pelo cliente.
+- O parcelamento mostra Valor de cada parcela. A despesa diaria mostra Valor por dia. O calculo do valor nao foi alterado.
+- O card agora informa Despesas do mes e previstas: pagas e pendentes + descanso.
+- Uma nova despesa fixa gera a ocorrencia inicial e mais tres meses. Series ativas existentes completam o horizonte ate o terceiro mes futuro ao carregar o resumo.
+- A exclusao de proximas ocorrencias continua desativando a serie.
+
+HISTORICO
+A instalacao dos registros automaticos e feita pelo servidor ao iniciar, usando as tabelas existentes. Nao ha nova dependencia npm. Nao e possivel recuperar detalhes de exclusoes anteriores que nao foram registrados. Os registros novos aparecem no historico e no PDF ja existentes.
+
+VALIDACAO
+- Sintaxe dos tres arquivos JavaScript verificada com node --check.
+- SQL e regras testados em PostgreSQL embutido isolado (PGlite), sem acessar o banco de producao.
+- Casos verificados: cadastro, edicao, confirmacao e reversao de recebimento, exclusao, descanso com valor zero, rollback, instalacao repetida, horizonte com vencimento dia 31, ausencia de duplicatas, serie desativada e exclusao em cascata da conta.
+- Nao foi feito deploy nem teste desta versao no Render. A validacao final deve ocorrer apos a substituicao.
+- Base: commit 01446ddb5699132500caea4ce4eaa8c36e578bb2 do repositorio publico, obtido em 14/10/2026 (Bahia).
+
+ESCOPO
+Este pacote corrige os pontos acima. Nao inclui novos modulos de tabela diaria, relatorio financeiro mensal, agenda ou autenticacao.

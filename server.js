@@ -317,6 +317,8 @@ async function initializeDatabase() {
         active = TRUE
     `, item);
   }
+  await require('./finance-audit').installFinanceAudit(pool);
+
 }
 
 /* =========================================================
@@ -1918,10 +1920,10 @@ async function ensureFixedSeriesHorizon(userId, seriesId, fromDate = getTodayLoc
   const anchor = series[0];
   const recurrenceDay = Number(anchor.recurrence_day) || parseDate(series[0].due_date)?.getDate();
   let latest = series.reduce((max, item) => compareDates(item.due_date, max) > 0 ? item.due_date : max, series[0].due_date);
-  let futureCount = series.filter((item) => compareDates(item.due_date, fromDate) > 0 && Number(item.paid) !== 1).length;
+  const horizonDate = addMonthsSameDay(fromDate, 3, recurrenceDay);
   let created = 0;
 
-  while (futureCount < 3) {
+  while (horizonDate && compareDates(latest, horizonDate) < 0) {
     const next = addMonthsSameDay(latest, 1, recurrenceDay);
     if (!next || compareDates(next, latest) <= 0) break;
 
@@ -1931,7 +1933,7 @@ async function ensureFixedSeriesHorizon(userId, seriesId, fromDate = getTodayLoc
       LIMIT 1
     `).get(userId, seriesId, next);
 
-    if (!exists) {
+    if (!exists && compareDates(next, fromDate) >= 0) {
       await db.prepare(`
         INSERT INTO finance_entries
         (user_id, type, name, amount, created_date, due_date, paid, paid_at, rest_day_id, recurrence_type, series_id, installment_number, installment_total, recurrence_day)
@@ -1949,7 +1951,6 @@ async function ensureFixedSeriesHorizon(userId, seriesId, fromDate = getTodayLoc
     }
 
     latest = next;
-    futureCount++;
   }
 
   return created;
@@ -3146,7 +3147,7 @@ async function handleFinanceApi(
       let firstEntryId = null;
 
       if (type === 'expense' && recurrenceType === 'fixed') {
-        const dates = buildFixedDates(dueDate, 3, recurrenceDay);
+        const dates = buildFixedDates(dueDate, 4, recurrenceDay);
         dates.forEach((date) => rowsToCreate.push({ date, installmentNumber: null, installmentTotal: null }));
       } else if (type === 'expense' && recurrenceType === 'installment') {
         for (let i = 0; i < installmentTotal; i++) {
@@ -3253,7 +3254,7 @@ await db.exec('COMMIT');
             type === 'income'
               ? 'Ganho cadastrado com sucesso.'
               : recurrenceType === 'fixed'
-                ? 'Despesa fixa cadastrada para os próximos 3 meses.'
+                ? 'Despesa fixa cadastrada: ocorrência inicial e mais 3 meses.'
                 : recurrenceType === 'installment'
                   ? `Despesa parcelada cadastrada em ${installmentTotal} parcelas.`
                   : recurrenceType === 'daily'

@@ -131,6 +131,10 @@
     if (!modeLabel || !mode) return;
 
     const isExpense = type === 'expense';
+    const amountLabel = type === 'expense' && mode.value === 'installment'
+      ? 'Valor de cada parcela'
+      : type === 'expense' && mode.value === 'daily' ? 'Valor por dia' : 'Valor';
+    setLabelText($('entryAmount')?.closest('label'), amountLabel);
     modeLabel.classList.toggle('hidden', !isExpense);
     mode.disabled = editing || !isExpense;
 
