@@ -1,40 +1,25 @@
-ROTA FINANCEIRA - CORRECOES DA VALIDACAO
+ROTA FINANCEIRA — CORREÇÕES DO ADMINISTRADOR — 14/10/2026
 
-ARQUIVOS COMPLETOS PARA SUBSTITUIR
+SUBSTITUIR APENAS ESTES DOIS ARQUIVOS NA RAIZ DO PROJETO:
 - server.js
-- planejamento.js
-- planejamento.html
+- admin.js
 
-ARQUIVO NOVO OBRIGATORIO
-- finance-audit.js (coloque na mesma pasta do server.js)
+1. Guarde uma cópia dos dois arquivos atuais.
+2. Extraia o ZIP e envie server.js e admin.js ao GitHub, substituindo os existentes na mesma pasta.
+3. Faça um commit com os dois arquivos e aguarde o deploy do Render concluir.
+4. Abra a área administrativa e pressione Ctrl+F5.
 
-COMO APLICAR NO GITHUB / RENDER
-1. Guarde uma copia dos arquivos atuais.
-2. Extraia este ZIP.
-3. No repositorio Ismar012/Rota-Financeira, substitua os tres arquivos acima e adicione finance-audit.js, todos na raiz.
-4. Faca um unico commit com os quatro arquivos. Nao envie somente o server.js: ele depende do novo finance-audit.js.
-5. Aguarde o deploy do Render concluir. Se o deploy automatico estiver desligado, use Manual Deploy > Deploy latest commit.
-6. Abra o planejamento e atualize com Ctrl+F5.
-7. Na conta de teste, cadastre um ganho, confirme e desfaca o recebimento. Confira o historico do perfil e seu PDF.
+CORREÇÕES
+- Datas de cadastro e último login aceitam objetos Date do PostgreSQL e textos ISO/SQLite. Não acrescenta Z em datas que já possuem fuso horário.
+- Acesso recente considera login válido nos últimos 30 dias.
+- O prazo gratuito passa a calcular os dias decorridos: Free antes de 25 dias, Trial de 25 a 29 e Cancelado a partir de 30, respeitando os status manuais Pagante e Inadimplente.
+- Busca sem correspondência informa “Nenhum cliente encontrado para esta busca.”; lista vazia informa “Nenhum cliente cadastrado.”.
+- Mensagem de carregamento e erro ficam separadas do resultado da busca.
 
-ALTERACOES
-- O historico passa a registrar cadastros, edicoes, pagamentos, recebimentos, reversoes e exclusoes de lancamentos e descansos.
-- O registro de historico ocorre na mesma transacao da alteracao. Operacoes desfeitas por rollback nao geram registros persistentes.
-- As ocorrencias automaticas das despesas fixas tambem sao registradas. O historico nao presume que toda operacao automatica foi feita pelo cliente.
-- O parcelamento mostra Valor de cada parcela. A despesa diaria mostra Valor por dia. O calculo do valor nao foi alterado.
-- O card agora informa Despesas do mes e previstas: pagas e pendentes + descanso.
-- Uma nova despesa fixa gera a ocorrencia inicial e mais tres meses. Series ativas existentes completam o horizonte ate o terceiro mes futuro ao carregar o resumo.
-- A exclusao de proximas ocorrencias continua desativando a serie.
+VALIDAÇÃO
+Sintaxe dos dois JavaScript aprovada com node --check. Testes isolados aprovados para formatos de data, UTC e fuso -03, datas inválidas, limite de 30 dias de acesso, limites de Free/Trial/Cancelado, status manuais e mensagens de busca/carregamento/erro.
+Base: commit e4aa6dafa70b95d83e35f07d160db16477d3f166 do GitHub; admin.js também comparado ao arquivo público servido pela plataforma.
 
-HISTORICO
-A instalacao dos registros automaticos e feita pelo servidor ao iniciar, usando as tabelas existentes. Nao ha nova dependencia npm. Nao e possivel recuperar detalhes de exclusoes anteriores que nao foram registrados. Os registros novos aparecem no historico e no PDF ja existentes.
+Não foi feito deploy nem teste desta correção no banco de produção. Após aplicar, confira os indicadores e o prazo de cada cliente. Corrigir a data também permite que contas com 30 dias completos recebam o status automático de Cancelado previsto pela regra já existente.
 
-VALIDACAO
-- Sintaxe dos tres arquivos JavaScript verificada com node --check.
-- SQL e regras testados em PostgreSQL embutido isolado (PGlite), sem acessar o banco de producao.
-- Casos verificados: cadastro, edicao, confirmacao e reversao de recebimento, exclusao, descanso com valor zero, rollback, instalacao repetida, horizonte com vencimento dia 31, ausencia de duplicatas, serie desativada e exclusao em cascata da conta.
-- Nao foi feito deploy nem teste desta versao no Render. A validacao final deve ocorrer apos a substituicao.
-- Base: commit 01446ddb5699132500caea4ce4eaa8c36e578bb2 do repositorio publico, obtido em 14/10/2026 (Bahia).
-
-ESCOPO
-Este pacote corrige os pontos acima. Nao inclui novos modulos de tabela diaria, relatorio financeiro mensal, agenda ou autenticacao.
+Preserve todos os outros arquivos atuais, inclusive finance-audit.js, do qual o servidor já depende. Não é necessário alterar o banco, variáveis de ambiente ou instalar nova dependência.

@@ -1,4 +1,4 @@
-const state = { month: '', clients: [], selectedClientId: null, chart: null };
+const state = { month: '', clients: [], selectedClientId: null, chart: null, clientsLoading: false, clientsError: '' };
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const dateFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' });
@@ -39,14 +39,18 @@ async function checkAdmin() {
 
 async function loadClients() {
   const clientsFeedback = $('clientsFeedback');
+  state.clientsLoading = true;
+  state.clientsError = '';
   if (clientsFeedback) clientsFeedback.textContent = 'Carregando clientes...';
   try {
     const data = await api(`/api/admin/clients?month=${encodeURIComponent(state.month)}`);
     state.clients = data.clients || [];
     renderAggregate(data.aggregate || {});
+    state.clientsLoading = false;
     renderClients();
-    if (clientsFeedback) clientsFeedback.textContent = state.clients.length ? '' : 'Nenhum cliente cadastrado.';
   } catch (error) {
+    state.clientsLoading = false;
+    state.clientsError = error.message;
     if (error.status === 401 || error.status === 403) return checkAdmin();
     if (clientsFeedback) clientsFeedback.textContent = error.message;
   }
@@ -61,6 +65,10 @@ function renderAggregate(totals) {
 function renderClients() {
   const query = $('clientSearch')?.value.trim().toLowerCase() || '';
   const rows = state.clients.filter(c => `${c.name} ${c.email}`.toLowerCase().includes(query));
+  const feedback = $('clientsFeedback');
+  if (feedback) feedback.textContent = state.clientsLoading ? 'Carregando clientes...'
+    : state.clientsError || (rows.length ? '' : state.clients.length
+      ? 'Nenhum cliente encontrado para esta busca.' : 'Nenhum cliente cadastrado.');
   const body=$('clientsBody');if(!body)return;
   const labels={free:'Free',trial:'Trial',pagante:'Pagante',inadimplente:'Inadimplente',cancelado:'Cancelado'};
   body.innerHTML=rows.map(c=>{const status=c.status||{};return `<tr data-client-id="${Number(c.id)}">

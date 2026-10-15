@@ -1090,10 +1090,29 @@ function daysBetween(
    STATUS DE ASSINATURA / ACESSO
 ========================================================= */
 
+// pg returns TIMESTAMPTZ as Date; legacy SQLite values are UTC strings.
+function accountTimestamp(value) {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value !== 'string' || !value.trim()) return NaN;
+  let text = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}(?::?\d{2})?)?)?$/.test(text)) return NaN;
+  text = text.replace(' ', 'T');
+  if (text.length === 10) text += 'T00:00:00Z';
+  else if (!/(?:Z|[+-]\d{2}(?::?\d{2})?)$/.test(text)) text += 'Z';
+  else if (/[+-]\d{2}$/.test(text)) text += ':00';
+  return Date.parse(text);
+}
+
 function daysSinceCreated(createdAt) {
-  const created = new Date(String(createdAt || '').replace(' ', 'T') + 'Z');
-  if (!Number.isFinite(created.getTime())) return 0;
-  return Math.max(0, Math.floor((Date.now() - created.getTime()) / (24 * 60 * 60 * 1000)));
+  const timestamp = accountTimestamp(createdAt);
+  if (!Number.isFinite(timestamp)) return 0;
+  return Math.max(0, Math.floor((Date.now() - timestamp) / (24 * 60 * 60 * 1000)));
+}
+
+function hasRecentClientLogin(lastLoginAt) {
+  const timestamp = accountTimestamp(lastLoginAt);
+  const elapsed = Date.now() - timestamp;
+  return Number.isFinite(timestamp) && elapsed >= 0 && elapsed <= 30 * 24 * 60 * 60 * 1000;
 }
 
 function calculateClientStatus(client) {
@@ -2511,8 +2530,7 @@ async function handleAdminApi(req, res, url, parsedUrl) {
     const result = await Promise.all(clients.map(async (client) => {
       const summary = await buildAdminClientSummary(client.id, month);
       const status = publicClientStatus(client);
-      const active = !!client.last_login_at &&
-        (Date.now() - new Date(String(client.last_login_at).replace(' ', 'T')).getTime()) <= 30 * 24 * 60 * 60 * 1000;
+      const active = hasRecentClientLogin(client.last_login_at);
       return {
         id: client.id,
         name: client.name,
