@@ -101,8 +101,12 @@ function renderDetail(client, summary) {
   setText('detailStatus', client?.status?.status || '');
   setText('detailIncome', fmt(t.realizedIncome ?? t.income));
   setText('detailExpense', fmt(t.expense));
-  setText('detailCashflow', fmt(t.cashflow));
-  setClass('detailCashflow', cashClass(t.cashflow));
+  const currentCash = summary.goalPlan?.cashBalance ?? t.goalCashBalance;
+  setText('detailCashflow', currentCash == null ? 'Revisar planejamento' : fmt(currentCash));
+  setClass('detailCashflow', currentCash == null ? '' : cashClass(currentCash));
+  const cashCard = $('detailCashflow')?.closest('article');
+  if (cashCard?.querySelector('span')) cashCard.querySelector('span').textContent = 'Saldo do planejamento';
+  if (cashCard?.querySelector('small')) cashCard.querySelector('small').textContent = 'saldo inicial + recebimentos − pagamentos';
   setText('detailGoal', fmt(t.totalPlannedGoal));
   const goalCard = $('detailGoal')?.closest('article');
   if (goalCard?.querySelector('span')) goalCard.querySelector('span').textContent = 'Falta produzir no mês';

@@ -1,25 +1,32 @@
-ROTA FINANCEIRA — CORREÇÕES DO ADMINISTRADOR — 14/10/2026
+ROTA FINANCEIRA — EXPERIÊNCIA DO CLIENTE — 15/10/2026
 
-SUBSTITUIR APENAS ESTES DOIS ARQUIVOS NA RAIZ DO PROJETO:
-- server.js
-- admin.js
+Pacote de implementação local, sem publicação. Preparado a partir dos arquivos recuperados de 14/10/2026. A correspondência com o código atualmente publicado não pôde ser confirmada. Compare com a versão atual antes de substituir arquivos para não perder alterações posteriores.
 
-1. Guarde uma cópia dos dois arquivos atuais.
-2. Extraia o ZIP e envie server.js e admin.js ao GitHub, substituindo os existentes na mesma pasta.
-3. Faça um commit com os dois arquivos e aguarde o deploy do Render concluir.
-4. Abra a área administrativa e pressione Ctrl+F5.
+ARQUIVOS
+Novos: experiencia-cliente.css e experiencia-cliente.js.
+Substituições completas: dashboard.html, planejamento.html e admin.js.
+Compatibilidade: planejamento.js (pacote auditoria de ontem, sem alterações) e planejamento.css (pacote funcional de ontem, sem alterações). Compare antes de substituir esses dois se tiverem sido atualizados depois.
+Todos vão junto dos respectivos arquivos públicos existentes. Preserve styles.css, melhorias.css, navegacao.js, meta-mensal.js e os demais arquivos da plataforma. Nenhuma alteração no banco, server.js, server-metas.js ou finance-audit.js faz parte deste pacote.
 
-CORREÇÕES
-- Datas de cadastro e último login aceitam objetos Date do PostgreSQL e textos ISO/SQLite. Não acrescenta Z em datas que já possuem fuso horário.
-- Acesso recente considera login válido nos últimos 30 dias.
-- O prazo gratuito passa a calcular os dias decorridos: Free antes de 25 dias, Trial de 25 a 29 e Cancelado a partir de 30, respeitando os status manuais Pagante e Inadimplente.
-- Busca sem correspondência informa “Nenhum cliente encontrado para esta busca.”; lista vazia informa “Nenhum cliente cadastrado.”.
-- Mensagem de carregamento e erro ficam separadas do resultado da busca.
+INSTALAÇÃO
+1. Guarde cópias dos arquivos atuais.
+2. Confira diferenças em ambiente de teste, incluindo dependências já existentes.
+3. Adicione experiencia-cliente.css e experiencia-cliente.js.
+4. Substitua dashboard.html, planejamento.html e admin.js no ambiente de teste.
+5. Use as versões de planejamento.js e planejamento.css deste pacote apenas se forem as versões compatíveis em uso ou após revisão das diferenças.
+6. Teste os itens abaixo antes de publicar. Commit, push e deploy dependem de autorização do responsável.
 
-VALIDAÇÃO
-Sintaxe dos dois JavaScript aprovada com node --check. Testes isolados aprovados para formatos de data, UTC e fuso -03, datas inválidas, limite de 30 dias de acesso, limites de Free/Trial/Cancelado, status manuais e mensagens de busca/carregamento/erro.
-Base: commit e4aa6dafa70b95d83e35f07d160db16477d3f166 do GitHub; admin.js também comparado ao arquivo público servido pela plataforma.
+O QUE MUDA
+Ações de cadastro antes do gráfico; atalho para descanso; pendências visíveis com os mesmos botões/fluxos de confirmação já existentes; acesso direto a todos os lançamentos; explicação resumida da meta; resumo na tela inicial; textos maiores, áreas de toque, foco visível, Escape e foco nas janelas; avisos de sucesso junto à área visível.
+O resumo inicial considera o mês atual e identifica explicitamente o próximo vencimento dentro desse mês. Receitas e despesas não são confirmadas automaticamente. As pendências respeitam o filtro ativo e mostram até cinco itens; todos os lançamentos continuam acessíveis.
+O cartão admin usa goalPlan.cashBalance ou totals.goalCashBalance, que incluem saldo negativo. Se ambos estiverem ausentes, exibe Revisar planejamento, sem substituir por caixa previsto.
+O gráfico diário e suas quatro séries permanecem integralmente no planejamento.js. A regra da meta não foi alterada. A imagem da proposta era conceitual; esta versão preserva os cartões e componentes reais existentes, sem substituir a marca por um logotipo gerado.
 
-Não foi feito deploy nem teste desta correção no banco de produção. Após aplicar, confira os indicadores e o prazo de cada cliente. Corrigir a data também permite que contas com 30 dias completos recebam o status automático de Cancelado previsto pela regra já existente.
+VALIDAÇÃO JÁ EXECUTADA
+Sintaxe dos três arquivos JavaScript; HTML sem IDs duplicados; vínculos dos novos assets; presença dos controles usados; igualdade integral do planejamento.js com a versão recuperada; remoção do caixa previsto do cartão admin.
 
-Preserve todos os outros arquivos atuais, inclusive finance-audit.js, do qual o servidor já depende. Não é necessário alterar o banco, variáveis de ambiente ou instalar nova dependência.
+LIMITAÇÕES
+Não validado visualmente em navegador: ambiente local sem navegador instalado e consulta online bloqueada. Não é uma validação de ponta a ponta nem uma auditoria concluída da plataforma. Nenhuma conta real teve lançamentos alterados. A meta atual de Wendell continua sem verificação.
+
+ANTES DE PUBLICAR
+Conferir no desktop e celular: sobreposição do cabeçalho, contraste, quebra dos cartões, gráfico diário com quatro linhas, pendências e filtros, formulário de confirmação e sua data, salvar/editar/excluir, descanso, resumo após retornar à página inicial, meta sem configuração, falha de rede, Escape/Tab e retorno do foco, e saldo administrativo positivo/negativo/ausente. Conferir relatório e histórico separadamente. Não aplicar em produção antes dessa verificação.
