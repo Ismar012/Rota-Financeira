@@ -440,6 +440,7 @@ const filteredEntries = state.entries.filter((entry) => {
       state.data = data.data || [];
       renderSummary(data);
       renderEntries();
+      document.dispatchEvent(new CustomEvent('rota-entries', {detail: state.entries}));
       renderRestDays();
       renderChart(state.data);
       feedback('');
