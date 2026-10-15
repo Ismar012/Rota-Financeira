@@ -14,23 +14,23 @@
   const actions=document.querySelector('.action-grid');
   $('quickRest')?.addEventListener('click',()=> $('menuRest')?.click());
   if($('entriesList')){
-    const panel=text('section','');panel.className='ux-panel';panel.setAttribute('aria-labelledby','uxPendingTitle');const title=text('h2','Pendências para confirmar');title.id='uxPendingTitle';panel.append(title,text('p','Confirme somente valores que você realmente recebeu ou pagou.'));
-    const list=text('div','');panel.append(list);const all=text('button','Ver todos os lançamentos');all.type='button';all.className='secondary-btn';all.addEventListener('click',()=>{const section=$('entriesSection');section.classList.remove('hidden');section.scrollIntoView({behavior:'smooth',block:'start'});$('entriesFilter')?.focus({preventScroll:true});});panel.append(all);
-    (actions||chart).after(panel);
+    const panel=text('section','');panel.className='ux-panel';panel.setAttribute('aria-labelledby','uxPendingTitle');const title=text('h2','Próximos compromissos');title.id='uxPendingTitle';panel.append(title,text('p','Confirme apenas o que já recebeu ou pagou.'));
+    const list=text('div','');panel.append(list);const all=text('button','Ver todos os lançamentos');all.type='button';all.className='secondary-btn';all.addEventListener('click',()=>{const section=$('entriesSection');$('entriesDisclosure').open=true;section.classList.remove('hidden');section.scrollIntoView({behavior:'smooth',block:'start'});$('entriesFilter')?.focus({preventScroll:true});});panel.append(all);
+    const overview=text('div','');overview.className='ux-overview';document.querySelector('.summary-grid').after(overview);overview.append(chart,panel);
     document.addEventListener('rota-entries', event => {
       list.replaceChildren();
       const rows=(event.detail||[]).filter(e=>Number(e.paid)!==1).sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date)));
-      title.textContent='Pendências para confirmar'+(rows.length?' · '+rows.length:'');
-      for(const entry of rows.slice(0,5)){
+      title.textContent='Próximos compromissos'+(rows.length?' · '+rows.length:'');
+      for(const entry of rows.slice(0,3)){
         const item=text('div','');item.className='ux-pending-row';
-        const info=text('div','');info.append(text('strong',entry.name),text('small',(entry.type==='income'?'A receber':'A pagar')+' · '+dateLabel(String(entry.due_date).slice(0,10))));
+        const info=text('div','');const due=String(entry.due_date).slice(0,10);info.append(text('strong',entry.name),text('small',(due<today()?'Vencido · ':'')+(entry.type==='income'?'A receber':'A pagar')+' · '+dateLabel(due)));
         const value=text('strong',fmt(entry.amount));value.className=entry.type==='income'?'positive':'negative';
         const button=text('button',entry.type==='income'?'Confirmar recebimento':'Confirmar pagamento');button.type='button';button.className='secondary-btn';
         button.addEventListener('click',()=>{const filter=$('entriesFilter');filter.value='all';filter.dispatchEvent(new Event('change'));$('entriesList').querySelector('[data-id="'+Number(entry.id)+'"][data-action="'+(entry.type==='income'?'receive':'pay')+'"]').click();});
         item.append(info,value,button);list.append(item);
       }
-      if(!rows.length)list.append(text('p','Tudo confirmado neste mês. Continue registrando suas movimentações.'));
-      if(rows.length>5)list.append(text('p','Mostrando 5 de '+rows.length+' pendências. Consulte a lista completa abaixo.'));
+      if(!rows.length)list.append(text('p',(event.detail||[]).length?'Tudo confirmado neste mês. Continue registrando suas movimentações.':'Nenhum compromisso cadastrado neste mês. Comece pelos botões de ganho ou despesa.'));
+      if(rows.length>3)list.append(text('p','Mostrando 3 de '+rows.length+' pendências. Consulte a lista completa abaixo.'));
     });
   }
   // Complete keyboard navigation for existing dialogs without changing form handlers.
