@@ -1117,6 +1117,7 @@ function hasRecentClientLogin(lastLoginAt) {
 
 function calculateClientStatus(client) {
   const manual = String(client.billing_status || '').trim().toLowerCase();
+  if (manual === 'cancelado') return { status: 'cancelado', manual: true, daysElapsed: daysSinceCreated(client.created_at), daysRemaining: 0 };
   if (manual === 'pagante') return { status: 'pagante', manual: true, daysElapsed: daysSinceCreated(client.created_at), daysRemaining: 0 };
   if (manual === 'inadimplente') return { status: 'inadimplente', manual: true, daysElapsed: daysSinceCreated(client.created_at), daysRemaining: 0 };
 
@@ -1128,7 +1129,7 @@ function calculateClientStatus(client) {
 }
 
 function isClientCancelled(client) {
-  return String(client.billing_status || '').trim().toLowerCase() === 'cancelado';
+  return ['cancelado', 'inadimplente'].includes(calculateClientStatus(client).status);
 }
 
 function publicClientStatus(client) {
@@ -1233,7 +1234,7 @@ async function requireUser(
     sendJson(res, 403, {
       authenticated: false,
       cancelled: true,
-      error: 'Seu período de acesso gratuito terminou. Atualize seu pagamento para continuar utilizando a plataforma.'
+      error: 'Seu acesso está bloqueado. O período gratuito pode ter terminado ou haver uma restrição de pagamento. Entre em contato com a equipe para regularizar o acesso.'
     }, { 'Set-Cookie': cookieHeader('', 0) });
     return null;
   }
@@ -1586,8 +1587,8 @@ async function handleAuthApi(
         return sendJson(res, 403, {
           authenticated: false,
           cancelled: true,
-          status: 'cancelado',
-          error: 'Seu período de acesso gratuito terminou. Atualize seu pagamento para continuar utilizando a plataforma.'
+          status: accountStatus.status,
+          error: 'Seu acesso está bloqueado. O período gratuito pode ter terminado ou haver uma restrição de pagamento. Entre em contato com a equipe para regularizar o acesso.'
         });
       }
 
@@ -1671,8 +1672,8 @@ async function handleAuthApi(
     req.method === 'GET' &&
     url === '/api/auth/me'
   ) {
-    const user =
-      await getCurrentUser(req);
+    const user = await requireUser(req, res);
+    if (!user) return;
 
     if (!user) {
       return sendJson(
