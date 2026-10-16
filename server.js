@@ -237,6 +237,7 @@ async function initializeDatabase() {
       UNIQUE(user_id, rest_date)
     );
 
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS financial_profile JSONB;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'client';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_status VARCHAR(30);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
@@ -5514,6 +5515,25 @@ async function handleApi(
 
   if (isStateChangingMethod(req.method) && !requireSameOrigin(req, res)) {
     return;
+  }
+
+  if (url === '/api/financial-profile' || /^\/api\/admin\/clients\/\d+\/financial-profile$/.test(url)) {
+    const isAdmin = url.startsWith('/api/admin/');
+    const user = await (isAdmin ? requireAdmin(req, res) : requireUser(req, res));
+    if (!user) return;
+    const userId = isAdmin ? Number(url.split('/')[4]) : Number(user.id);
+    if (req.method !== 'GET' && (isAdmin || req.method !== 'PUT')) return sendJson(res,405,{error:'Método não permitido.'});
+    try {
+      const current = await db.prepare('SELECT financial_profile FROM users WHERE id = ?').get(userId);
+      if (!current) return sendJson(res,404,{error:'Cliente não encontrado.'});
+      if (req.method === 'GET') return sendJson(res,200,{profile:current.financial_profile || null});
+      let profile;
+      try { profile = require('./perfis-financeiros').normalize(await readBody(req)); }
+      catch (error) { return sendJson(res,400,{error:error.message}); }
+      await db.prepare('UPDATE users SET financial_profile = ?::jsonb WHERE id = ?').run(JSON.stringify(profile),userId);
+      await recordClientChange(userId,userId,'Perfil financeiro atualizado','financial_profile',JSON.stringify(current.financial_profile),JSON.stringify(profile));
+      return sendJson(res,200,{profile});
+    } catch(error) { console.error('Perfil financeiro:',error); return sendJson(res,500,{error:'Não foi possível carregar ou salvar o perfil financeiro.'}); }
   }
 
   if (await goals.handle(req, res, url) !== false) return;
