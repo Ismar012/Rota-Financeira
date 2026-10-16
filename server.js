@@ -318,6 +318,8 @@ async function initializeDatabase() {
         active = TRUE
     `, item);
   }
+  await require('./server-importacao').install(pool);
+  await require('./server-atividades').install(pool);
   await require('./finance-audit').installFinanceAudit(pool);
 
 }
@@ -5503,6 +5505,9 @@ function isStateChangingMethod(method) {
 
 const goals = require('./server-metas').createGoals({pool, requireUser, requireAdmin, readBody, sendJson, recordClientChange});
 
+const imports = require('./server-importacao').create({pool,requireUser,sendJson,readBody,getTodayLocal});
+const activities = require('./server-atividades').create({pool,requireUser,requireAdmin,sendJson,readBody,getTodayLocal});
+
 const scheduling = require('./agendamentos-api').createScheduling({pool, requireUser, requireAdmin, readBody, sendJson});
 
 async function handleApi(
@@ -5536,6 +5541,8 @@ async function handleApi(
     } catch(error) { console.error('Perfil financeiro:',error); return sendJson(res,500,{error:'Não foi possível carregar ou salvar o perfil financeiro.'}); }
   }
 
+  if (await imports.handle(req,res,url) !== false) return;
+  if (await activities.handle(req,res,url) !== false) return;
   if (await goals.handle(req, res, url) !== false) return;
 
   if (url.startsWith('/api/consultations') || url.startsWith('/api/admin/consultations')) {
@@ -5666,6 +5673,7 @@ function serveStatic(
     '.html': 'text/html; charset=utf-8',
     '.css': 'text/css; charset=utf-8',
     '.js': 'application/javascript; charset=utf-8',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     '.png': 'image/png',
     '.jpg': 'image/jpeg',
     '.jpeg': 'image/jpeg',

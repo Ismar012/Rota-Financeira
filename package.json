@@ -2,6 +2,12 @@
   "name": "rota-financeira",
   "version": "1.0.0",
   "private": true,
-  "scripts": {"start": "node server.js"},
-  "dependencies": {"pg": "^8.16.3"}
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.11.2",
+    "jszip": "^3.10.1",
+    "pg": "^8.16.3"
+  }
 }
