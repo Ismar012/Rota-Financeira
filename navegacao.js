@@ -10,6 +10,12 @@
     menu.appendChild(a);
   }
   nav.appendChild(menu);
-  // Descanso permanece no atalho principal e no menu de opções.
-  // Consultorias ficam disponíveis pelo menu de agendamentos.
+  const rest = document.getElementById('menuRest');
+  if (rest) {
+    const actions = document.createElement('div'); actions.className = 'planning-shortcuts';
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'meta-button'; button.textContent = 'Cadastrar descanso';
+    button.onclick = () => { rest.click(); document.getElementById('menu')?.classList.remove('open'); };
+    const a = document.createElement('a'); a.className = 'meta-button'; a.href = '/agendamento.html'; a.textContent = 'Agendar consultoria';
+    actions.append(button,a); document.querySelector('.planning-head')?.after(actions);
+  }
 })();

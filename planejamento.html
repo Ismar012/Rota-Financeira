@@ -18,10 +18,10 @@
 
 
 <link rel="stylesheet" href="/melhorias.css?v=20261014">
-<link rel="stylesheet" href="/experiencia-cliente.css?v=20261015-layout4">
+<link rel="stylesheet" href="/experiencia-cliente.css?v=20261015-r2">
 </head>
 
-<body class="client-planning">
+<body>
 
 <!-- =========================
      CABEÇALHO
@@ -77,7 +77,7 @@
             </h1>
 
             <p class="muted">
-                Veja sua meta, registre o dia e acompanhe seus compromissos.
+                Acompanhe ganhos, gastos, fluxo de caixa e sua meta diária.
             </p>
 
         </div>
@@ -160,7 +160,12 @@
          RESUMO FINANCEIRO
     ========================== -->
 
-<section class="ux-today" aria-label="Meta e ações do dia">        <article class="summary-card highlight">
+    <section class="summary-grid">
+
+
+        <!-- META DIÁRIA -->
+
+        <article class="summary-card highlight">
 
             <span>
                 Meta diária
@@ -174,71 +179,7 @@
                 0 dias disponíveis
             </small>
 
-        </article><div class="ux-register"><h2>Registre seu dia</h2><p>Seu planejamento se atualiza a cada confirmação.</p>    <section class="action-grid">
-
-
-        <!-- CADASTRAR GANHO -->
-
-        <button
-            id="addIncome"
-            class="action-card income-action"
-            type="button">
-
-            <span class="action-icon">
-                +
-            </span>
-
-            <span>
-
-                <strong>
-                    Cadastrar ganho
-                </strong>
-
-                <small>
-                    Registre um valor a receber
-                </small>
-
-            </span>
-
-        </button>
-
-
-        <!-- CADASTRAR DESPESA -->
-
-        <button
-            id="addExpense"
-            class="action-card expense-action"
-            type="button">
-
-            <span class="action-icon">
-                +
-            </span>
-
-            <span>
-
-                <strong>
-                    Cadastrar despesa
-                </strong>
-
-                <small>
-                    Registre uma conta a pagar
-                </small>
-
-            </span>
-
-        </button>
-
-        <button id="quickRest" class="action-card rest-action" type="button">
-            <span class="action-icon" aria-hidden="true">☾</span>
-            <span><strong>Marcar descanso</strong><small>Organize seus dias disponíveis</small></span>
-        </button>
-    </section></div></section>
-    <section class="summary-grid">
-
-
-        <!-- META DIÁRIA -->
-
-
+        </article>
 
 
         <!-- GANHOS -->
@@ -284,7 +225,7 @@
         <article class="summary-card">
 
             <span>
-                Saldo disponível
+                Fluxo de caixa
             </span>
 
             <strong id="totalCashflow">
@@ -298,8 +239,6 @@
         </article>
 
     </section>
-
-
 
 
 
@@ -347,7 +286,61 @@
          AÇÕES
     ========================== -->
 
+    <section class="action-grid">
 
+
+        <!-- CADASTRAR GANHO -->
+
+        <button
+            id="addIncome"
+            class="action-card income-action"
+            type="button">
+
+            <span class="action-icon">
+                +
+            </span>
+
+            <span>
+
+                <strong>
+                    Cadastrar ganho
+                </strong>
+
+                <small>
+                    Adicionar uma receita prevista
+                </small>
+
+            </span>
+
+        </button>
+
+
+        <!-- CADASTRAR DESPESA -->
+
+        <button
+            id="addExpense"
+            class="action-card expense-action"
+            type="button">
+
+            <span class="action-icon">
+                +
+            </span>
+
+            <span>
+
+                <strong>
+                    Cadastrar despesa
+                </strong>
+
+                <small>
+                    Adicionar uma despesa prevista
+                </small>
+
+            </span>
+
+        </button>
+
+    </section>
 
 
 
@@ -355,7 +348,7 @@
          LANÇAMENTOS
     ========================== -->
 
-<details id="entriesDisclosure" class="ux-disclosure"><summary>Consultar todos os lançamentos</summary>    <section
+    <section
         id="entriesSection"
         class="list-card hidden">
 
@@ -398,7 +391,7 @@
         
         <div id="entriesList"></div>
 
-    </section></details>
+    </section>
 
 
 
@@ -750,7 +743,7 @@
      IMPORTANTE: carregar por último
 ========================== -->
 
-<script src="/planejamento.js?v=20261015-layout4"></script>
+<script src="/planejamento.js?v=20261015-r2"></script>
 <script>
 document.getElementById('backLogo')?.addEventListener('click', function (event) {
     event.preventDefault();
@@ -758,8 +751,8 @@ document.getElementById('backLogo')?.addEventListener('click', function (event) 
 });
 </script>
 
-<script src="/navegacao.js?v=20261015-layout4"></script>
-<script src="/experiencia-cliente.js?v=20261015-layout4"></script>
+<script src="/navegacao.js?v=20261014"></script>
+<script src="/experiencia-cliente.js?v=20261015-r2"></script>
 </body>
 
 </html>
