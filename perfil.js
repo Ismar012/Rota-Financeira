@@ -6,6 +6,9 @@
   const password = document.getElementById('password');
   const feedback = document.getElementById('feedback');
 
+  const submit = form.querySelector('[type=submit]');
+  let saving=false;
+  submit.disabled=true;
   async function loadProfile() {
     const response = await fetch('/api/profile', { credentials: 'same-origin' });
     const data = await response.json().catch(() => ({}));
@@ -19,11 +22,13 @@
     password.value = '';
   }
 
-  try { await loadProfile(); }
+  try { await loadProfile(); submit.disabled=false; }
   catch (error) { feedback.textContent = error.message; }
 
   form.addEventListener('submit', async function (event) {
     event.preventDefault();
+    if(saving)return;
+    saving=true;submit.disabled=true;feedback.setAttribute('role','status');
     feedback.textContent = 'Salvando...';
     try {
       const response = await fetch('/api/profile', {
@@ -40,6 +45,7 @@
       password.value = '';
       feedback.textContent = data.message || 'Dados cadastrais atualizados com sucesso.';
     } catch (error) { feedback.textContent = error.message; }
+    finally {saving=false;submit.disabled=false;}
   });
 
   document.getElementById('loadHistory').addEventListener('click', async function () {

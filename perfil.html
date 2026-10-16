@@ -5,9 +5,10 @@
 <title>Meu perfil | Rota Financeira</title>
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/perfil.css">
-<link rel="stylesheet" href="/melhorias.css?v=20261014">
+<link rel="stylesheet" href="/melhorias.css?v=20261015-consultoria">
+<link rel="stylesheet" href="/plataforma.css?v=20261015-consultoria">
 </head>
-<body>
+<body class="client-settings">
 <header class="header"><nav class="nav"><a class="logo-text" href="/dashboard.html">ROTA <span>FINANCEIRA</span></a><button id="logout" class="btn btn-outline" type="button">Sair</button></nav></header>
 <main class="page"><div class="container">
 <div class="page-head"><div class="eyebrow">Minha área</div><h1 class="title">Meu perfil</h1><p class="muted">Consulte e atualize seus dados cadastrais. As alterações ficam registradas com segurança no seu histórico.</p></div>
@@ -25,6 +26,7 @@
 </section>
 <section class="history-panel"><h2>Histórico de alterações</h2><p class="muted">Consulte as alterações dos seus dados cadastrais e do seu planejamento.</p><button id="loadHistory" class="btn btn-outline" type="button" aria-expanded="false" aria-controls="historyContent">Ver histórico de alterações</button> <a href="/api/profile/change-history?format=pdf">Baixar histórico em PDF</a><div id="historyContent" hidden><p id="historyFeedback" role="status"></p><div class="history-scroll"><table><thead><tr><th>Data</th><th>Alteração</th><th>Detalhes</th></tr></thead><tbody id="historyRows"></tbody></table></div></div></section>
 </div></main>
-<script src="/perfil.js?v=20261014"></script>
-<script src="/navegacao.js?v=20261014"></script>
+<script src="/perfil.js?v=20261015-consultoria"></script>
+<script src="/navegacao.js?v=20261015-consultoria"></script>
+<script src="/plataforma.js?v=20261015-consultoria"></script>
 </body></html>

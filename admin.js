@@ -1,4 +1,4 @@
-const state = { month: '', clients: [], selectedClientId: null, chart: null, clientsLoading: false, clientsError: '' };
+const state = { month: '', clients: [], selectedClientId: null, chart: null, clientsLoading: false, clientsError: '', detailRequest: 0 };
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const dateFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' });
@@ -74,13 +74,19 @@ function renderClients() {
   body.innerHTML=rows.map(c=>{const status=c.status||{};return `<tr data-client-id="${Number(c.id)}">
   <td><span class="client-name">${esc(c.name)}</span><span class="client-email">${esc(c.email)}</span></td>
   <td><span class="status-badge status-${esc(status.status)}">${esc(labels[status.status]||status.status)}</span><br><select class="status-select" data-status-id="${Number(c.id)}" aria-label="Status de ${esc(c.name)}">${[['auto','Automático'],['pagante','Pagante'],['inadimplente','Inadimplente'],['cancelado','Cancelado']].map(([v,l])=>`<option value="${v}" ${v===(status.billingStatus||'auto')?'selected':''}>${l}</option>`).join('')}</select></td>
-  <td>${c.active?'Ativo':'Sem acesso recente'}</td><td>${status.manual?'Manual':`${Number(status.daysRemaining)||0} dias`}</td><td>${esc(String(c.created_at||'').slice(0,10))}</td><td>${esc(String(c.last_login_at||'—').slice(0,16))}</td><td>→</td></tr>`;}).join('');
+  <td>${c.active?'Ativo':'Sem acesso recente'}</td><td>${status.manual?'Manual':`${Number(status.daysRemaining)||0} dias`}</td><td>${esc(String(c.created_at||'').slice(0,10))}</td><td>${esc(String(c.last_login_at||'—').slice(0,16))}</td><td><button type="button" class="open-client" aria-label="Analisar ${esc(c.name)}">Analisar →</button></td></tr>`;}).join('');
   body.querySelectorAll('tr').forEach(row=>row.onclick=e=>{if(!e.target.closest('select'))openClient(Number(row.dataset.clientId));});
   body.querySelectorAll('select').forEach(select=>select.onchange=async()=>{select.disabled=true;try{await api(`/api/admin/clients/${select.dataset.statusId}/status`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:select.value})});await loadClients();}catch(e){setText('clientsFeedback',e.message);await loadClients();}finally{select.disabled=false;}});
 }
 
 async function openClient(id) {
   state.selectedClientId = id;
+  const request = ++state.detailRequest;
+  document.body.classList.add('viewing-client');
+  document.dispatchEvent(new CustomEvent('rota-client-loading'));
+  setText('detailName', 'Carregando cliente…');
+  setText('detailEmail', '');
+  $('clientDetail')?.setAttribute('aria-busy', 'true');
   const clientDetail = $('clientDetail');
   if (clientDetail) {
     clientDetail.classList.remove('hidden');
@@ -88,9 +94,14 @@ async function openClient(id) {
   }
   try {
     const data = await api(`/api/admin/clients/${id}/summary?month=${encodeURIComponent(state.month)}`);
+    if (request !== state.detailRequest) return;
     renderDetail(data.client, data.summary);
+    $('clientDetail')?.setAttribute('aria-busy', 'false');
   } catch (error) {
+    if (request !== state.detailRequest) return;
     setText('detailName', error.message);
+    $('clientDetail')?.setAttribute('aria-busy', 'false');
+    document.dispatchEvent(new CustomEvent('rota-client-error'));
   }
 }
 
@@ -118,6 +129,7 @@ function renderDetail(client, summary) {
   setText('detailTotalIncome', fmt(t.totalIncomeAllTime));
   setText('detailTotalExpense', fmt(t.totalExpenseAllTime));
   setText('detailMonthLabel', monthLabel(summary.month));
+  document.dispatchEvent(new CustomEvent('rota-consultation', {detail:{client,summary}}));
   renderChart(summary.data);
   renderDailyTable(summary.data);
   window.rotaGoalContext = {plan:summary.goalPlan, admin:true, clientId:state.selectedClientId};
@@ -192,6 +204,10 @@ function renderDailyTable(data) {
 
 function setMonth(month) {
   state.month = month;
+  state.detailRequest++;
+  document.body.classList.remove('viewing-client','presentation-mode');
+  $('presentationToggle')?.setAttribute('aria-pressed','false');
+  if ($('presentationToggle')) $('presentationToggle').textContent='Modo apresentação';
   const monthPicker = $('monthPicker');
   if (monthPicker) monthPicker.value = month;
   const clientDetail = $('clientDetail');
@@ -203,7 +219,7 @@ if ($('prevMonth')) $('prevMonth').addEventListener('click', () => setMonth(shif
 if ($('nextMonth')) $('nextMonth').addEventListener('click', () => setMonth(shiftMonth(state.month, 1)));
 if ($('monthPicker')) $('monthPicker').addEventListener('change', e => e.target.value && setMonth(e.target.value));
 if ($('clientSearch')) $('clientSearch').addEventListener('input', renderClients);
-if ($('closeDetail')) $('closeDetail').addEventListener('click', () => $('clientDetail')?.classList.add('hidden'));
+if ($('closeDetail')) $('closeDetail').addEventListener('click', () => {state.detailRequest++;document.body.classList.remove('viewing-client','presentation-mode');$('presentationToggle')?.setAttribute('aria-pressed','false');$('presentationToggle').textContent='Modo apresentação';$('clientDetail')?.classList.add('hidden');$('clientSearch')?.focus();});
 if ($('exportReport')) $('exportReport').addEventListener('click', () => {
   if (!state.selectedClientId) return;
   window.location.href = `/api/admin/clients/${state.selectedClientId}/report?month=${encodeURIComponent(state.month)}`;

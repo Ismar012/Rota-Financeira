@@ -6,20 +6,22 @@
 <title>Meus serviços | Rota Financeira</title>
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/servicos.css">
-<link rel="stylesheet" href="/melhorias.css?v=20261014">
+<link rel="stylesheet" href="/melhorias.css?v=20261015-consultoria">
+<link rel="stylesheet" href="/plataforma.css?v=20261015-consultoria">
 </head>
-<body>
-<header class="header"><nav class="nav"><a class="logo-text" href="#" id="backLogo">ROTA <span>FINANCEIRA</span></a><div class="nav-actions"><button id="logout" class="btn btn-outline" type="button">Sair</button></div></nav></header>
+<body class="client-services">
+<header class="header"><nav class="nav"><a class="logo-text" href="/dashboard.html" id="backLogo">ROTA <span>FINANCEIRA</span></a><div class="nav-actions"><button id="logout" class="btn btn-outline" type="button">Sair</button></div></nav></header>
 <main class="client-area"><div class="client-container">
 <section class="page-head"><div><div class="eyebrow">Minha área</div><h1>Meus serviços</h1><p class="muted">Consulte os serviços disponíveis e veja quais já fazem parte do seu perfil.</p></div></section>
 <section id="servicesGrid" class="services-grid"></section><p id="feedback" class="notice"></p>
 </div></main>
-<script src="/servicos.js?v=20261014"></script>
+<script src="/servicos.js?v=20261015-consultoria"></script>
 <script>
 document.getElementById('backLogo')?.addEventListener('click', function (event) {
     event.preventDefault();
-    window.history.back();
+    window.location.href = '/dashboard.html';
 });
 </script>
-<script src="/navegacao.js?v=20261014"></script>
+<script src="/navegacao.js?v=20261015-consultoria"></script>
+<script src="/plataforma.js?v=20261015-consultoria"></script>
 </body></html>

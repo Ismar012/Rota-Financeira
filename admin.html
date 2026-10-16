@@ -7,11 +7,12 @@
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/admin.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="/plataforma.css?v=20261015-consultoria">
 </head>
-<body>
+<body class="consultant-page">
   <header class="header">
     <nav class="nav">
-      <a class="logo-text" href="#" id="backLogo">ROTA <span>FINANCEIRA</span></a>
+      <a class="logo-text" href="/dashboard.html" id="backLogo">ROTA <span>FINANCEIRA</span></a>
       <div class="nav-actions">
         <span id="adminName" class="admin-badge">Administrador</span>
         <button id="logout" class="btn btn-outline" type="button">Sair</button>
@@ -24,8 +25,8 @@
       <section class="admin-head">
         <div>
           <div class="eyebrow">Área administrativa</div>
-          <h1 class="admin-title">Monitoramento dos clientes</h1>
-          <p class="muted">Acompanhe clientes, acessos e status de assinatura. Os dados financeiros continuam disponíveis no detalhamento de cada cliente.</p>
+          <h1 class="admin-title">Visão da consultoria</h1>
+          <p class="muted">Selecione um cliente para analisar o caixa, os compromissos e os próximos meses.</p>
         </div>
         <div class="month-selector">
           <button id="prevMonth" class="month-btn" type="button">‹</button>
@@ -67,12 +68,12 @@
             <p id="detailEmail" class="muted"></p>
             <p id="detailMeta" class="status-meta"></p>
           </div>
-          <div class="detail-actions"><button id="exportReport" class="btn btn-gold" type="button">Baixar relatório</button><button id="exportChangeHistory" class="btn btn-outline" type="button">Histórico de alterações</button><button id="closeDetail" class="btn btn-outline" type="button">← Voltar para clientes</button></div>
+          <div class="detail-actions"><button id="presentationToggle" class="btn btn-outline" type="button" aria-pressed="false">Modo apresentação</button><button id="exportReport" class="btn btn-gold" type="button">Baixar relatório</button><button id="exportChangeHistory" class="btn btn-outline" type="button">Histórico de alterações</button><button id="closeDetail" class="btn btn-outline" type="button">← Voltar para clientes</button></div>
         </div>
 
         <section class="admin-summary-grid detail-summary">
           <article class="admin-summary-card"><span>Ganhos</span><strong id="detailIncome">R$ 0,00</strong><small>no mês selecionado</small></article>
-          <article class="admin-summary-card"><span>Gastos líquidos</span><strong id="detailExpense">R$ 0,00</strong><small>despesas do mês</small></article>
+          <article class="admin-summary-card"><span>Despesas previstas</span><strong id="detailExpense">R$ 0,00</strong><small>por vencimento no mês; inclui pagas e pendentes</small></article>
           <article class="admin-summary-card highlight"><span>Fluxo de caixa</span><strong id="detailCashflow">R$ 0,00</strong><small>seu saldo atual</small></article>
           <article class="admin-summary-card"><span>Meta total prevista</span><strong id="detailGoal">R$ 0,00</strong><small>dias futuros de trabalho</small></article>
           <article class="admin-summary-card"><span>Dias de trabalho</span><strong id="detailWorking">0</strong><small>no mês</small></article>
@@ -104,12 +105,13 @@
     </div>
   </main>
 
-  <script src="/admin.js"></script>
+  <script src="/admin.js?v=20261015-consultoria"></script>
 <script>
 document.getElementById('backLogo')?.addEventListener('click', function (event) {
     event.preventDefault();
-    window.history.back();
+    window.location.href = '/dashboard.html';
 });
 </script>
+<script src="/plataforma.js?v=20261015-consultoria"></script>
 </body>
 </html>

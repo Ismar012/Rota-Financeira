@@ -12,28 +12,26 @@
   if(feedback){feedback.setAttribute('role','status');new MutationObserver(()=>{if(feedback.classList.contains('success')&&feedback.textContent){toast.textContent=feedback.textContent;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toast.textContent='';},7000);}}).observe(feedback,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['class']});}
   const chart=document.querySelector('.chart-card');
   const actions=document.querySelector('.action-grid');
-  if(chart&&actions){chart.before(actions);const rest=text('button','Marcar descanso');rest.type='button';rest.className='action-card rest-action';rest.innerHTML='<span class="action-icon">☾</span><span><strong>Marcar descanso</strong><small>Reserve seu tempo e ajuste os dias disponíveis</small></span>';rest.addEventListener('click',()=> $('menuRest')?.click());actions.append(rest);}
+  $('quickRest')?.addEventListener('click',()=> $('menuRest')?.click());
   if($('entriesList')){
-    const panel=text('section','');panel.className='ux-panel';panel.setAttribute('aria-labelledby','uxPendingTitle');const title=text('h2','Pendências para confirmar');title.id='uxPendingTitle';panel.append(title,text('p','Confirme somente valores que você realmente recebeu ou pagou.'));
-    const list=text('div','');panel.append(list);const all=text('button','Ver todos os lançamentos');all.type='button';all.className='secondary-btn';all.addEventListener('click',()=> $('menuEdit')?.click());panel.append(all);
-    (actions||chart).after(panel);
+    const panel=text('section','');panel.className='ux-panel';panel.setAttribute('aria-labelledby','uxPendingTitle');const title=text('h2','Próximos compromissos');title.id='uxPendingTitle';panel.append(title,text('p','Confirme apenas o que já recebeu ou pagou.'));
+    const list=text('div','');panel.append(list);const all=text('button','Ver todos os lançamentos');all.type='button';all.className='secondary-btn';all.addEventListener('click',()=>{const section=$('entriesSection');$('entriesDisclosure').open=true;section.classList.remove('hidden');section.scrollIntoView({behavior:'smooth',block:'start'});$('entriesFilter')?.focus({preventScroll:true});});panel.append(all);
+    const overview=text('div','');overview.className='ux-overview';document.querySelector('.summary-grid').after(overview);overview.append(chart,panel);
     document.addEventListener('rota-entries', event => {
       list.replaceChildren();
       const rows=(event.detail||[]).filter(e=>Number(e.paid)!==1).sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date)));
-      title.textContent='Pendências para confirmar'+(rows.length?' · '+rows.length:'');
-      for(const entry of rows.slice(0,5)){
+      title.textContent='Próximos compromissos'+(rows.length?' · '+rows.length:'');
+      for(const entry of rows.slice(0,3)){
         const item=text('div','');item.className='ux-pending-row';
-        const info=text('div','');info.append(text('strong',entry.name),text('small',(entry.type==='income'?'A receber':'A pagar')+' · '+dateLabel(String(entry.due_date).slice(0,10))));
+        const info=text('div','');const due=String(entry.due_date).slice(0,10);info.append(text('strong',entry.name),text('small',(due<today()?'Vencido · ':'')+(entry.type==='income'?'A receber':'A pagar')+' · '+dateLabel(due)));
         const value=text('strong',fmt(entry.amount));value.className=entry.type==='income'?'positive':'negative';
         const button=text('button',entry.type==='income'?'Confirmar recebimento':'Confirmar pagamento');button.type='button';button.className='secondary-btn';
         button.addEventListener('click',()=>{const filter=$('entriesFilter');filter.value='all';filter.dispatchEvent(new Event('change'));$('entriesList').querySelector('[data-id="'+Number(entry.id)+'"][data-action="'+(entry.type==='income'?'receive':'pay')+'"]').click();});
         item.append(info,value,button);list.append(item);
       }
-      if(!rows.length)list.append(text('p','Tudo confirmado neste mês. Continue registrando suas movimentações.'));
-      if(rows.length>5)list.append(text('p','Mostrando 5 de '+rows.length+' pendências. Consulte a lista completa abaixo.'));
+      if(!rows.length)list.append(text('p',(event.detail||[]).length?'Tudo confirmado neste mês. Continue registrando suas movimentações.':'Nenhum compromisso cadastrado neste mês. Comece pelos botões de ganho ou despesa.'));
+      if(rows.length>3)list.append(text('p','Mostrando 3 de '+rows.length+' pendências. Consulte a lista completa abaixo.'));
     });
-    const goal=$('dailyGoal')?.closest('article');if(goal&&!document.querySelector('.meta-card-link')){const link=text('a','Entender minha meta ↓');link.href='#uxGoalExplanation';link.className='ux-goal-link';goal.append(link);}
-    document.addEventListener('rota-goal',event=>{if(event.detail?.admin)return;const p=event.detail?.plan;if(!p)return;let note=$('uxGoalExplanation');if(!note){note=text('p','');note.id='uxGoalExplanation';note.className='ux-balance-note';document.querySelector('.summary-grid')?.after(note);}note.textContent='Pendências consideradas: '+fmt(p.pendingTotal)+' · Saldo disponível: '+fmt(p.availableBalance)+' · Falta produzir: '+fmt(p.remainingTotal)+'. Consulte a composição por vencimento abaixo. O saldo é abatido uma única vez.';});
   }
   // Complete keyboard navigation for existing dialogs without changing form handlers.
   const dialogs=[...document.querySelectorAll('.modal')];const previousFocus=new WeakMap();let outsideFocus=document.activeElement;document.addEventListener('focusin',event=>{if(!event.target.closest('.modal'))outsideFocus=event.target;});

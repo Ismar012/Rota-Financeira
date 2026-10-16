@@ -1,26 +1,91 @@
-.summary-card small,.action-card small,.entry-main small,.notice{font-size:14px;color:#c3c7cb}.summary-card span{font-size:14px}.month-label,.status-pill{font-size:13px}.month-btn,.menu-btn,.primary-btn,.secondary-btn,.modal-close{min-height:44px;min-width:44px}.action-card{min-height:76px}.planning-page{padding-bottom:50px}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #f2cb5b!important;outline-offset:3px}.ux-panel{background:#0b0d0f;border:1px solid #35383c;border-radius:16px;padding:22px;margin:22px 0}.ux-panel h2{font-size:24px;margin:0 0 12px}.ux-panel p{color:#c3c7cb;line-height:1.6}.ux-actions{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}.ux-actions a,.ux-actions button{min-height:44px}.ux-pending-row{display:flex;align-items:center;gap:16px;justify-content:space-between;padding:14px 0;border-bottom:1px solid #333}.ux-pending-row:last-child{border-bottom:0}.ux-pending-row small{display:block;color:#c3c7cb;margin-top:5px}.ux-pending-row strong{overflow-wrap:anywhere}.ux-pending-row button{flex-shrink:0}.ux-balance-note{color:#c3c7cb;font-size:14px;margin-top:12px}.ux-home-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.ux-home-grid a{display:block;text-decoration:none;color:inherit;padding:20px;background:#101214;border:1px solid #454037;border-radius:14px}.ux-home-grid strong{display:block;font-size:26px;color:#f2cb5b;margin:10px 0}.ux-home-grid small{color:#c3c7cb}.ux-goal-link{display:inline-flex;margin-top:10px;color:#f2cb5b;min-height:44px;align-items:center}.ux-toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#17281d;color:#e5f4e8;border:1px solid #88b493;padding:14px 20px;border-radius:10px;max-width:90vw;z-index:120;box-shadow:0 6px 30px #0008}.ux-toast:empty{display:none}@media(max-width:650px){.ux-home-grid{grid-template-columns:1fr}.ux-pending-row{align-items:flex-start;flex-wrap:wrap}.ux-pending-row button{width:100%}.ux-panel{padding:18px}.summary-card strong{font-size:26px}.entry-actions button{min-height:48px}.planning-head{gap:18px}.ux-actions>*{flex:1;text-align:center}}
-
-/* Revisão visual 15/10: hierarquia, ritmo e ações consistentes. */
-body{color-scheme:dark}
-.planning-page{background:radial-gradient(ellipse at 0 0,#28221566,transparent 48%),#090c10}
-.planning-container{width:min(1180px,92%)}
-.planning-head{margin-bottom:32px}.planning-title{letter-spacing:-1.5px}
-.summary-grid{grid-template-columns:1.5fr repeat(3,1fr);gap:16px}
-.summary-card{padding:24px;border-radius:20px;background:#11161c;border-color:#ffffff12;display:flex;flex-direction:column;justify-content:center;min-height:174px}
-.summary-card.highlight{background:linear-gradient(135deg,#302817,#171810);border-color:#af8c43}
-.summary-card.highlight strong{font-size:clamp(30px,3.2vw,44px);letter-spacing:-1px}
-.summary-card strong{font-size:clamp(22px,2.4vw,30px)}
-.summary-card span{color:#d1d6dc;font-size:14px}.summary-card small{line-height:1.5;color:#aeb7c2}
-.action-grid{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:24px}
-.action-card{background:#141a21;border-radius:16px;min-height:104px;padding:20px;align-items:center}
-.action-card strong{font-size:16px}.action-card small{font-size:13px;line-height:1.5;color:#adb7c5}
-.income-action .action-icon{color:#8de0b6;border-color:#8de0b644;background:#8de0b60c}.expense-action .action-icon{color:#f0bc83;border-color:#f0bc8344}
-.ux-panel,.chart-card,.list-card{background:#11161c;border-color:#ffffff14;border-radius:20px;padding:26px}
-.ux-panel h2,.section-title h2{font-size:23px}.ux-pending-row{border-color:#ffffff12;display:grid;grid-template-columns:minmax(0,1fr) auto auto}.ux-pending-row small{line-height:1.5}
-.ux-pending-row button{font-size:13px;min-height:44px}
-.ux-balance-note{padding:16px 20px;background:#ffffff04;border:1px solid #ffffff10;border-radius:12px;line-height:1.7}
-.meta-panel{border-color:#ffffff18}.meta-card-link{min-height:44px}
-.ux-home-grid a{background:#151c24;border-color:#ffffff18;transition:border-color .2s}.ux-home-grid a:hover{border-color:#b5944a}.ux-home-grid small{line-height:1.6}
-@media(max-width:900px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.action-grid{grid-template-columns:1fr}.summary-card.highlight strong{font-size:36px}}
-@media(max-width:600px){.planning-page{padding-top:100px}.planning-container{width:92%}.planning-head{align-items:stretch;gap:20px}.planning-title{font-size:34px}.month-selector{width:100%}.month-selector input{min-width:0;flex:1}.summary-grid{gap:10px}.summary-card{padding:16px;min-height:140px;border-radius:16px}.summary-card.highlight{grid-column:1/-1;min-height:166px}.summary-card.highlight strong{font-size:42px}.summary-card:last-child{grid-column:1/-1}.summary-card strong{font-size:25px}.ux-panel,.chart-card,.list-card{padding:18px}.ux-pending-row{grid-template-columns:minmax(0,1fr) auto;gap:12px}.ux-pending-row button{grid-column:1/-1;width:100%;white-space:normal}.chart-wrap{height:280px}.entry-row{min-width:0}.entry-actions{justify-content:flex-start}.entry-actions button{white-space:normal}.ux-home-grid strong{font-size:28px}}
-@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+/* Experiência do cliente — revisão estrutural 15/10/2026. */
+.client-planning,.client-home{color-scheme:dark;background:#090c10;color:#edf0f3}
+.client-planning .nav,.client-home .nav{height:auto;min-height:100px;display:grid;grid-template-columns:1fr auto;gap:4px 16px;padding:12px 0 8px}
+.client-planning .nav-actions,.client-home .nav-actions{justify-self:end}
+.client-planning .client-navigation,.client-home .client-navigation{grid-column:1/-1;justify-content:flex-start;padding:0;gap:4px}
+.client-planning .client-navigation a,.client-home .client-navigation a{min-height:40px;display:flex;align-items:center;padding:7px 12px;font-size:14px}
+.client-planning .header .btn,.client-home .header .btn{padding:8px 16px;min-height:40px;background:transparent}
+.client-planning button:focus-visible,.client-home a:focus-visible,.client-planning a:focus-visible,.client-home button:focus-visible,.client-planning input:focus-visible,.client-planning select:focus-visible{outline:3px solid #f2cb5b;outline-offset:3px}
+.client-planning .planning-page,.client-home .page{padding:140px 0 50px;background:radial-gradient(ellipse at 0 0,#65501d18,transparent 55%),#090c10}
+.client-planning .planning-container{width:min(1180px,92%);display:flex;flex-direction:column}
+.client-planning .planning-head{margin-bottom:22px;gap:20px}
+.client-planning .eyebrow,.client-home .eyebrow{font-size:11px;letter-spacing:1.7px;color:#d7b65d;margin-bottom:8px}
+.client-planning .planning-title{font-size:34px;letter-spacing:-1.2px;margin-bottom:8px;line-height:1.12}
+.client-planning .muted,.client-home .muted{font-size:14px;line-height:1.6;color:#adb6c1}
+.client-planning .month-selector{flex-shrink:0}
+.client-planning .month-btn,.client-planning .menu-btn{min-height:44px;min-width:44px}
+.client-planning .month-selector input{height:44px;color-scheme:dark}
+.client-planning .summary-grid{display:grid;grid-template-columns:1.25fr repeat(3,minmax(0,1fr));gap:14px;align-items:stretch;margin:0}
+.client-planning .summary-card{display:flex;flex-direction:column;justify-content:flex-start;min-height:0;padding:18px 20px;border-radius:16px;background:#12171e;border:1px solid #ffffff12}
+.client-planning .summary-card.highlight{background:linear-gradient(130deg,#322a18,#1b1c13);border-color:#a98a43}
+.client-planning .summary-card span{color:#c4ccd5;font-size:13px;margin-bottom:8px}
+.client-planning .summary-card strong{font-size:27px;line-height:1.2;font-variant-numeric:tabular-nums;letter-spacing:-.5px;overflow-wrap:anywhere}
+.client-planning .summary-card.highlight strong{font-size:36px;color:#f2cd6e}
+.client-planning .summary-card small{font-size:12px;line-height:1.5;color:#aab4c0;margin-top:7px}
+.client-planning .summary-card .meta-card-link{background:transparent;border:0;padding:0;margin:6px 0 0;min-height:36px;text-align:left;align-self:flex-start;font-size:13px;text-decoration:underline;text-underline-offset:4px}
+.client-planning .action-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:16px 0 0}
+.client-planning .action-card{min-height:78px;padding:16px 18px;background:#141b23;border:1px solid #ffffff18;border-radius:14px;gap:12px;transition:border-color .15s}
+.client-planning .action-card:hover{transform:none;border-color:#b79a50;box-shadow:none}
+.client-planning .action-card strong{font-size:15px;margin-bottom:3px}
+.client-planning .action-card small{font-size:12px;line-height:1.5;color:#aeb8c5}
+.client-planning .action-icon{width:34px;height:34px;flex-basis:34px;font-size:22px;border-radius:9px}
+.client-planning .income-action .action-icon{color:#90d8b4;border-color:#90d8b444}.client-planning .expense-action .action-icon{color:#edb986;border-color:#edb98644}
+.ux-panel{background:#12171e;border:1px solid #ffffff14;border-radius:16px;padding:22px;margin:20px 0 0}
+.ux-panel h2{font-size:20px;line-height:1.3;margin:0 0 6px;letter-spacing:-.3px}.ux-panel p{font-size:13px;line-height:1.6;color:#aeb8c5}
+.ux-pending-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:18px;padding:12px 0;border-bottom:1px solid #ffffff10}
+.ux-pending-row strong{font-size:14px;overflow-wrap:anywhere}.ux-pending-row small{display:block;font-size:12px;color:#aeb8c5;margin-top:3px}.ux-pending-row button{font-size:12px;min-height:44px}
+.ux-panel>.secondary-btn{margin-top:14px;min-height:44px}
+.client-planning .chart-card,.client-planning .list-card{padding:22px;border-radius:16px;background:#12171e;border-color:#ffffff14;margin-top:20px}
+.client-planning .section-title{margin-bottom:14px}.client-planning .section-title h2{font-size:22px}.client-planning .chart-wrap{height:300px}
+.client-planning .month-label{font-size:13px;color:#aeb8c5}
+.client-planning .meta-panel{background:#10151b;border-color:#ffffff16;border-radius:16px;margin:20px 0 0;padding:22px;scroll-margin-top:125px}
+.client-planning .meta-panel .meta-heading h2{font-size:20px}.client-planning .meta-panel .meta-caption{font-size:13px;color:#b7c0ca;line-height:1.6}
+.client-planning .meta-panel .meta-button{min-height:44px}
+.client-planning .list-card{scroll-margin-top:125px}
+.client-planning .entry-main small,.client-planning .entry-main strong{font-size:13px}.client-planning .entry-main small{color:#b3bdc9}
+.client-planning .entry-actions button{min-height:44px}.client-planning .status-pill{font-size:12px}
+.client-planning .modal{z-index:1100}.client-planning .modal-close{min-height:44px;min-width:44px}.client-planning .primary-btn,.client-planning .secondary-btn{min-height:44px}
+.ux-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#17291f;color:#e5f4e8;border:1px solid #88b493;padding:12px 18px;border-radius:10px;max-width:90vw;z-index:1200;font-size:14px;box-shadow:0 6px 30px #0008}.ux-toast:empty{display:none}
+.client-home .page-head{text-align:left;max-width:none;margin:0 0 22px}.client-home .page-head h1{font-size:32px;line-height:1.2;margin-bottom:7px;letter-spacing:-1px}.client-home .page-head h1 span{display:inline;color:#f2cd6e}
+.client-home .ux-panel{margin:0;padding:22px}.ux-home-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}
+.ux-home-grid a{display:block;padding:18px;border:1px solid #ffffff14;border-radius:12px;background:#161e27;transition:border-color .15s}.ux-home-grid a:hover{border-color:#b79a50}.ux-home-grid span{font-size:13px;color:#cbd2db}.ux-home-grid strong{display:block;font-size:29px;line-height:1.3;color:#f2cd6e;margin:9px 0;overflow-wrap:anywhere}.ux-home-grid small{font-size:12px;line-height:1.5;color:#aeb8c5}
+.client-home .cards{margin-top:20px;gap:14px}.client-home .card{padding:20px;background:#11161d}.client-home .card-num{font-size:13px;margin-bottom:8px}.client-home .card h3{font-size:18px;margin-bottom:8px}.client-home .card-arrow{display:block;margin-top:14px;font-size:13px;color:#f2cd6e}
+@media(max-width:900px){.client-planning .summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.client-planning .planning-head{align-items:flex-start}.client-planning .planning-title{font-size:30px}.client-planning .action-card{padding:14px;gap:9px}.client-planning .action-card small{display:none}.client-home .cards{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.client-planning .planning-page,.client-home .page{padding-top:132px}.client-planning .nav,.client-home .nav{width:92%;gap:3px 8px}.client-planning .logo-text,.client-home .logo-text{font-size:15px;letter-spacing:1px}.client-planning .client-navigation,.client-home .client-navigation{justify-content:space-between;gap:0}.client-planning .client-navigation a,.client-home .client-navigation a{font-size:12px;padding:6px 9px;min-height:40px}.client-planning .planning-head{flex-direction:column;gap:15px;margin-bottom:18px}.client-planning .planning-title{font-size:29px}.client-planning .month-selector{width:100%;gap:6px}.client-planning .month-selector input{flex:1;min-width:0;width:0}.client-planning .summary-grid{gap:10px}.client-planning .summary-card{padding:14px;min-width:0}.client-planning .summary-card.highlight{grid-column:1/-1}.client-planning .summary-card.highlight strong{font-size:38px}.client-planning .summary-card strong{font-size:24px}.client-planning .summary-card:last-child{grid-column:1/-1}.client-planning .action-grid{gap:8px;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:12px}.client-planning .action-card{padding:12px 6px;flex-direction:column;text-align:center;gap:8px;min-height:104px;justify-content:flex-start}.client-planning .action-card strong{font-size:12px;line-height:1.4}.client-planning .action-card .action-icon{flex-basis:32px;width:32px;height:32px}.ux-panel,.client-planning .chart-card,.client-planning .list-card,.client-planning .meta-panel{padding:16px}.ux-panel h2{font-size:18px}.ux-pending-row{grid-template-columns:minmax(0,1fr) auto;gap:8px 12px}.ux-pending-row button{grid-column:1/-1;width:100%;white-space:normal}.client-planning .chart-wrap{height:270px}.client-planning .entry-row{min-width:0}.client-planning .entry-actions{justify-content:flex-start}.client-planning .entry-actions button{white-space:normal}.client-planning .section-title{gap:10px;flex-wrap:wrap}.client-planning .section-title h2{font-size:20px}.client-home .page-head h1{font-size:29px}.client-home .ux-panel{padding:16px}.ux-home-grid{grid-template-columns:1fr;gap:10px}.ux-home-grid a{padding:14px}.ux-home-grid strong{font-size:28px;margin:6px 0}.client-home .cards{grid-template-columns:1fr}.client-home .card{padding:18px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+/* No celular, registrar o dia vem imediatamente após a meta. */
+@media(max-width:600px){
+ .client-planning .planning-container{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:10px}
+ .client-planning .planning-head{grid-column:1/-1;order:0}
+ .client-planning .summary-grid{display:contents}
+ .client-planning .summary-card{order:2;margin-top:10px}
+ .client-planning .summary-card.highlight{order:0;margin-top:0}
+ .client-planning .action-grid{grid-column:1/-1;order:1}
+ .client-planning .ux-panel{grid-column:1/-1;order:3}
+ .client-planning .chart-card{grid-column:1/-1;order:4;min-width:0}
+ .client-planning .meta-panel{grid-column:1/-1;order:5;min-width:0}
+ .client-planning .meta-panel:has(.setup-guide){order:0}
+ .client-planning .list-card{grid-column:1/-1;order:6;min-width:0}
+ .client-planning #feedback{grid-column:1/-1;order:7}
+}
+/* Distribuição final: visão do dia, indicadores e área de acompanhamento. */
+.client-planning .ux-today{display:grid;grid-template-columns:minmax(250px,1fr) minmax(0,1.65fr);gap:24px;background:linear-gradient(115deg,#272314,#131a21 65%);border:1px solid #af8c434d;border-radius:20px;padding:24px}
+.client-planning .ux-today .summary-card.highlight{border:0;background:transparent;padding:0;box-shadow:none;justify-content:center}
+.client-planning .ux-today .summary-card.highlight strong{font-size:46px}.client-planning .ux-today .summary-card.highlight span{color:#e8d49d;font-size:14px}
+.client-planning .ux-register{align-self:center;min-width:0}.client-planning .ux-register h2{font-size:18px;margin:0 0 4px}.client-planning .ux-register>p{font-size:13px;color:#afb9c7}
+.client-planning .ux-register .action-grid{margin-top:14px;gap:10px}.client-planning .ux-register .action-card{padding:12px;min-height:84px;gap:8px;flex-direction:column;align-items:flex-start}.client-planning .ux-register .action-card small{display:none}.client-planning .ux-register .action-card strong{font-size:13px}
+.client-planning .summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:16px;gap:0;background:#10161d;border:1px solid #ffffff12;border-radius:14px}
+.client-planning .summary-grid .summary-card{border:0;border-radius:0;background:transparent;padding:16px 20px;min-height:0;border-right:1px solid #ffffff12}.client-planning .summary-grid .summary-card:last-child{border:0}
+.client-planning .summary-grid .summary-card strong{font-size:25px}.client-planning .summary-grid .summary-card small{font-size:11px;margin-top:5px}
+.client-planning .ux-overview{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(300px,1fr);gap:18px;margin-top:20px;align-items:stretch}
+.client-planning .ux-overview .chart-card,.client-planning .ux-overview .ux-panel{margin:0;min-width:0;padding:20px}.client-planning .ux-overview .chart-wrap{height:300px}
+.client-planning .ux-overview .ux-panel h2{font-size:18px}.client-planning .ux-overview .ux-panel>p{font-size:12px}
+.client-planning .ux-overview .ux-pending-row{grid-template-columns:minmax(0,1fr) auto;gap:5px 8px;padding:12px 0}.client-planning .ux-overview .ux-pending-row button{grid-column:1/-1;width:100%;min-height:38px;font-size:12px}.client-planning .ux-overview .ux-pending-row strong{font-size:13px}.client-planning .ux-overview .ux-pending-row small{font-size:11px}
+.client-planning .ux-disclosure{margin-top:16px;border:1px solid #ffffff14;border-radius:14px;background:#10161d;min-width:0}
+.client-planning .ux-disclosure>summary{padding:17px 20px;cursor:pointer;color:#e2c36e;font-size:14px;min-height:54px;list-style-position:inside}
+.client-planning .ux-disclosure>summary:focus-visible{outline:3px solid #f2cb5b;outline-offset:3px;border-radius:14px}
+.client-planning .ux-disclosure .meta-panel,.client-planning .ux-disclosure .list-card{margin:0;border:0;background:transparent;padding-top:0}
+.client-planning .ux-disclosure .list-card .section-title{display:none}
+@media(max-width:1000px){.client-planning .ux-today{grid-template-columns:1fr 1.4fr;gap:16px;padding:20px}.client-planning .ux-overview{grid-template-columns:minmax(0,1.4fr) minmax(280px,1fr)}.client-planning .ux-register .action-card{padding:10px}.client-planning .ux-register .action-card strong{font-size:12px}}
+@media(max-width:760px){.client-planning .ux-overview{grid-template-columns:1fr}.client-planning .ux-overview .ux-panel{order:-1}.client-planning .ux-today{grid-template-columns:1fr}}
+@media(max-width:600px){.client-planning .planning-container{display:flex;flex-direction:column}.client-planning .ux-today{padding:20px;gap:16px}.client-planning .ux-today .summary-card.highlight strong{font-size:42px}.client-planning .ux-register h2{font-size:16px}.client-planning .ux-register .action-grid{margin-top:12px}.client-planning .ux-register .action-card{align-items:center;text-align:center;min-height:82px;padding:10px 6px}.client-planning .ux-register>p{font-size:12px}.client-planning .summary-grid{display:grid;grid-template-columns:1fr;margin-top:14px}.client-planning .summary-grid .summary-card{grid-column:auto;display:grid;grid-template-columns:1fr auto;gap:3px 8px;border-right:0;border-bottom:1px solid #ffffff10;padding:12px 16px;margin:0}.client-planning .summary-grid .summary-card span{margin:0;align-self:center}.client-planning .summary-grid .summary-card strong{font-size:23px;text-align:right}.client-planning .summary-grid .summary-card small{grid-column:1/-1;margin:0}.client-planning .ux-overview{display:flex;flex-direction:column;gap:16px;margin-top:16px}.client-planning .ux-overview .ux-panel{order:0}.client-planning .ux-overview .chart-card{order:1}.client-planning .ux-overview .chart-wrap{height:270px}.client-planning .ux-disclosure{order:0}.client-planning .ux-overview .ux-pending-row button{min-height:44px}.client-planning .ux-disclosure>summary{padding:16px}.client-planning .ux-overview .ux-panel,.client-planning .ux-overview .chart-card{padding:16px}}

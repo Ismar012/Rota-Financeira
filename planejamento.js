@@ -217,8 +217,8 @@ function renderEntries() {
   if (!section || !list) return;
 
   if (!state.entries.length) {
-    section.classList.add('hidden');
-    list.innerHTML = '';
+    section.classList.remove('hidden');
+    list.innerHTML = '<p class="muted">Nenhum lançamento neste mês. Use os botões de ganho ou despesa para começar.</p>';
     return;
   }
 
@@ -872,6 +872,7 @@ $('closeConfirmDateModal')?.addEventListener('click', () => {
   $('menuEdit')?.addEventListener('click', (event) => {
     event.stopPropagation();
     hideMenus();
+    if ($('entriesDisclosure')) $('entriesDisclosure').open = true;
     $('entriesSection')?.classList.remove('hidden');
     $('entriesSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
