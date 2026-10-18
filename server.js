@@ -237,7 +237,6 @@ async function initializeDatabase() {
       UNIQUE(user_id, rest_date)
     );
 
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS financial_profile JSONB;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'client';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_status VARCHAR(30);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
@@ -318,9 +317,8 @@ async function initializeDatabase() {
         active = TRUE
     `, item);
   }
-  await require('./server-importacao').install(pool);
-  await require('./server-atividades').install(pool);
   await require('./finance-audit').installFinanceAudit(pool);
+  await require('./casa-produtos-api').install(pool);
 
 }
 
@@ -1120,7 +1118,6 @@ function hasRecentClientLogin(lastLoginAt) {
 
 function calculateClientStatus(client) {
   const manual = String(client.billing_status || '').trim().toLowerCase();
-  if (manual === 'cancelado') return { status: 'cancelado', manual: true, daysElapsed: daysSinceCreated(client.created_at), daysRemaining: 0 };
   if (manual === 'pagante') return { status: 'pagante', manual: true, daysElapsed: daysSinceCreated(client.created_at), daysRemaining: 0 };
   if (manual === 'inadimplente') return { status: 'inadimplente', manual: true, daysElapsed: daysSinceCreated(client.created_at), daysRemaining: 0 };
 
@@ -1132,7 +1129,7 @@ function calculateClientStatus(client) {
 }
 
 function isClientCancelled(client) {
-  return ['cancelado', 'inadimplente'].includes(calculateClientStatus(client).status);
+  return String(client.billing_status || '').trim().toLowerCase() === 'cancelado';
 }
 
 function publicClientStatus(client) {
@@ -1237,7 +1234,7 @@ async function requireUser(
     sendJson(res, 403, {
       authenticated: false,
       cancelled: true,
-      error: 'Seu acesso está bloqueado. O período gratuito pode ter terminado ou haver uma restrição de pagamento. Entre em contato com a equipe para regularizar o acesso.'
+      error: 'Seu período de acesso gratuito terminou. Atualize seu pagamento para continuar utilizando a plataforma.'
     }, { 'Set-Cookie': cookieHeader('', 0) });
     return null;
   }
@@ -1590,8 +1587,8 @@ async function handleAuthApi(
         return sendJson(res, 403, {
           authenticated: false,
           cancelled: true,
-          status: accountStatus.status,
-          error: 'Seu acesso está bloqueado. O período gratuito pode ter terminado ou haver uma restrição de pagamento. Entre em contato com a equipe para regularizar o acesso.'
+          status: 'cancelado',
+          error: 'Seu período de acesso gratuito terminou. Atualize seu pagamento para continuar utilizando a plataforma.'
         });
       }
 
@@ -1675,8 +1672,8 @@ async function handleAuthApi(
     req.method === 'GET' &&
     url === '/api/auth/me'
   ) {
-    const user = await requireUser(req, res);
-    if (!user) return;
+    const user =
+      await getCurrentUser(req);
 
     if (!user) {
       return sendJson(
@@ -2170,6 +2167,7 @@ function mergeDistribution(
 ========================================================= */
 
 async function buildAdminClientSummary(userId, month) {
+  await require('./casa-ledger').transaction(pool,userId);
   // Os totais continuam sendo calculados pelo mês selecionado.
   // O gráfico, porém, precisa enxergar também lançamentos cujo intervalo
   // atravessa o mês selecionado (ex.: cadastro em setembro e recebimento em outubro).
@@ -2832,63 +2830,6 @@ async function handleProfileApi(req, res, url) {
 /* =========================================================
    SERVIÇOS DO CLIENTE
 ========================================================= */
-
-async function handleServicesApi(req, res, url) {
-  const user = await requireUser(req, res);
-  if (!user) return true;
-  const userId = Number(user.id);
-
-  if (req.method === 'GET' && url === '/api/services') {
-    const services = await pool.query(`
-      SELECT
-        s.id, s.slug, s.name, s.description, s.price,
-        CASE
-          WHEN s.default_acquired = TRUE OR us.user_id IS NOT NULL THEN TRUE
-          ELSE FALSE
-        END AS acquired
-      FROM services s
-      LEFT JOIN user_services us
-        ON us.service_id = s.id AND us.user_id = $1
-      WHERE s.active = TRUE
-      ORDER BY s.id ASC
-    `, [userId]);
-
-    return sendJson(res, 200, {
-      services: services.rows.map((item) => ({
-        ...item,
-        price: Number(item.price || 0),
-        acquired: item.acquired === true
-      }))
-    });
-  }
-
-  const purchaseMatch = url.match(/^\/api\/services\/(\d+)\/purchase$/);
-  if (req.method === 'POST' && purchaseMatch) {
-    const serviceId = Number(purchaseMatch[1]);
-    const service = await db.prepare(`
-      SELECT id, active FROM services WHERE id = ?
-    `).get(serviceId);
-
-    if (!service || service.active !== true) {
-      return sendJson(res, 404, { error: 'Serviço não encontrado.' });
-    }
-
-    const existingService = await db.prepare('SELECT user_id FROM user_services WHERE user_id = ? AND service_id = ?').get(userId, serviceId);
-    await pool.query(`
-      INSERT INTO user_services (user_id, service_id)
-      VALUES ($1, $2)
-      ON CONFLICT (user_id, service_id) DO NOTHING
-    `, [userId, serviceId]);
-    if (!existingService) {
-      const serviceInfo = await db.prepare('SELECT name FROM services WHERE id = ?').get(serviceId);
-      await recordClientChange(userId, userId, 'Serviço adquirido pelo cliente', 'service', null, serviceInfo?.name || `Serviço ${serviceId}`);
-    }
-
-    return sendJson(res, 200, { message: 'Serviço adquirido com sucesso.' });
-  }
-
-  return false;
-}
 
 /* =========================================================
    FINANCEIRO
@@ -5503,10 +5444,9 @@ function isStateChangingMethod(method) {
    API PRINCIPAL
 ========================================================= */
 
-const goals = require('./server-metas').createGoals({pool, requireUser, requireAdmin, readBody, sendJson, recordClientChange});
+const products = require('./casa-produtos-api').create({pool,requireUser,requireAdmin,readBody,sendJson});
 
-const imports = require('./server-importacao').create({pool,requireUser,sendJson,readBody,getTodayLocal});
-const activities = require('./server-atividades').create({pool,requireUser,requireAdmin,sendJson,readBody,getTodayLocal});
+const goals = require('./server-metas').createGoals({pool, requireUser, requireAdmin, readBody, sendJson, recordClientChange});
 
 const scheduling = require('./agendamentos-api').createScheduling({pool, requireUser, requireAdmin, readBody, sendJson});
 
@@ -5522,27 +5462,8 @@ async function handleApi(
     return;
   }
 
-  if (url === '/api/financial-profile' || /^\/api\/admin\/clients\/\d+\/financial-profile$/.test(url)) {
-    const isAdmin = url.startsWith('/api/admin/');
-    const user = await (isAdmin ? requireAdmin(req, res) : requireUser(req, res));
-    if (!user) return;
-    const userId = isAdmin ? Number(url.split('/')[4]) : Number(user.id);
-    if (req.method !== 'GET' && (isAdmin || req.method !== 'PUT')) return sendJson(res,405,{error:'Método não permitido.'});
-    try {
-      const current = await db.prepare('SELECT financial_profile FROM users WHERE id = ?').get(userId);
-      if (!current) return sendJson(res,404,{error:'Cliente não encontrado.'});
-      if (req.method === 'GET') return sendJson(res,200,{profile:current.financial_profile || null});
-      let profile;
-      try { profile = require('./perfis-financeiros').normalize(await readBody(req)); }
-      catch (error) { return sendJson(res,400,{error:error.message}); }
-      await db.prepare('UPDATE users SET financial_profile = ?::jsonb WHERE id = ?').run(JSON.stringify(profile),userId);
-      await recordClientChange(userId,userId,'Perfil financeiro atualizado','financial_profile',JSON.stringify(current.financial_profile),JSON.stringify(profile));
-      return sendJson(res,200,{profile});
-    } catch(error) { console.error('Perfil financeiro:',error); return sendJson(res,500,{error:'Não foi possível carregar ou salvar o perfil financeiro.'}); }
-  }
-
-  if (await imports.handle(req,res,url) !== false) return;
-  if (await activities.handle(req,res,url) !== false) return;
+  if (await products.handle(req,res,url) !== false) return;
+  if (!await products.gate(req,res,url)) return;
   if (await goals.handle(req, res, url) !== false) return;
 
   if (url.startsWith('/api/consultations') || url.startsWith('/api/admin/consultations')) {
@@ -5574,10 +5495,6 @@ async function handleApi(
     if (result !== false) return;
   }
 
-  if (url === '/api/services' || url.startsWith('/api/services/')) {
-    const result = await handleServicesApi(req, res, url);
-    if (result !== false) return;
-  }
 
   if (
     url.startsWith(
@@ -5655,7 +5572,7 @@ function serveStatic(
     relative.includes('..') ||
     relative.split('/').some((part) => part.startsWith('.')) ||
     /(^|\/)(node_modules|\.git)(\/|$)/i.test(relative) ||
-    /(?:^|\/)(?:\.env(?:\..*)?|package(?:-lock)?\.json|pnpm-lock\.yaml|yarn\.lock|server[^/]*\.js|agendamentos-api\.js|rota_financeira\.sqlite(?:-[^/]*)?|.*\.(?:sqlite|sqlite3|db|db3|wal|shm|log|bak|backup|pem|key|crt))$/i.test(relative)
+    /(?:^|\/)(?:\.env(?:\..*)?|package(?:-lock)?\.json|pnpm-lock\.yaml|yarn\.lock|server[^/]*\.js|agendamentos-api\.js|casa-produtos-api\.js|casa-ledger\.js|rota_financeira\.sqlite(?:-[^/]*)?|.*\.(?:sqlite|sqlite3|db|db3|wal|shm|log|bak|backup|pem|key|crt))$/i.test(relative)
   ) {
     return sendJson(res, 404, { error: 'Página não encontrada.' });
   }
@@ -5673,7 +5590,6 @@ function serveStatic(
     '.html': 'text/html; charset=utf-8',
     '.css': 'text/css; charset=utf-8',
     '.js': 'application/javascript; charset=utf-8',
-    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     '.png': 'image/png',
     '.jpg': 'image/jpeg',
     '.jpeg': 'image/jpeg',

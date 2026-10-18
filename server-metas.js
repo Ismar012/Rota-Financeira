@@ -7,7 +7,7 @@ const money = v => v / 100;
 const add = (d,n) => new Date(Date.parse(d+'T12:00:00Z')+n*86400000).toISOString().slice(0,10);
 const monthEnd = m => new Date(Date.UTC(Number(m.slice(0,4)),Number(m.slice(5,7)),0,12)).toISOString().slice(0,10);
 function todayBahia(date = new Date()) { const p = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date); const get=t=>p.find(x=>x.type===t).value; return `${get('year')}-${get('month')}-${get('day')}`; }
-function compute({entries,restDays=[],settings,regularizations=[],month,today=todayBahia()}) {
+function compute({entries,restDays=[],settings,regularizations=[],houseLedger=[],month,today=todayBahia()}) {
   const first=month+'-01',last=monthEnd(month), reference=today>last?last:(today<first?first:today);
   const start=settings?iso(settings.start_date):reference;
   const from=reference>start?reference:start;
@@ -25,7 +25,9 @@ function compute({entries,restDays=[],settings,regularizations=[],month,today=to
   const isPaid=e=>Number(e.paid)===1&&valid(effective(e))&&effective(e)<=cutoff;
   let received=0,spent=0;
   for(const e of entries){if(!exists(e)||!isPaid(e))continue;const d=effective(e);if(d<start||d>reference)continue;if(e.type==='income')received+=cents(e.amount);if(e.type==='expense')spent+=cents(e.amount);}
-  const cash=cents(settings?.initial_balance)+received-spent,available=Math.max(0,cash);
+  const houseAdjustment=houseLedger.filter(x=>x.date>=start&&x.date<=cutoff).reduce((n,x)=>n+x.adjustment,0);
+  const houseBalance=houseLedger.filter(x=>x.date<=cutoff).reduce((n,x)=>n+x.balanceDelta,0);
+  const cash=cents(settings?.initial_balance)+received-spent+houseAdjustment,available=Math.max(0,cash);
   let credit=available,total=0,excluded=0;const debts=[],unresolved=[];
   for(const e of entries){if(e.type!=='expense'||cents(e.amount)<=0||!exists(e)||isPaid(e)||!valid(iso(e.due_date)))continue;const due=iso(e.due_date);if(due>last){excluded+=cents(e.amount);continue;}let deadline=due,reason=null;
     if(due<reference){deadline=reg.get(String(e.id));if(!valid(deadline)||deadline<reference)reason='Definir prazo de regularização';}
@@ -33,6 +35,7 @@ function compute({entries,restDays=[],settings,regularizations=[],month,today=to
     const debt={id:e.id,name:e.name,dueDate:due,deadline:valid(deadline)?deadline:null,amount:money(cents(e.amount)),overdue:due<reference,reason};
     total+=cents(e.amount);debts.push(debt);
   }
+  if(houseBalance<0){total-=houseBalance;debts.push({id:'house-balance',name:'Casa · acerto a devolver',dueDate:reference,deadline:reference,amount:money(-houseBalance),overdue:false,reason:null,source:'house'});}
   debts.sort((a,b)=>String(a.deadline||a.dueDate).localeCompare(String(b.deadline||b.dueDate))||Number(a.id)-Number(b.id));
   let cumulative=0,maxRate=0;const checks=[];
   for(const d of debts){const amount=cents(d.amount),cover=Math.min(credit,amount);credit-=cover;d.cashAllocated=money(cover);d.remaining=money(amount-cover);d.availableDays=d.deadline?days.filter(x=>x<=d.deadline).length:0;
@@ -47,19 +50,19 @@ function compute({entries,restDays=[],settings,regularizations=[],month,today=to
   const goal=money(maxRate);const remaining=money(Math.max(0,total-available));
   // Plano constante suficiente para todos os prazos; último dia ajusta centavos.
   let planned=Math.max(0,total-available);const daily=days.map(date=>{const amount=Math.min(maxRate,planned);planned-=amount;return{date,dailyGoal:money(amount),goalState:'projected'};});
-  return{version:2,month,referenceDate:reference,startDate:settings?start:null,initialBalance:money(cents(settings?.initial_balance)),received:money(received),paid:money(spent),cashBalance:money(cash),availableBalance:money(available),pendingTotal:money(total),remainingTotal:remaining,excludedFutureTotal:money(excluded),availableWorkingDays:days.length,dailyGoal:goal,displayDailyGoal:status==='ready'?goal:null,status,debts,checks,unresolved,daily,settings:settings?{start_date:start,initial_balance:Number(settings.initial_balance)}:null};
+  return{version:3,houseCashAdjustment:money(houseAdjustment),houseBalance:money(houseBalance),month,referenceDate:reference,startDate:settings?start:null,initialBalance:money(cents(settings?.initial_balance)),received:money(received),paid:money(spent),cashBalance:money(cash),availableBalance:money(available),pendingTotal:money(total),remainingTotal:remaining,excludedFutureTotal:money(excluded),availableWorkingDays:days.length,dailyGoal:goal,displayDailyGoal:status==='ready'?goal:null,status,debts,checks,unresolved,daily,settings:settings?{start_date:start,initial_balance:Number(settings.initial_balance)}:null};
 }
 function createGoals({pool,requireUser,requireAdmin,readBody,sendJson,recordClientChange}) {
   async function initialize(){await pool.query(`CREATE TABLE IF NOT EXISTS goal_settings(user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,start_date DATE NOT NULL,initial_balance NUMERIC(14,2) NOT NULL DEFAULT 0,updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS goal_regularizations(user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,entry_id BIGINT NOT NULL REFERENCES finance_entries(id) ON DELETE CASCADE,regularize_date DATE NOT NULL,PRIMARY KEY(user_id,entry_id));
 CREATE TABLE IF NOT EXISTS goal_snapshots(user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,goal_date DATE NOT NULL,payload JSONB NOT NULL,updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(user_id,goal_date));`);}
-  async function sources(id){const [e,r,s,g]=await Promise.all([pool.query('SELECT * FROM finance_entries WHERE user_id=$1 ORDER BY due_date,id',[id]),pool.query('SELECT rest_date FROM rest_days WHERE user_id=$1',[id]),pool.query('SELECT * FROM goal_settings WHERE user_id=$1',[id]),pool.query('SELECT * FROM goal_regularizations WHERE user_id=$1',[id])]);return{entries:e.rows,restDays:r.rows,settings:s.rows[0],regularizations:g.rows};}
+  async function sources(id){await require('./casa-ledger').transaction(pool,id);const houseLedger=await require('./casa-ledger').ledger(pool,id);const [e,r,s,g]=await Promise.all([pool.query('SELECT * FROM finance_entries WHERE user_id=$1 ORDER BY due_date,id',[id]),pool.query('SELECT rest_date FROM rest_days WHERE user_id=$1',[id]),pool.query('SELECT * FROM goal_settings WHERE user_id=$1',[id]),pool.query('SELECT * FROM goal_regularizations WHERE user_id=$1',[id])]);return{houseLedger,entries:e.rows,restDays:r.rows,settings:s.rows[0],regularizations:g.rows};}
   async function plan(id,month){const source=await sources(id),today=todayBahia();const p=compute({...source,month,today});
     if(month===today.slice(0,7)&&p.settings)await pool.query(`INSERT INTO goal_snapshots(user_id,goal_date,payload) VALUES($1,$2,$3::jsonb) ON CONFLICT(user_id,goal_date) DO UPDATE SET payload=EXCLUDED.payload,updated_at=CURRENT_TIMESTAMP WHERE goal_snapshots.goal_date=$4::date`,[id,today,JSON.stringify(p),today]);
     const snapshots=await pool.query('SELECT goal_date,payload,updated_at FROM goal_snapshots WHERE user_id=$1 AND goal_date BETWEEN $2 AND $3 ORDER BY goal_date',[id,month+'-01',monthEnd(month)]);
     p.history=snapshots.rows.filter(x=>iso(x.goal_date)<today).map(x=>{const recorded=typeof x.payload==='string'?JSON.parse(x.payload):x.payload;const revised=compute({...source,month,today:iso(x.goal_date)});return{date:iso(x.goal_date),dailyGoal:recorded.displayDailyGoal,goalState:'recorded',recorded,revised:JSON.stringify([recorded.debts,recorded.cashBalance,recorded.checks,recorded.status,recorded.availableWorkingDays])!==JSON.stringify([revised.debts,revised.cashBalance,revised.checks,revised.status,revised.availableWorkingDays])?revised:null,recordedAt:x.updated_at};});return p;
   }
-  async function apply(id,month,data,totals){const p=await plan(id,month);const projected=new Map(p.daily.map(x=>[x.date,x]));const history=new Map(p.history.map(x=>[x.date,x]));const today=todayBahia();for(const d of data){const h=history.get(d.date);if(d.date<today){d.dailyGoal=h?.dailyGoal??null;d.goalState=h?'recorded':'unrecorded';d.goalRevised=h?.revised?.displayDailyGoal??null;}else{d.dailyGoal=p.displayDailyGoal===null?null:(projected.get(d.date)?.dailyGoal??0);d.goalState=d.date===today?'current':'projected';}}
+  async function apply(id,month,data,totals){const p=await plan(id,month);await require('./casa-ledger').applySummary(pool,id,month,data,totals);const projected=new Map(p.daily.map(x=>[x.date,x]));const history=new Map(p.history.map(x=>[x.date,x]));const today=todayBahia();for(const d of data){const h=history.get(d.date);if(d.date<today){d.dailyGoal=h?.dailyGoal??null;d.goalState=h?'recorded':'unrecorded';d.goalRevised=h?.revised?.displayDailyGoal??null;}else{d.dailyGoal=p.displayDailyGoal===null?null:(projected.get(d.date)?.dailyGoal??0);d.goalState=d.date===today?'current':'projected';}}
     Object.assign(totals,{dailyGoal:p.displayDailyGoal,goalStatus:p.status,availableWorkingDays:p.availableWorkingDays,pendingExpense:p.pendingTotal,totalPlannedGoal:p.remainingTotal,availableBalance:p.availableBalance,goalCashBalance:p.cashBalance});return p;}
   async function handle(req,res,url){const adminMatch=url.match(/^\/api\/admin\/clients\/(\d+)\/goal-(settings|regularization)$/),clientMatch=url.match(/^\/api\/finance\/goal-(settings|regularization)$/);if(!adminMatch&&!clientMatch)return false;
     const actor=adminMatch?await requireAdmin(req,res):await requireUser(req,res);if(!actor)return true;const id=adminMatch?Number(adminMatch[1]):Number(actor.id),kind=adminMatch?adminMatch[2]:clientMatch[1];

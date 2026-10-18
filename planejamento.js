@@ -217,8 +217,8 @@ function renderEntries() {
   if (!section || !list) return;
 
   if (!state.entries.length) {
-    section.classList.remove('hidden');
-    list.innerHTML = '<p class="muted">Nenhum lançamento neste mês. Use os botões de ganho ou despesa para começar.</p>';
+    section.classList.add('hidden');
+    list.innerHTML = '';
     return;
   }
 
@@ -329,7 +329,7 @@ const filteredEntries = state.entries.filter((entry) => {
     $('workingDays').textContent = `${Number(totals.availableWorkingDays ?? totals.workingDays ?? 0)} dias disponíveis`;
     $('totalIncome').textContent = fmt(totals.realizedIncome ?? totals.income);
     $('totalExpense').textContent = fmt(totals.expense);
-    const moneyToday = Number(totals.availableBalance ?? totals.cashflow ?? 0);
+    const moneyToday = Number(totals.goalCashBalance ?? totals.availableBalance ?? totals.cashflow ?? 0);
     $('totalCashflow').textContent = fmt(moneyToday);
     $('totalCashflow').classList.toggle('negative', moneyToday < 0);
     $('totalCashflow').classList.toggle('positive', moneyToday >= 0);
@@ -440,7 +440,6 @@ const filteredEntries = state.entries.filter((entry) => {
       state.data = data.data || [];
       renderSummary(data);
       renderEntries();
-      document.dispatchEvent(new CustomEvent('rota-entries', {detail: state.entries}));
       renderRestDays();
       renderChart(state.data);
       feedback('');
@@ -872,7 +871,6 @@ $('closeConfirmDateModal')?.addEventListener('click', () => {
   $('menuEdit')?.addEventListener('click', (event) => {
     event.stopPropagation();
     hideMenus();
-    if ($('entriesDisclosure')) $('entriesDisclosure').open = true;
     $('entriesSection')?.classList.remove('hidden');
     $('entriesSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
