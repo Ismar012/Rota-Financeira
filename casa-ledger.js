@@ -3,6 +3,7 @@ const iso=v=>v instanceof Date?v.toISOString().slice(0,10):String(v||'').slice(0
 const today=()=>{const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const g=t=>p.find(x=>x.type===t).value;return `${g('year')}-${g('month')}-${g('day')}`;};
 function occurrences(first,now=today()) {const start=iso(first);let [y,m,day]=start.split('-').map(Number);const end=new Date(now+'T12:00:00Z');end.setUTCMonth(end.getUTCMonth()+3,1);const result=[];for(let n=y*12+m-1;n<=end.getUTCFullYear()*12+end.getUTCMonth();n++){const yy=Math.floor(n/12),mm=n%12;const last=new Date(Date.UTC(yy,mm+1,0)).getUTCDate();const due=`${yy}-${String(mm+1).padStart(2,'0')}-${String(Math.min(day,last)).padStart(2,'0')}`;if(due>=start)result.push(due);}return result;}
 async function install(pool){await pool.query(`
+ CREATE TABLE IF NOT EXISTS house_people(user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,my_name VARCHAR(80) NOT NULL,other_name VARCHAR(80) NOT NULL);
  CREATE TABLE IF NOT EXISTS house_recurring(id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,description VARCHAR(160) NOT NULL,total_cents INTEGER NOT NULL CHECK(total_cents>=2),first_due DATE NOT NULL,active BOOLEAN NOT NULL DEFAULT TRUE);
  ALTER TABLE house_expenses ADD COLUMN IF NOT EXISTS paid BOOLEAN NOT NULL DEFAULT TRUE;
  ALTER TABLE house_expenses ADD COLUMN IF NOT EXISTS due_date DATE;
@@ -28,7 +29,21 @@ function create({pool,readBody,sendJson,expense}){
  const validate=b=>{try{return expense(b);}catch(e){e.status=400;throw e;}};
  return async function handle(req,res,url,uid){const reply=(d,s=200)=>sendJson(res,s,d),fail=message=>{throw Object.assign(Error(message),{status:400});};
  try{return await transaction(pool,uid,async c=>{
- if(url==='/api/house'&&req.method==='GET'){const [e,s,r]=await Promise.all([c.query('SELECT *,day::text AS day,due_date::text AS due_date FROM house_expenses WHERE user_id=$1 AND deleted=FALSE ORDER BY house_expenses.due_date DESC,id DESC',[uid]),c.query('SELECT *,day::text AS day FROM house_settlements WHERE user_id=$1 ORDER BY house_settlements.day DESC,id DESC',[uid]),c.query('SELECT *,first_due::text AS first_due FROM house_recurring WHERE user_id=$1 AND active=TRUE ORDER BY id',[uid])]);return {expenses:e.rows,settlements:s.rows,recurring:r.rows,balance:e.rows.filter(x=>x.paid).reduce((a,x)=>a+x.mine_cents-x.share_cents,0)+s.rows.reduce((a,x)=>a+x.delta_cents,0)};}
+ if(url==='/api/house/people'&&req.method==='POST'){
+ const b=await readBody(req);const a=typeof b.my_name==='string'?b.my_name.trim():'',o=typeof b.other_name==='string'?b.other_name.trim():'';
+ if(!a||!o||a.length>80||o.length>80||/[\x00-\x1f\x7f]/.test(a+o))fail('Informe os dois nomes, com até 80 caracteres cada.');
+ await c.query('INSERT INTO house_people(user_id,my_name,other_name) VALUES($1,$2,$3) ON CONFLICT(user_id) DO UPDATE SET my_name=EXCLUDED.my_name,other_name=EXCLUDED.other_name',[uid,a,o]);return {ok:true};
+ }
+ if(url==='/api/house'&&req.method==='GET'){
+ const month=new URL(req.url||'/api/house','http://localhost').searchParams.get('month')||today().slice(0,7);
+ if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)||month.slice(0,4)==='0000')fail('Mês inválido.');
+ const [e,s,r]=await Promise.all([c.query('SELECT *,day::text AS day,due_date::text AS due_date FROM house_expenses WHERE user_id=$1 AND deleted=FALSE ORDER BY house_expenses.due_date DESC,id DESC',[uid]),c.query('SELECT *,day::text AS day FROM house_settlements WHERE user_id=$1 ORDER BY house_settlements.day DESC,id DESC',[uid]),c.query('SELECT *,first_due::text AS first_due FROM house_recurring WHERE user_id=$1 AND active=TRUE ORDER BY id',[uid])]);
+ const movements=[...e.rows.filter(x=>x.paid).map(x=>({date:x.day,delta:x.mine_cents-x.share_cents})),...s.rows.map(x=>({date:x.day,delta:x.delta_cents}))];
+ const balance=movements.filter(x=>x.date.slice(0,7)===month).reduce((n,x)=>n+x.delta,0);
+ const previousBalance=movements.filter(x=>x.date.slice(0,7)<month).reduce((n,x)=>n+x.delta,0);
+ const people=await c.query('SELECT my_name,other_name FROM house_people WHERE user_id=$1',[uid]);
+ return {people:people.rows[0]||{my_name:'Eu',other_name:'Outra pessoa'},month,expenses:e.rows.filter(x=>x.due_date.slice(0,7)===month),settlements:s.rows.filter(x=>x.day.slice(0,7)===month),recurring:r.rows,balance,previousBalance,closingBalance:previousBalance+balance};
+ }
  if(url==='/api/house'&&req.method==='POST'){const b=await readBody(req),e=validate(b);if(e.total<2)fail('O valor total precisa ser de pelo menos R$ 0,02.');if(e.day>today()&&b.paid!==false)fail('Não confirme um pagamento futuro. Marque como previsto.');await c.query('INSERT INTO house_expenses(user_id,description,day,due_date,total_cents,mine_cents,share_cents,payer,paid) VALUES($1,$2,$3,$3,$4,$5,$6,$7,$8)',[uid,e.description,e.day,e.total,e.mine,e.share,e.payer,b.paid!==false]);return {ok:true};}
  if(url==='/api/house/recurring'&&req.method==='POST'){const b=await readBody(req),e=validate({...b,payer:'both'});if(e.total<2||e.day<today()||Date.parse(e.day)>Date.parse(today())+366*86400000)fail('Informe o primeiro vencimento a partir de hoje, até um ano à frente.');await c.query('INSERT INTO house_recurring(user_id,description,total_cents,first_due) VALUES($1,$2,$3,$4)',[uid,e.description,e.total,e.day]);return {ok:true};}
  const pay=url.match(/^\/api\/house\/expenses\/(\d+)\/pay$/);if(pay&&req.method==='POST'){const b=await readBody(req),x=await c.query('SELECT * FROM house_expenses WHERE id=$1 AND user_id=$2 AND deleted=FALSE FOR UPDATE',[pay[1],uid]);if(!x.rows[0])return {error:'Despesa não encontrada.',_status:404};const e=validate({description:x.rows[0].description,amount:x.rows[0].total_cents/100,day:b.day,payer:b.payer});if(e.day>today())fail('A data de pagamento não pode ser futura.');await c.query('UPDATE house_expenses SET paid=TRUE,day=$3,payer=$4,mine_cents=$5 WHERE id=$1 AND user_id=$2',[pay[1],uid,e.day,e.payer,e.mine]);return {ok:true};}
