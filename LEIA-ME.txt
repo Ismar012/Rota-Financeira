@@ -1,62 +1,120 @@
-ROTA FINANCEIRA — AGENDAMENTO DE CONSULTORIAS
+ROTA FINANCEIRA — CASA COM VÁRIOS MORADORES
+Atualização de 18/10/2026. Pacote completo, não publicado online.
+Base de código original: ZIP de 15/10/2026, com as atualizações desta conversa.
 
-INSTALAÇÃO
-1. Guarde uma cópia do server.js atual e faça backup do banco antes de atualizar.
-2. Substitua apenas server.js pelo arquivo deste pacote.
-3. Coloque agendamentos-api.js na mesma pasta do server.js.
-4. Coloque os outros cinco arquivos (agendamentos-menu.js, agendamentos.js,
-   agendamentos.css, agendamento.html e agendamentos-admin.html) na pasta pública
-   do site. São cinco arquivos públicos, além do módulo e do servidor.
-   Se PUBLIC_DIR não estiver configurado, a pasta pública é a do server.js.
-5. Não substitua planejamento.js, planejamento.html, admin.js, admin.html ou os
-   estilos existentes. A integração do menu e do sino é feita pelo servidor.
-6. Reinicie o servidor ou publique a atualização pelo processo habitual.
-   O servidor cria automaticamente duas tabelas novas no PostgreSQL.
-   Usa a dependência pg que o projeto já utiliza, sem novas dependências.
+SE VOCÊ JÁ APLICOU O PACOTE ANTERIOR COM NOMES
+Adicione na raiz: casa-divisao.js
+Substitua na raiz:
+casa-ledger.js
+resumo-casa.html
+resumo-casa.js
+casa-produtos.css
+server.js
+Envie todos esses arquivos na mesma atualização e reinicie/publice o serviço.
+Não envie o ZIP como arquivo do projeto: extraia os arquivos de dentro dele.
 
-COMO USAR
-Administrador: abra Meu planejamento > três pontinhos > Área de agendamentos.
-Também há um menu de três pontinhos e um sino no cabeçalho de admin.html.
-Escolha cadastrar um dia, replicar até uma data ou cadastrar sequência de dias.
-Na replicação, selecione os dias da semana. Na sequência, entram todos os dias.
-Informe início, fim e quantidade de consultorias por dia. Os horários são
-consecutivos de uma hora, a partir do início. Ex.: 09:00–17:00 e quantidade 4
-liberam 09:00, 10:00, 11:00 e 12:00, com término da última às 13:00.
-Salvar reaplica o modelo aos dias selecionados. Reservas existentes são
-preservadas; se o modelo retirar um horário reservado, a operação é rejeitada.
-Dias fora da seleção permanecem como estavam.
+INSTALAÇÃO COMPLETA, SE AINDA NÃO APLICOU OS PACOTES ANTERIORES
+Adicionar na raiz do projeto:
+casa-produtos-api.js
+casa-ledger.js
+casa-divisao.js
+casa-produtos.css
+resumo-casa.html
+resumo-casa.js
+produtos-admin.html
+produtos-admin.js
+Substituir na raiz:
+server.js
+server-metas.js
+planejamento.js
+experiencia-cliente.js
+servicos.js
+agendamentos-menu.js
+Compare com sua versão atual antes de substituir: este pacote não incorpora
+outras alterações feitas por você após o ZIP de 15/10. Guarde cópia do código
+e do banco. Faça uma única publicação com todos os arquivos; server.js depende
+dos novos módulos. Não há dependências novas nem mudança no package.json.
+O servidor cria as novas tabelas/colunas ao iniciar. Dados existentes são
+preservados e vinculados ao planejamento no acesso, sem duplicar lançamentos.
 
-Cliente: Meu planejamento > três pontinhos > Agendar consultoria.
-O cliente escolhe um dos dias e horários livres e confirma. O aviso de
-confirmação aparece com OK. Os agendamentos ficam em Meus agendamentos.
-Ainda não existe cobrança, cancelamento, remarcação, e-mail automático ou
-integração com calendário. As regras comerciais poderão ser adicionadas depois.
+PESSOAS DA CASA
+O formulário de cadastro fica recolhido. Clique no botão Pessoas da casa para
+abrir, cadastrar, renomear, adicionar ou remover moradores. Limite: 2 a 20 ativos.
+A pessoa marcada como você representa a conta conectada e não pode ser removida.
+Nomes e moradores ficam separados por conta. Não é necessário criar login para
+cada morador: são participantes das contas da casa, não contas de acesso ao site.
+Remover um morador desativa sua participação nas novas despesas, preservando
+seu nome e eventuais acertos no histórico. Pagamentos antigos conservam a divisão
+original. Contas fixas não pagas, com vencimento de hoje em diante, se adaptam à
+nova quantidade. Pendências avulsas e contas anteriores mantêm sua divisão original.
 
-REGRAS
-Antecedência por dia de calendário, no fuso America/Bahia: hoje só pode reservar
-para depois de amanhã ou mais tarde. Não exige 48 horas corridas.
-Uma consultoria por horário. Quantidade diária limita os horários gerados.
-Todas as reservas e alterações são gravadas no PostgreSQL.
-Uma transação, uma trava compartilhada entre as operações e a restrição UNIQUE
-impedem duas reservas do mesmo horário.
-Somente administrador pode configurar disponibilidade, consultar todos os
-clientes e marcar novidades como vistas. Cliente vê apenas suas reservas.
-O sino verifica novos agendamentos ao abrir a página e a cada 60 segundos quando
-a aba está visível. O botão 'Marcar novidades exibidas como vistas' limpa as
-notificações correspondentes. Todas as contas administrativas compartilham
-esse estado. Abrir a lista, sozinho, não apaga as notificações.
-Logs de sucesso contêm tipo de operação e IDs, sem telefone ou e-mail.
+DIVISÃO IGUAL E PAGAMENTOS DIFERENTES
+Cada nova despesa é dividida igualmente entre todos os moradores ativos.
+Você pode escolher uma pessoa que pagou tudo, indicar que todos pagaram sua
+parte ou informar separadamente o valor pago por cada um. A soma dos valores
+pagos precisa ser igual ao total da despesa. Valores são tratados em centavos;
+sobras indivisíveis são distribuídas, com diferença de até um centavo por conta.
+Exemplo: três moradores pagaram R$100, R$150 e R$50. Total R$300; parte de cada
+um R$100. Quem pagou R$50 devolve R$50 a quem pagou R$150. Quem pagou R$100
+já está acertado. O sistema considera o conjunto das despesas e devoluções.
+A seção Quem devolve a quem sugere transferências para equilibrar os saldos.
+Preencher devolução apenas prepara o formulário: confirme somente quando o
+dinheiro for efetivamente transferido. Registros podem ser parciais.
 
-VALIDAÇÃO REALIZADA
-Sintaxe de todos os arquivos JavaScript; datas inválidas, virada de ano,
-fuso da Bahia, duração, quantidade diária e geração por período.
-Fluxo de reserva, conflito, rollback e bloqueio administrativo com banco simulado.
-Não houve conexão com o banco real ou execução no site em produção.
+PLANEJAMENTO E CAIXA
+Só a parte da pessoa que representa você entra no planejamento da conta.
+A saída de caixa considera o valor realmente pago por você, inclusive valores
+adiantados para outros moradores. Valores a devolver entram no acerto, sem
+serem registrados como segunda despesa. A meta considera o acerto líquido
+que você ainda deve, com prazo de hoje. Devoluções ajustam o caixa sem criar
+novo ganho ou nova despesa. Uma devolução entre dois outros moradores não muda
+seu caixa. Seu saldo pode ficar negativo se o desembolso superar o caixa informado.
+Não cadastre de novo manualmente no planejamento a despesa já lançada na casa.
+Lançamentos manuais preexistentes não são identificados automaticamente como
+sendo a mesma despesa. Confira esses registros para evitar duplicação.
+Lançamentos vinculados são corrigidos pela área da casa, não diretamente no
+planejamento. Para corrigir despesa avulsa, exclua e cadastre novamente.
 
-TESTE APÓS INSTALAR
-1. Como admin, cadastre três horários em uma data a partir de depois de amanhã.
-2. Como cliente, confira que hoje e amanhã não aparecem; reserve um horário.
-3. Confirme que o aviso com OK aparece e a reserva consta em Meus agendamentos.
-4. Como admin, confira o sino e a lista com nome, telefone e e-mail do cliente.
-5. Como outro cliente, confira que o horário reservado não está disponível.
-6. Confira que planejamento, serviços, perfil e relatórios continuam funcionando.
+MÊS E HISTÓRICO
+Os cartões de despesa e da sua parte consideram o mês de vencimento selecionado.
+Não somam parcelas futuras. Pagamentos e devoluções entram nos acertos pelo
+mês em que ocorreram. Saldos anteriores aparecem separados. Na virada do mês,
+a tela abre o novo período e preserva o histórico para consulta.
+O fechamento não apaga dívidas nem presume pagamento; não bloqueia a edição.
+
+CONTAS FIXAS
+Cadastre descrição, total mensal e primeiro vencimento, a partir de hoje e
+até um ano à frente. A plataforma mantém previsões até três meses à frente
+do mês atual, renovadas nos acessos/processamento de metas. Nenhum mês futuro
+é confirmado como pago automaticamente. Confirme a parcela quando for paga,
+informando a data e os valores realmente pagos pelos moradores.
+Vencimentos 29, 30 e 31 se ajustam ao último dia de meses menores.
+Encerrar repetição remove parcelas não pagas de hoje em diante e interrompe
+novas gerações. Pagamentos e pendências anteriores são preservados. Uma parcela
+excluída não reaparece. Para alterar valor fixo, encerre a antiga e cadastre
+outra, conferindo as parcelas preservadas para não duplicar o período.
+
+PRODUTOS E PERMISSÕES
+Admin acessa Resumo de casa e Produtos por cliente pelos três pontos.
+Cliente só acessa a casa depois da liberação individual. Cada conta tem casa
+própria, sem ver os dados do administrador. O catálogo registra solicitações
+pendentes; o aviso Produtos junto à marca informa a quantidade, atualizado
+ao abrir e a cada 60 segundos enquanto a página estiver visível. Não é push.
+Admin pode aprovar, recusar, liberar e retirar produtos por cliente.
+Planejamento controla APIs financeiras; Consultoria controla agendamentos;
+Uso da plataforma controla essas operações e o acesso à casa. Login, perfil
+e catálogo permanecem disponíveis. Acompanhamento não tem API própria na
+base: a liberação permanece no catálogo. Acesso antigo é mantido, salvo
+retirada explícita. A casa começa bloqueada para clientes.
+
+TESTES REALIZADOS
+Sintaxe JavaScript; integração com PostgreSQL embarcado (PGlite); preservação
+dos testes de duas pessoas; três pessoas com pagamentos 100/150/50; somas dos
+centavos; sugestão e registro da devolução entre outros moradores; isolamento
+por conta; migração dos registros antigos; vínculo único com planejamento;
+contas fixas e confirmação; mudança para quatro pessoas sem alterar pagamentos
+antigos; filtro mensal; encerramento da repetição; testes DOM do modal de
+pessoas, adição, pagamentos diferentes e formulários.
+Não foi conectado o banco Render nem testada a plataforma online com login.
+A inspeção visual em navegador continua pendente. Valide em cópia da plataforma
+antes de usar em produção, incluindo publicações com código posterior ao ZIP base.

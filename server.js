@@ -5572,7 +5572,7 @@ function serveStatic(
     relative.includes('..') ||
     relative.split('/').some((part) => part.startsWith('.')) ||
     /(^|\/)(node_modules|\.git)(\/|$)/i.test(relative) ||
-    /(?:^|\/)(?:\.env(?:\..*)?|package(?:-lock)?\.json|pnpm-lock\.yaml|yarn\.lock|server[^/]*\.js|agendamentos-api\.js|casa-produtos-api\.js|casa-ledger\.js|rota_financeira\.sqlite(?:-[^/]*)?|.*\.(?:sqlite|sqlite3|db|db3|wal|shm|log|bak|backup|pem|key|crt))$/i.test(relative)
+    /(?:^|\/)(?:\.env(?:\..*)?|package(?:-lock)?\.json|pnpm-lock\.yaml|yarn\.lock|server[^/]*\.js|agendamentos-api\.js|casa-produtos-api\.js|casa-ledger\.js|casa-divisao\.js|rota_financeira\.sqlite(?:-[^/]*)?|.*\.(?:sqlite|sqlite3|db|db3|wal|shm|log|bak|backup|pem|key|crt))$/i.test(relative)
   ) {
     return sendJson(res, 404, { error: 'Página não encontrada.' });
   }
