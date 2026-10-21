@@ -131,9 +131,12 @@
     if (!modeLabel || !mode) return;
 
     const isExpense = type === 'expense';
+    $('categoryLabel')?.classList.toggle('hidden', !isExpense);
+    $('secondDayLabel')?.classList.toggle('hidden', !isExpense || editing || mode.value !== 'fortnightly');
+    if ($('secondDay')) {$('secondDay').required=isExpense && !editing && mode.value==='fortnightly';$('secondDay').disabled=!isExpense || editing || mode.value!=='fortnightly';}
     const amountLabel = type === 'expense' && mode.value === 'installment'
       ? 'Valor de cada parcela'
-      : type === 'expense' && mode.value === 'daily' ? 'Valor por dia' : 'Valor';
+      : type === 'expense' && mode.value === 'daily' ? 'Valor por dia' : type === 'expense' && ['weekly','fortnightly'].includes(mode.value) ? 'Valor de cada pagamento' : 'Valor';
     setLabelText($('entryAmount')?.closest('label'), amountLabel);
     modeLabel.classList.toggle('hidden', !isExpense);
     mode.disabled = editing || !isExpense;
@@ -180,6 +183,8 @@
     $('entryId').value = '';
     $('entryType').value = type;
     $('entryName').value = '';
+    $('entryCategory').value = 'Outros';
+    $('secondDay').value = '';
     $('entryAmount').value = '';
     if ($('expenseRecurrence')) $('expenseRecurrence').value = 'single';
     if ($('installmentTotal')) $('installmentTotal').value = '';
@@ -201,6 +206,7 @@
     $('entryId').value = entry.id;
     $('entryType').value = entry.type;
     $('entryName').value = entry.name || '';
+    $('entryCategory').value = entry.financial_category || 'Outros';
     $('entryAmount').value = Number(entry.amount || 0).toFixed(2);
     syncExpenseRecurrenceFromEntry(entry);
     $('createdDate').value = entry.created_date || todayLocal();
@@ -287,7 +293,7 @@ const filteredEntries = state.entries.filter((entry) => {
           ${action}
           <button type="button" class="secondary-btn" data-action="edit" data-id="${entry.id}">Editar</button>
           <button type="button" class="secondary-btn danger" data-action="delete" data-id="${entry.id}">Excluir</button>
-          ${!isIncome && (entry.recurrence_type === 'fixed' || entry.recurrence_type === 'installment') && entry.series_id ? `<button type="button" class="secondary-btn danger" data-action="delete-future" data-id="${entry.id}">Excluir próximas</button>` : ''}
+          ${!isIncome && ['fixed','installment','weekly','fortnightly'].includes(entry.recurrence_type) && entry.series_id ? `<button type="button" class="secondary-btn danger" data-action="delete-future" data-id="${entry.id}">Excluir próximas</button>` : ''}
         </div>
       </article>`;
   }).join('');
@@ -442,6 +448,7 @@ const filteredEntries = state.entries.filter((entry) => {
       renderEntries();
       renderRestDays();
       renderChart(state.data);
+      document.dispatchEvent(new CustomEvent('rota-summary-loaded',{detail:{month:state.month}}));
       feedback('');
     } catch (error) {
       if (error.status === 401 || error.status === 403) {
@@ -465,6 +472,8 @@ async function saveEntry(event) {
   const id = Number($('entryId').value || 0);
 
   const payload = {
+    financial_category: $('entryCategory').value.trim() || 'Outros',
+    recurrence_day_second: Number($('secondDay').value) || null,
     request_id: crypto.randomUUID(),
     type: $('entryType').value,
     name: $('entryName').value.trim(),
@@ -828,6 +837,9 @@ async function confirmEntryDate(event) {
     }
   }
 
+  function suggestSecondDay(){if($('expenseRecurrence').value!=='fortnightly' || state.editingId)return;const day=Number($('dueDate').value.slice(-2));const date=new Date($('dueDate').value+'T12:00:00Z');const last=new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,0)).getUTCDate();$('secondDay').value=day+15<=last?String(day+15):'';}
+  $('dueDate').addEventListener('change',suggestSecondDay);
+  $('expenseRecurrence').addEventListener('change',suggestSecondDay);
   $('prevMonth')?.addEventListener('click', () => setMonth(shiftMonth(state.month, -1)));
   $('nextMonth')?.addEventListener('click', () => setMonth(shiftMonth(state.month, 1)));
   $('monthPicker')?.addEventListener('change', (event) => {
@@ -871,6 +883,7 @@ $('closeConfirmDateModal')?.addEventListener('click', () => {
   $('menuEdit')?.addEventListener('click', (event) => {
     event.stopPropagation();
     hideMenus();
+    if ($('entriesDisclosure')) $('entriesDisclosure').open=true;
     $('entriesSection')?.classList.remove('hidden');
     $('entriesSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });

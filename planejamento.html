@@ -11,7 +11,7 @@
 
 <!-- Estilos principais da Rota Financeira -->
 <link rel="stylesheet" href="/styles.css">
-<link rel="stylesheet" href="/planejamento.css?v=20261014-fix2">
+<link rel="stylesheet" href="/planejamento.css?v=20261020-1">
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -534,12 +534,20 @@
                 <option value="single">Única</option>
                 <option value="fixed">Despesa fixa</option>
                 <option value="installment">Parcelada</option>
-                <option value="daily">Diária</option>
+                <option value="daily">Diária</option><option value="weekly">Semanal</option><option value="fortnightly">Quinzenal — dois dias fixos</option>
             </select>
 
         </label>
 
 
+        <label id="categoryLabel">Categoria da despesa
+          <input id="entryCategory" list="expenseCategories" maxlength="60" value="Outros">
+          <datalist id="expenseCategories"><option value="Outros"><option value="Alimentação"><option value="Moradia"><option value="Transporte"><option value="Saúde"><option value="Educação"><option value="Lazer"><option value="Contas e serviços"><option value="Dívidas e empréstimos"></datalist>
+        </label>
+        <label id="secondDayLabel" class="hidden">Segundo dia fixo do mês
+          <input id="secondDay" type="number" min="1" max="31" step="1">
+          <small>Sugestão editável. O valor informado será cobrado em cada vencimento. Os dois dias se repetem mensalmente.</small>
+        </label>
         <!-- QUANTIDADE DE PARCELAS -->
 
         <label
@@ -752,7 +760,7 @@
      IMPORTANTE: carregar por último
 ========================== -->
 
-<script src="/planejamento.js?v=20261015-layout4"></script>
+<script src="/planejamento.js?v=20261020-1"></script>
 <script>
 document.getElementById('backLogo')?.addEventListener('click', function (event) {
     event.preventDefault();
@@ -761,9 +769,10 @@ document.getElementById('backLogo')?.addEventListener('click', function (event) 
 </script>
 
 <script src="/navegacao.js?v=20261015-layout4"></script>
-<script src="/experiencia-cliente.js?v=20261015-layout4"></script>
+<script src="/experiencia-cliente.js?v=20261020-1"></script>
 <script src="/perfil-financeiro-ui.js?v=1"></script>
 <script src="/ferramentas-financeiras.js?v=2"></script>
+<script src="/categorias.js?v=20261020-1"></script>
 </body>
 
 </html>

@@ -96,6 +96,8 @@ function pgPlaceholders(sql) {
   PostgreSQL é assíncrono, por isso todas as chamadas ao banco
   no servidor convertido usam await.
 */
+const transactionStore = new (require('node:async_hooks').AsyncLocalStorage)();
+const queryDb = (sql,params) => (transactionStore.getStore()?.client || pool).query(sql,params);
 const db = {
   prepare(sql) {
     const baseSql = pgPlaceholders(sql);
@@ -111,12 +113,12 @@ const db = {
           query += ' RETURNING id';
         }
 
-        const result = await pool.query(query, params);
+        const result = await queryDb(query, params);
         return result.rows[0] || undefined;
       },
 
       async all(...params) {
-        const result = await pool.query(baseSql, params);
+        const result = await queryDb(baseSql, params);
         return result.rows;
       },
 
@@ -130,7 +132,7 @@ const db = {
           query += ' RETURNING id';
         }
 
-        const result = await pool.query(query, params);
+        const result = await queryDb(query, params);
 
         return {
           changes: result.rowCount,
@@ -144,15 +146,19 @@ const db = {
   async exec(sql) {
     const normalized = String(sql).trim().toUpperCase();
 
-    // O servidor legado usava BEGIN/COMMIT/ROLLBACK do SQLite.
-    // As consultas PostgreSQL usam pool; estes comandos isolados não
-    // podem representar uma transação entre conexões diferentes.
-    // Nos blocos de negócio, mantemos a sequência das operações.
-    if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(normalized)) {
-      return { rows: [], rowCount: 0 };
+    const context=transactionStore.getStore();
+    if (normalized === 'BEGIN' && context) {
+      if(context.client) throw new Error('Transação já iniciada.');
+      context.client=await pool.connect();
+      try{return await context.client.query('BEGIN');}catch(e){context.client.release();context.client=null;throw e;}
     }
+    if (['COMMIT','ROLLBACK'].includes(normalized) && context) {
+      if(!context.client)return {rows:[],rowCount:0};
+      const client=context.client;
+      try{return await client.query(normalized);}finally{context.client=null;client.release();}
+    }
+    return queryDb(sql);
 
-    return pool.query(sql);
   }
 };
 
@@ -237,6 +243,7 @@ async function initializeDatabase() {
       UNIQUE(user_id, rest_date)
     );
 
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS financial_profile JSONB;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'client';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_status VARCHAR(30);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
@@ -317,6 +324,9 @@ async function initializeDatabase() {
         active = TRUE
     `, item);
   }
+  await require('./server-importacao').install(pool);
+  await require('./server-atividades').install(pool);
+  await require('./server-recorrencias').install(pool);
   await require('./finance-audit').installFinanceAudit(pool);
   await require('./casa-produtos-api').install(pool);
 
@@ -1118,6 +1128,7 @@ function hasRecentClientLogin(lastLoginAt) {
 
 function calculateClientStatus(client) {
   const manual = String(client.billing_status || '').trim().toLowerCase();
+  if (manual === 'cancelado') return { status: 'cancelado', manual: true, daysElapsed: daysSinceCreated(client.created_at), daysRemaining: 0 };
   if (manual === 'pagante') return { status: 'pagante', manual: true, daysElapsed: daysSinceCreated(client.created_at), daysRemaining: 0 };
   if (manual === 'inadimplente') return { status: 'inadimplente', manual: true, daysElapsed: daysSinceCreated(client.created_at), daysRemaining: 0 };
 
@@ -1129,7 +1140,7 @@ function calculateClientStatus(client) {
 }
 
 function isClientCancelled(client) {
-  return String(client.billing_status || '').trim().toLowerCase() === 'cancelado';
+  return ['cancelado', 'inadimplente'].includes(calculateClientStatus(client).status);
 }
 
 function publicClientStatus(client) {
@@ -1672,8 +1683,8 @@ async function handleAuthApi(
     req.method === 'GET' &&
     url === '/api/auth/me'
   ) {
-    const user =
-      await getCurrentUser(req);
+    const user = await requireUser(req,res);
+    if (!user) return;
 
     if (!user) {
       return sendJson(
@@ -1928,7 +1939,7 @@ async function ensureFixedSeriesHorizon(userId, seriesId, fromDate = getTodayLoc
   if (!seriesId) return 0;
 
   const series = await db.prepare(`
-    SELECT id, user_id, name, amount, recurrence_type, series_id, recurrence_day, paid, paid_at, due_date, recurrence_active
+    SELECT id, user_id, name, amount, financial_category, recurrence_type, series_id, recurrence_day, paid, paid_at, due_date, recurrence_active
     FROM finance_entries
     WHERE user_id = ? AND series_id = ? AND recurrence_type = 'fixed'
       AND COALESCE(recurrence_active, 1) = 1
@@ -1956,8 +1967,8 @@ async function ensureFixedSeriesHorizon(userId, seriesId, fromDate = getTodayLoc
     if (!exists && compareDates(next, fromDate) >= 0) {
       await db.prepare(`
         INSERT INTO finance_entries
-        (user_id, type, name, amount, created_date, due_date, paid, paid_at, rest_day_id, recurrence_type, series_id, installment_number, installment_total, recurrence_day)
-        VALUES (?, 'expense', ?, ?, ?, ?, 0, NULL, NULL, 'fixed', ?, NULL, NULL, ?)
+        (user_id, type, name, amount, created_date, due_date, paid, paid_at, rest_day_id, recurrence_type, series_id, installment_number, installment_total, recurrence_day, financial_category)
+        VALUES (?, 'expense', ?, ?, ?, ?, 0, NULL, NULL, 'fixed', ?, NULL, NULL, ?, ?)
       `).run(
         userId,
         anchor.name,
@@ -1965,7 +1976,8 @@ async function ensureFixedSeriesHorizon(userId, seriesId, fromDate = getTodayLoc
         fromDate,
         next,
         seriesId,
-        recurrenceDay
+        recurrenceDay,
+        anchor.financial_category || 'Outros'
       );
       created++;
     }
@@ -2175,7 +2187,7 @@ async function buildAdminClientSummary(userId, month) {
     SELECT
       id, type, name, amount, created_date, due_date,
       paid, paid_at, paid_date, rest_day_id, created_at,      recurrence_type, series_id, installment_number,
-      installment_total, recurrence_day
+      installment_total, financial_category, recurrence_day_second, recurrence_day
     FROM finance_entries
     WHERE user_id = ?
     ORDER BY due_date ASC, id ASC
@@ -2969,11 +2981,12 @@ async function handleFinanceApi(
     req.method === 'POST' &&
     url === '/api/finance/entries'
   ) {
+    let requestId;
     try {
       const body =
         await readBody(req);
 
-      const requestId =
+      requestId =
   clean(
     body.request_id,
     100
@@ -3067,7 +3080,7 @@ async function handleFinanceApi(
         );
       }
 
-      if (type === 'expense' && !['single', 'fixed', 'installment', 'daily'].includes(recurrenceType)) {
+      if (type === 'expense' && !['single', 'fixed', 'installment', 'daily', 'weekly', 'fortnightly'].includes(recurrenceType)) {
         return sendJson(res, 400, { error: 'Tipo de despesa recorrente inválido.' });
       }
 
@@ -3104,12 +3117,17 @@ async function handleFinanceApi(
         );
       }
 
+      const category = clean(body.financial_category,60) || 'Outros';
+      const secondDay = recurrenceType === 'fortnightly' ? Number(body.recurrence_day_second) : null;
+      if (recurrenceType === 'fortnightly' && (!Number.isInteger(secondDay) || secondDay < 1 || secondDay > 31 || secondDay === parseDate(dueDate).getDate())) return sendJson(res,400,{error:'Escolha dois dias diferentes entre 1 e 31.'});
       const seriesId = recurrenceType === 'single' ? null : createSeriesId();
       const recurrenceDay = parseDate(dueDate).getDate();
       const rowsToCreate = [];
       let firstEntryId = null;
 
-      if (type === 'expense' && recurrenceType === 'fixed') {
+      if (type === 'expense' && ['weekly','fortnightly'].includes(recurrenceType)) {
+        require('./server-recorrencias').dates(dueDate,recurrenceType,parseDate(dueDate).getDate(),secondDay,require('./server-recorrencias').horizon(dueDate)).forEach(date=>rowsToCreate.push({date,installmentNumber:null,installmentTotal:null}));
+      } else if (type === 'expense' && recurrenceType === 'fixed') {
         const dates = buildFixedDates(dueDate, 4, recurrenceDay);
         dates.forEach((date) => rowsToCreate.push({ date, installmentNumber: null, installmentTotal: null }));
       } else if (type === 'expense' && recurrenceType === 'installment') {
@@ -3157,9 +3175,11 @@ const insert = await db.prepare(`
     installment_number,
     installment_total,
     recurrence_day,
+    financial_category,
+    recurrence_day_second,
     request_id
   )
-  VALUES (?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 
 for (let i = 0; i < rowsToCreate.length; i++) {
@@ -3179,6 +3199,8 @@ for (let i = 0; i < rowsToCreate.length; i++) {
     row.installmentNumber,
     row.installmentTotal,
     recurrenceDay,
+    category,
+    secondDay,
 
     // A chave identifica a operação inteira.
     // Somente a primeira linha recebe o request_id.
@@ -3191,6 +3213,7 @@ for (let i = 0; i < rowsToCreate.length; i++) {
   }
 }
 
+if (['weekly','fortnightly'].includes(recurrenceType)) await db.prepare('INSERT INTO expense_schedules(user_id,series_id,config,generated_until) VALUES(?,?,?::jsonb,?) RETURNING series_id').run(userId,seriesId,JSON.stringify({first:dueDate,mode:recurrenceType,day:recurrenceDay,second:secondDay,name,amount,category}),require('./server-recorrencias').horizon(dueDate));
 await db.exec('COMMIT');
       } catch (err) {
         await db.exec('ROLLBACK');
@@ -3358,6 +3381,8 @@ if (
             series_id,
             installment_number,
             installment_total,
+            financial_category,
+            recurrence_day_second,
             recurrence_day,
             created_at
 
@@ -3468,6 +3493,8 @@ if (
             series_id,
             installment_number,
             installment_total,
+            financial_category,
+            recurrence_day_second,
             recurrence_day,
             created_at
 
@@ -3559,6 +3586,8 @@ if (
             series_id,
             installment_number,
             installment_total,
+            financial_category,
+            recurrence_day_second,
             recurrence_day,
             created_at
 
@@ -3633,6 +3662,8 @@ if (
             series_id,
             installment_number,
             installment_total,
+            financial_category,
+            recurrence_day_second,
             recurrence_day,
             created_at
 
@@ -3748,6 +3779,8 @@ if (
             series_id,
             installment_number,
             installment_total,
+            financial_category,
+            recurrence_day_second,
             recurrence_day,
             created_at
 
@@ -3871,6 +3904,8 @@ if (
             series_id,
             installment_number,
             installment_total,
+            financial_category,
+            recurrence_day_second,
             recurrence_day,
             created_at
 
@@ -4029,7 +4064,11 @@ if (
               series_id,
               installment_number,
               installment_total,
-              recurrence_day,
+              financial_category,
+              recurrence_day_second,
+              financial_category,
+            recurrence_day_second,
+            recurrence_day,
               created_at
 
             FROM finance_entries
@@ -4242,7 +4281,8 @@ if (
               name = ?,
               amount = ?,
               created_date = ?,
-              due_date = ?
+              due_date = ?,
+              financial_category = ?
 
             WHERE
               id = ?
@@ -4254,6 +4294,7 @@ if (
             amount,
             createdDate,
             dueDate,
+            clean(body.financial_category,60) || 'Outros',
             id,
             userId
           );
@@ -4290,7 +4331,11 @@ if (
               series_id,
               installment_number,
               installment_total,
-              recurrence_day,
+              financial_category,
+              recurrence_day_second,
+              financial_category,
+            recurrence_day_second,
+            recurrence_day,
               created_at
 
             FROM finance_entries
@@ -4350,7 +4395,7 @@ if (
       `).get(id, userId);
 
       if (!existing) return sendJson(res, 404, { error: 'Lançamento não encontrado.' });
-      if (existing.type !== 'expense' || !['fixed', 'installment'].includes(existing.recurrence_type) || !existing.series_id) {
+      if (existing.type !== 'expense' || !['fixed', 'installment', 'weekly', 'fortnightly'].includes(existing.recurrence_type) || !existing.series_id) {
         return sendJson(res, 400, { error: 'A exclusão das despesas futuras está disponível somente para despesas fixas ou parceladas.' });
       }
       if (existing.rest_day_id !== null && existing.rest_day_id !== undefined) {
@@ -4359,6 +4404,7 @@ if (
 
       await db.exec('BEGIN');
       try {
+        await db.prepare('UPDATE expense_schedules SET active=FALSE WHERE user_id=? AND series_id=?').run(userId,existing.series_id);
         await db.prepare(`UPDATE finance_entries SET recurrence_active = 0 WHERE user_id = ? AND series_id = ?`).run(userId, existing.series_id);
         const result = await db.prepare(`
           DELETE FROM finance_entries
@@ -4514,6 +4560,7 @@ if (
     }
 
     await ensureAllFixedSeries(userId);
+    await require('./server-recorrencias').ensure(pool,userId,getTodayLocal());
 
     /*
       Lista exibida ao cliente:
@@ -4538,6 +4585,8 @@ if (
             series_id,
             installment_number,
             installment_total,
+            financial_category,
+            recurrence_day_second,
             recurrence_day,
             created_at
 
@@ -4588,6 +4637,8 @@ if (
             series_id,
             installment_number,
             installment_total,
+            financial_category,
+            recurrence_day_second,
             recurrence_day,
             created_at
 
@@ -5448,9 +5499,16 @@ const products = require('./casa-produtos-api').create({pool,requireUser,require
 
 const goals = require('./server-metas').createGoals({pool, requireUser, requireAdmin, readBody, sendJson, recordClientChange});
 
+const imports = require('./server-importacao').create({pool,requireUser,sendJson,readBody,getTodayLocal});
+const activities = require('./server-atividades').create({pool,requireUser,requireAdmin,sendJson,readBody,getTodayLocal});
+const categories = require('./server-recorrencias').create({pool,requireUser,requireAdmin,sendJson,getTodayLocal});
 const scheduling = require('./agendamentos-api').createScheduling({pool, requireUser, requireAdmin, readBody, sendJson});
 
-async function handleApi(
+async function handleApi(req,res,parsedUrl) {
+ return transactionStore.run({},async()=>{try{return await handleApiInternal(req,res,parsedUrl);}finally{const c=transactionStore.getStore()?.client;if(c){try{await c.query('ROLLBACK');}finally{c.release();transactionStore.getStore().client=null;}}}});
+}
+
+async function handleApiInternal(
   req,
   res,
   parsedUrl
@@ -5464,6 +5522,28 @@ async function handleApi(
 
   if (await products.handle(req,res,url) !== false) return;
   if (!await products.gate(req,res,url)) return;
+  if (url === '/api/financial-profile' || /^\/api\/admin\/clients\/\d+\/financial-profile$/.test(url)) {
+    const isAdmin = url.startsWith('/api/admin/');
+    const user = await (isAdmin ? requireAdmin(req, res) : requireUser(req, res));
+    if (!user) return;
+    const userId = isAdmin ? Number(url.split('/')[4]) : Number(user.id);
+    if (req.method !== 'GET' && (isAdmin || req.method !== 'PUT')) return sendJson(res,405,{error:'Método não permitido.'});
+    try {
+      const current = await db.prepare('SELECT financial_profile FROM users WHERE id = ?').get(userId);
+      if (!current) return sendJson(res,404,{error:'Cliente não encontrado.'});
+      if (req.method === 'GET') return sendJson(res,200,{profile:current.financial_profile || null});
+      let profile;
+      try { profile = require('./perfis-financeiros').normalize(await readBody(req)); }
+      catch (error) { return sendJson(res,400,{error:error.message}); }
+      await db.prepare('UPDATE users SET financial_profile = ?::jsonb WHERE id = ?').run(JSON.stringify(profile),userId);
+      await recordClientChange(userId,userId,'Perfil financeiro atualizado','financial_profile',JSON.stringify(current.financial_profile),JSON.stringify(profile));
+      return sendJson(res,200,{profile});
+    } catch(error) { console.error('Perfil financeiro:',error); return sendJson(res,500,{error:'Não foi possível carregar ou salvar o perfil financeiro.'}); }
+  }
+
+  if (await imports.handle(req,res,url) !== false) return;
+  if (await activities.handle(req,res,url) !== false) return;
+  if (await categories.handle(req,res,url,parsedUrl) !== false) return;
   if (await goals.handle(req, res, url) !== false) return;
 
   if (url.startsWith('/api/consultations') || url.startsWith('/api/admin/consultations')) {

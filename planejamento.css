@@ -82,3 +82,5 @@
 
 @media(max-width:950px){.summary-grid{grid-template-columns:repeat(2,1fr)}.entry-row{grid-template-columns:1fr auto}.entry-actions{grid-column:1/-1;justify-content:flex-start}.status-pill{justify-self:start}}
 @media(max-width:650px){.planning-page{padding-top:100px}.planning-head{align-items:flex-start;flex-direction:column}.month-selector{width:100%}.month-selector input{flex:1;min-width:0}.summary-grid,.action-grid{grid-template-columns:1fr}.section-title{align-items:flex-start;flex-direction:column}.chart-wrap{height:280px}.entry-row{grid-template-columns:1fr}.entry-value{justify-self:start}.entry-actions{width:100%}.entry-actions .secondary-btn{flex:1}.modal-box{padding:24px 18px}}
+
+.ux-pending-actions{display:flex;gap:8px;flex-wrap:wrap}.ux-panel table th,.ux-panel table td{padding:8px;text-align:left;border-bottom:1px solid #555}.ux-panel table{font-size:14px}
