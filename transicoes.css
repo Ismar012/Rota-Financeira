@@ -1,0 +1,14 @@
+/* Native navigation remains unchanged. Browsers without View Transitions ignore this. */
+@view-transition{navigation:auto}
+::view-transition-old(root){animation:rota-out .16s ease-in both}
+::view-transition-new(root){animation:rota-in .24s ease-out both}
+@keyframes rota-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes rota-out{to{opacity:0;transform:translateY(-5px)}}
+main{animation:rota-in .25s ease-out both}
+.modal:not(.hidden) .modal-box,.modal:not(.hidden) .modal-content{animation:rota-in .2s ease-out}
+.tour-help{margin:12px 0;padding:9px 15px;border:1px solid #d9a928;border-radius:24px;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.tour-root{position:fixed;inset:0;z-index:2147483000;background:transparent;isolation:isolate}
+.tour-spot{position:fixed;pointer-events:none;border:2px solid #efc85e;border-radius:14px;box-shadow:0 0 0 9999px #000b;z-index:-1}
+.tour-card{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:24px;background:#181a1f;color:#fff;border:1px solid #e3ba4e;border-radius:20px;box-shadow:0 12px 60px #0008;font:16px/1.5 system-ui,sans-serif}
+.tour-card h2{font-size:22px;margin:8px 0;color:#f4d278}.tour-copy{margin:12px 0 20px}.tour-count{font-size:13px;color:#ddd}.tour-actions{display:flex;flex-wrap:wrap;gap:8px}.tour-actions button{min-height:44px;padding:9px 13px;font:inherit;border-radius:9px;border:1px solid #aaa;background:#282b31;color:white;cursor:pointer}.tour-actions button:last-child{background:#e3ba4e;color:#181a1f;border-color:#e3ba4e}.tour-actions button:disabled{opacity:.4;cursor:default}.tour-actions button:focus-visible,.tour-help:focus-visible{outline:3px solid #fff;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){main,.modal:not(.hidden) .modal-box,.modal:not(.hidden) .modal-content,::view-transition-old(root),::view-transition-new(root){animation:none!important}html{scroll-behavior:auto!important}}
