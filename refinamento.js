@@ -1,0 +1,3 @@
+(()=>{'use strict';const page=location.pathname.split('/').pop();const home='/dashboard.html';for(const a of document.querySelectorAll('.logo-text,#backLogo')){a.href=home;a.setAttribute('aria-label','Rota Financeira — início');}
+const parents={'perfil.html':[home,'Voltar ao início'],'servicos.html':[home,'Voltar ao início'],'planejamento.html':[home,'Voltar ao início'],'agendamento.html':['/planejamento.html','Voltar ao planejamento']};if(parents[page]&&!document.querySelector('main .rota-back,main>a.back')){const [href,label]=parents[page];const a=document.createElement('a');a.href=href;a.className='rota-back';a.textContent='← '+label;document.querySelector('main')?.prepend(a);}
+})();

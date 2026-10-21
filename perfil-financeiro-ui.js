@@ -7,7 +7,7 @@
   const editing=location.pathname==='/perfil.html';
   const admin=location.pathname==='/admin.html';
   const host=admin?document.getElementById('clientDetail'):document.querySelector('main .container, .planning-container, main');
-  if(!host)return;
+  if(!host||location.pathname==='/planejamento.html')return;
   const panel=el('section');panel.className='financial-profile-panel';
   panel.append(el('h2',editing?'Meu perfil financeiro':'Perfil financeiro'));
   const body=el('div');panel.append(body);host.append(panel);

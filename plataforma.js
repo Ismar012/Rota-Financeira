@@ -6,8 +6,8 @@
  // Use the browser's ordinary navigation, with an immediate visible state and no artificial delay.
  document.addEventListener('click',e=>{const a=e.target.closest('a[href]');if(!a||e.defaultPrevented||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||a.target==='_blank'||a.hasAttribute('download'))return;const u=new URL(a.href,location.href);if(u.origin!==location.origin||u.pathname===location.pathname||u.pathname.startsWith('/api/'))return;document.body.classList.add('page-leaving');});
  window.addEventListener('pageshow',()=>document.body.classList.remove('page-leaving'));
- if(document.body.classList.contains('client-settings')){$('feedback')?.setAttribute('role','status');const hint=el('p','Atualize seus dados abaixo. A senha só muda quando você preencher o campo correspondente.','screen-hint');$('profileForm')?.before(hint);}
- if(document.body.classList.contains('client-services')){$('servicesGrid')?.setAttribute('aria-label','Serviços disponíveis');$('feedback')?.setAttribute('role','status');const hint=el('p','Solicitar contratação abre uma conversa no WhatsApp. Valores e contratação são confirmados pela equipe.','screen-hint');$('servicesGrid')?.before(hint);}
+ if(document.body.classList.contains('client-settings')){$('feedback')?.setAttribute('role','status');const hint=el('p','Preencha uma nova senha somente se quiser alterá-la.','screen-hint');$('profileForm')?.before(hint);}
+ if(document.body.classList.contains('client-services')){$('servicesGrid')?.setAttribute('aria-label','Serviços disponíveis');$('feedback')?.setAttribute('role','status');const hint=el('p','Solicitações são avaliadas pela equipe. O envio não confirma contratação nem pagamento.','screen-hint');$('servicesGrid')?.before(hint);}
  if(!$('clientDetail'))return;
  const detail=$('clientDetail');let panel;
  const wrap=(node,label)=>{if(!node)return;const d=el('details',null,'consult-disclosure');d.append(el('summary',label));node.before(d);d.append(node);return d;};

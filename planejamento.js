@@ -437,6 +437,7 @@ const filteredEntries = state.entries.filter((entry) => {
 
   async function loadSummary() {
     if (!state.month) return;
+    document.dispatchEvent(new CustomEvent('rota-content-loading'));
     feedback('Carregando planejamento...');
 
     try {
@@ -455,6 +456,7 @@ const filteredEntries = state.entries.filter((entry) => {
         window.location.href = '/login.html';
         return;
       }
+      document.dispatchEvent(new CustomEvent('rota-content-error'));
       feedback(error.message, 'error');
     }
   }

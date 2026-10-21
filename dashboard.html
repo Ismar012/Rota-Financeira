@@ -8,17 +8,17 @@
 <link rel="stylesheet" href="/melhorias.css?v=20261014">
 <link rel="stylesheet" href="/experiencia-cliente.css?v=20261015-layout4">
 <link rel="stylesheet" href="/plataforma.css?v=20261015-consultoria">
-<link rel="stylesheet" href="/transicoes.css?v=20261021-2"></head>
+<link rel="stylesheet" href="/transicoes.css?v=20261021-3"><link rel="stylesheet" href="/refinamento.css?v=20261021-3"></head>
 <body class="client-home">
 <header class="header">
   <nav class="nav">
-    <a class="logo-text" href="#" id="backLogo">ROTA <span>FINANCEIRA</span></a>
+    <a class="logo-text" href="/dashboard.html" id="backLogo">ROTA <span>FINANCEIRA</span></a>
     <div class="nav-actions">
         <button id="logout" class="btn btn-outline">Sair</button>
     </div>
   </nav>
 </header>
-<main class="page">
+<main aria-busy="true" class="rota-data-loading page">
   <div class="container">
     <div class="page-head">
       <div class="eyebrow">Área do cliente</div>
@@ -85,11 +85,11 @@ document.getElementById('logout').addEventListener('click', async function () {
 
 document.getElementById('backLogo')?.addEventListener('click', function (event) {
   event.preventDefault();
-  window.history.back();
+  window.location.href = '/dashboard.html';
 });
 </script>
-<script src="/navegacao.js?v=20261015-layout4"></script>
-<script src="/experiencia-cliente.js?v=20261015-layout4"></script>
-<script src="/plataforma.js?v=20261015-consultoria"></script>
-<script src="/tutorial.js?v=20261021-2"></script><script src="/transicoes.js?v=20261021-2"></script></body>
+<script src="/navegacao.js?v=20261021-3"></script>
+<script src="/experiencia-cliente.js?v=20261021-3"></script>
+<script src="/plataforma.js?v=20261021-3"></script>
+<script src="/tutorial.js?v=20261021-3"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script></body>
 </html>
