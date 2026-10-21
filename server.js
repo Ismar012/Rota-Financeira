@@ -327,6 +327,7 @@ async function initializeDatabase() {
   await require('./server-importacao').install(pool);
   await require('./server-atividades').install(pool);
   await require('./server-recorrencias').install(pool);
+  await require('./server-desafio').install(pool);
   await require('./finance-audit').installFinanceAudit(pool);
   await require('./casa-produtos-api').install(pool);
 
@@ -5501,6 +5502,7 @@ const goals = require('./server-metas').createGoals({pool, requireUser, requireA
 
 const imports = require('./server-importacao').create({pool,requireUser,sendJson,readBody,getTodayLocal});
 const activities = require('./server-atividades').create({pool,requireUser,requireAdmin,sendJson,readBody,getTodayLocal});
+const challenge = require('./server-desafio').create({pool,requireUser,requireAdmin,sendJson,readBody,getTodayLocal});
 const categories = require('./server-recorrencias').create({pool,requireUser,requireAdmin,sendJson,getTodayLocal});
 const scheduling = require('./agendamentos-api').createScheduling({pool, requireUser, requireAdmin, readBody, sendJson});
 
@@ -5522,6 +5524,8 @@ async function handleApiInternal(
 
   if (await products.handle(req,res,url) !== false) return;
   if (!await products.gate(req,res,url)) return;
+  if (!await challenge.guard(req,res,url)) return;
+  if (await challenge.handle(req,res,url) !== false) return;
   if (url === '/api/financial-profile' || /^\/api\/admin\/clients\/\d+\/financial-profile$/.test(url)) {
     const isAdmin = url.startsWith('/api/admin/');
     const user = await (isAdmin ? requireAdmin(req, res) : requireUser(req, res));
@@ -5716,7 +5720,7 @@ function serveStatic(
         }
 
         const adminVisibilityScript = `
-<script defer src="/agendamentos-menu.js"></script>
+<script defer src="/agendamentos-menu.js?v=modalidades2"></script>
 <script data-rota-admin-visibility>
 (async function(){
   try {

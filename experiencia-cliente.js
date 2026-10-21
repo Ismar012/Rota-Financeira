@@ -12,7 +12,21 @@
   if(feedback){feedback.setAttribute('role','status');new MutationObserver(()=>{if(feedback.classList.contains('success')&&feedback.textContent){toast.textContent=feedback.textContent;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{toast.textContent='';},7000);}}).observe(feedback,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['class']});}
   const chart=document.querySelector('.chart-card');
   const actions=document.querySelector('.action-grid');
-  if(chart&&actions){chart.before(actions);const rest=text('button','Marcar descanso');rest.type='button';rest.className='action-card';rest.addEventListener('click',()=> $('menuRest')?.click());actions.append(rest);}
+  if(chart&&actions){
+    chart.before(actions);
+    if (!$('quickChallenge')) {const link=text('a','');link.id='quickChallenge';link.className='action-card';link.href='/desafio.html';const icon=text('span','🏆');icon.className='action-icon';icon.setAttribute('aria-hidden','true');const copy=text('span','');copy.append(text('strong','Reserva da Liberdade'),text('small','Sua jornada para guardar dinheiro'));link.append(icon,copy);actions.append(link);}
+
+    (async()=>{try{
+      const response=await fetch('/api/auth/me',{credentials:'same-origin'});if(!response.ok)return;
+      const me=await response.json();if(!me.authenticated)return;
+      let allowed=me.user?.role==='admin';
+      if(!allowed){const r=await fetch('/api/services',{credentials:'same-origin'});if(!r.ok)return;const data=await r.json();const services=Array.isArray(data.services)?data.services:[];allowed=services.some(s=>s.slug==='divisao-casa'&&s.acquired===true)&&services.some(s=>s.slug==='plataforma'&&s.acquired===true);}
+      if(!allowed||$('quickHouse'))return;
+      const link=text('a','');link.id='quickHouse';link.className='action-card';link.href='/resumo-casa.html';
+      const icon=text('span','⌂');icon.className='action-icon';icon.setAttribute('aria-hidden','true');
+      const copy=text('span','');copy.append(text('strong','Despesas da casa'),text('small','Divida despesas e confira os acertos'));link.append(icon,copy);actions.append(link);
+    }catch{/* Falha ao consultar permissões mantém o atalho oculto. */}})();
+  }
   if($('entriesList')){
     const panel=text('section','');panel.className='ux-panel';panel.setAttribute('aria-labelledby','uxPendingTitle');const title=text('h2','Pendências para confirmar');title.id='uxPendingTitle';panel.append(title,text('p','Confirme somente valores que você realmente recebeu ou pagou.'));
     const list=text('div','');panel.append(list);const all=text('button','Ver todos os lançamentos');all.type='button';all.className='secondary-btn';all.addEventListener('click',()=> {const d=$('entriesDisclosure');if(d){d.open=true;d.scrollIntoView({behavior:'smooth',block:'start'});d.querySelector('summary')?.focus();}});panel.append(all);
