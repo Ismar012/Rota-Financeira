@@ -12,3 +12,15 @@ main{animation:rota-in .25s ease-out both}
 .tour-card{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:24px;background:#181a1f;color:#fff;border:1px solid #e3ba4e;border-radius:20px;box-shadow:0 12px 60px #0008;font:16px/1.5 system-ui,sans-serif}
 .tour-card h2{font-size:22px;margin:8px 0;color:#f4d278}.tour-copy{margin:12px 0 20px}.tour-count{font-size:13px;color:#ddd}.tour-actions{display:flex;flex-wrap:wrap;gap:8px}.tour-actions button{min-height:44px;padding:9px 13px;font:inherit;border-radius:9px;border:1px solid #aaa;background:#282b31;color:white;cursor:pointer}.tour-actions button:last-child{background:#e3ba4e;color:#181a1f;border-color:#e3ba4e}.tour-actions button:disabled{opacity:.4;cursor:default}.tour-actions button:focus-visible,.tour-help:focus-visible{outline:3px solid #fff;outline-offset:3px}
 @media(prefers-reduced-motion:reduce){main,.modal:not(.hidden) .modal-box,.modal:not(.hidden) .modal-content,::view-transition-old(root),::view-transition-new(root){animation:none!important}html{scroll-behavior:auto!important}}
+/* Entrada mais perceptível, sem interceptar links ou atrasar cliques. */
+@keyframes rota-page-enter{from{opacity:0;transform:translateY(20px) scale(.99)}to{opacity:1;transform:none}}
+@keyframes rota-card-enter{from{opacity:.25;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes rota-page-exit{to{opacity:0;transform:translateY(-10px)}}
+main{animation:rota-page-enter .46s cubic-bezier(.2,.7,.2,1) both}
+::view-transition-old(root){animation:rota-page-exit .18s ease-in both}
+::view-transition-new(root){animation:rota-page-enter .44s cubic-bezier(.2,.7,.2,1) both}
+.rota-card-ready{animation:rota-card-enter .44s ease-out var(--rota-step,0ms) both}
+.tour-intro{background:#000b}.tour-intro .tour-card{top:50%;bottom:auto;transform:translate(-50%,-50%)}
+.tour-card.tour-card-top{top:20px;bottom:auto}.tour-card{bottom:20px;max-height:calc(100dvh - 40px)}
+html.tour-active .modal-box,html.tour-active .modal-content{animation:none!important}
+@media(prefers-reduced-motion:reduce){main,.rota-card-ready,::view-transition-old(root),::view-transition-new(root){animation:none!important}}
