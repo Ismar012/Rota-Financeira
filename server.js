@@ -2570,6 +2570,37 @@ async function handleAdminApi(req, res, url, parsedUrl) {
     return sendJson(res, 200, { month, clients: result, aggregate });
   }
 
+  const clearEntriesMatch = url.match(/^\/api\/admin\/clients\/(\d+)\/entries$/);
+  if (req.method === 'DELETE' && clearEntriesMatch) {
+    const clientId = Number(clearEntriesMatch[1]);
+    const client = await db.prepare(`
+      SELECT id, name FROM users WHERE id = ? AND role = 'client'
+    `).get(clientId);
+    if (!client) return sendJson(res, 404, { error: 'Cliente não encontrado.' });
+
+    try {
+      await db.exec('BEGIN');
+      const removed = await db.prepare(`
+        DELETE FROM finance_entries WHERE user_id = ? RETURNING id
+      `).all(clientId);
+      await recordClientChange(
+        clientId, admin.id,
+        'Lançamentos financeiros limpos pelo administrador',
+        'finance_entries', String(removed.length), '0',
+        `Foram excluídos ${removed.length} lançamento(s) financeiros; conta e dados cadastrais preservados.`
+      );
+      await db.exec('COMMIT');
+      return sendJson(res, 200, {
+        message: `Limpeza concluída. ${removed.length} lançamento(s) financeiro(s) removido(s) de ${client.name}.`,
+        deletedCount: removed.length
+      });
+    } catch (error) {
+      try { await db.exec('ROLLBACK'); } catch (_) {}
+      console.error('Erro ao limpar lançamentos financeiros do cliente:', error);
+      return sendJson(res, 500, { error: 'Não foi possível limpar os lançamentos financeiros. Nenhuma alteração foi confirmada.' });
+    }
+  }
+
   const reportMatch = url.match(/^\/api\/admin\/clients\/(\d+)\/report$/);
   if (req.method === 'GET' && reportMatch) {
     const clientId = Number(reportMatch[1]);

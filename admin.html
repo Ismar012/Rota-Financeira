@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Administrador | Rota Financeira</title>
   <link rel="stylesheet" href="/styles.css">
-  <link rel="stylesheet" href="/admin.css">
+  <link rel="stylesheet" href="/admin.css?v=20261023-limpar-lancamentos">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="/plataforma.css?v=20261015-consultoria">
 <link rel="stylesheet" href="/perfil-financeiro.css?v=1">
@@ -70,7 +70,7 @@
             <p id="detailEmail" class="muted"></p>
             <p id="detailMeta" class="status-meta"></p>
           </div>
-          <div class="detail-actions"><button id="presentationToggle" class="btn btn-outline" type="button" aria-pressed="false">Modo apresentação</button><button id="exportReport" class="btn btn-gold" type="button">Baixar relatório</button><button id="exportChangeHistory" class="btn btn-outline" type="button">Histórico de alterações</button><button id="closeDetail" class="btn btn-outline" type="button">← Voltar para clientes</button></div>
+          <div class="detail-actions"><button id="presentationToggle" class="btn btn-outline" type="button" aria-pressed="false">Modo apresentação</button><button id="exportReport" class="btn btn-gold" type="button">Baixar relatório</button><button id="exportChangeHistory" class="btn btn-outline" type="button">Histórico de alterações</button><div class="admin-more-actions"><button id="adminMoreToggle" class="btn btn-outline admin-more-toggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="adminMoreMenu" title="Mais ações administrativas">⋮</button><div id="adminMoreMenu" class="admin-more-menu hidden" role="menu"><button id="clearClientEntries" class="admin-danger-action" type="button" role="menuitem">Limpar lançamentos</button></div></div><button id="closeDetail" class="btn btn-outline" type="button">← Voltar para clientes</button></div>
         </div>
 
         <section class="admin-summary-grid detail-summary">
@@ -107,7 +107,7 @@
     </div>
   </main>
 
-  <script src="/admin.js?v=20261015-consultoria"></script>
+  <script src="/admin.js?v=20261023-limpar-lancamentos"></script>
 <script>
 document.getElementById('backLogo')?.addEventListener('click', function (event) {
     event.preventDefault();

@@ -228,6 +228,45 @@ if ($('exportChangeHistory')) $('exportChangeHistory').addEventListener('click',
   if (!state.selectedClientId) return;
   window.location.href = `/api/admin/clients/${state.selectedClientId}/change-history`;
 });
+if ($('adminMoreToggle')) $('adminMoreToggle').addEventListener('click', () => {
+  const menu = $('adminMoreMenu');
+  if (!menu) return;
+  const opening = menu.classList.contains('hidden');
+  menu.classList.toggle('hidden', !opening);
+  $('adminMoreToggle').setAttribute('aria-expanded', String(opening));
+});
+document.addEventListener('click', event => {
+  if (!event.target.closest('.admin-more-actions')) {
+    $('adminMoreMenu')?.classList.add('hidden');
+    $('adminMoreToggle')?.setAttribute('aria-expanded', 'false');
+  }
+});
+if ($('clearClientEntries')) $('clearClientEntries').addEventListener('click', async () => {
+  const clientId = state.selectedClientId;
+  if (!clientId) return;
+  const client = state.clients.find(item => Number(item.id) === Number(clientId));
+  const name = client?.name || $('detailName')?.textContent || 'este cliente';
+  const confirmed = window.confirm(`ATENÇÃO: todos os lançamentos financeiros de ${name} serão apagados permanentemente, incluindo ganhos, despesas, parcelas, recorrências e pendências. Esta ação não pode ser desfeita.
+
+A conta, os dados cadastrais e os dias de descanso serão preservados. Deseja continuar?`);
+  if (!confirmed) return;
+  const secondConfirmation = window.confirm(`Confirma novamente a exclusão de TODOS os lançamentos financeiros de ${name}?`);
+  if (!secondConfirmation) return;
+  const button = $('clearClientEntries');
+  button.disabled = true;
+  try {
+    const result = await api(`/api/admin/clients/${clientId}/entries`, { method: 'DELETE' });
+    window.alert(result.message || 'Lançamentos financeiros removidos.');
+    $('adminMoreMenu')?.classList.add('hidden');
+    $('adminMoreToggle')?.setAttribute('aria-expanded', 'false');
+    await openClient(clientId);
+    await loadClients();
+  } catch (error) {
+    window.alert(error.message || 'Não foi possível limpar os lançamentos.');
+  } finally {
+    button.disabled = false;
+  }
+});
 if ($('logout')) $('logout').addEventListener('click', async () => { await api('/api/auth/logout', { method: 'POST' }); window.location.href = '/login.html'; });
 
 (async function init() {

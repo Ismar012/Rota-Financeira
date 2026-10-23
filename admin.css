@@ -13,3 +13,12 @@
 @media(max-width:1050px){.status-select{width:175px}.status-table{min-width:980px}}
 
 .detail-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.btn-gold{background:var(--gold);color:#080808;border:1px solid var(--gold);font-weight:800}.btn-gold:hover{filter:brightness(1.08)}.btn-gold:disabled{opacity:.6;cursor:wait}@media(max-width:650px){.detail-actions{width:100%}.detail-actions .btn{width:100%}}
+
+
+/* Ações adicionais exclusivas da área administrativa */
+.admin-more-actions{position:relative;display:inline-flex;align-items:center}
+.admin-more-toggle{min-width:42px;font-size:1.35rem;line-height:1;padding:.55rem .8rem}
+.admin-more-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:50;min-width:190px;padding:6px;background:#171717;border:1px solid rgba(212,175,55,.35);border-radius:10px;box-shadow:0 12px 28px rgba(0,0,0,.28)}
+.admin-more-menu.hidden{display:none}
+.admin-danger-action{display:block;width:100%;padding:11px 12px;border:0;border-radius:7px;background:transparent;color:#ffb7ad;text-align:left;font:inherit;cursor:pointer}
+.admin-danger-action:hover,.admin-danger-action:focus-visible{background:rgba(190,45,35,.16);outline:none}
