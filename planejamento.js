@@ -223,7 +223,9 @@ function renderEntries() {
   const list = $('entriesList');
   if (!section || !list) return;
 
-  if (!state.entries.length) {
+  const navView = window.__rotaNavigationView || new URLSearchParams(window.location.search).get('view') || '';
+  const keepEntryPanelOpen = navView === 'despesas' || navView === 'receitas';
+  if (!state.entries.length && !keepEntryPanelOpen) {
     section.classList.add('hidden');
     list.innerHTML = '';
     return;
@@ -237,6 +239,10 @@ const filteredEntries = state.entries.filter((entry) => {
   const isIncome = entry.type === 'income';
   const paid = Number(entry.paid) === 1;
 
+  if (filter === 'income-all') {
+    return isIncome;
+  }
+
   if (filter === 'income-paid') {
     return isIncome && paid ;
   }
@@ -245,6 +251,10 @@ const filteredEntries = state.entries.filter((entry) => {
     return isIncome && !paid ;
   }
 
+
+  if (filter === 'expense-all') {
+    return !isIncome;
+  }
 
   if (filter === 'expense-paid') {
     return !isIncome && paid ;
@@ -1305,6 +1315,15 @@ $('closeConfirmDateModal')?.addEventListener('click', () => {
 
   (async function init() {
     if (!(await checkAuth())) return;
+    const requestedView = new URLSearchParams(window.location.search).get('view');
+    if (requestedView === 'despesas' || requestedView === 'receitas') {
+      window.__rotaNavigationView = requestedView;
+      const filter = $('entriesFilter');
+      if (filter) filter.value = requestedView === 'despesas' ? 'expense-all' : 'income-all';
+      const disclosure = $('entriesDisclosure');
+      if (disclosure) disclosure.open = true;
+      $('entriesSection')?.classList.remove('hidden');
+    }
     setMonth(isoMonth());
   })();
 })();

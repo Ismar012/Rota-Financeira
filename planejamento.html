@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="/experiencia-cliente.css?v=20261015-layout4">
 <link rel="stylesheet" href="/perfil-financeiro.css?v=1">
 <link rel="stylesheet" href="/operacoes.css?v=2">
-<link rel="stylesheet" href="/transicoes.css?v=20261021-3"><link rel="stylesheet" href="/refinamento.css?v=20261021-3"></head>
+<link rel="stylesheet" href="/transicoes.css?v=20261021-3"><link rel="stylesheet" href="/refinamento.css?v=20261021-3"><link rel="stylesheet" href="/app-shell.css?v=20261026-shell1"></head>
 
 <body class="client-planning">
 
@@ -309,7 +309,7 @@
          GRÁFICO
     ========================== -->
 
-    <section class="chart-card">
+    <section id="reportsSection" class="chart-card">
 
         <div class="section-title">
 
@@ -391,8 +391,10 @@
 
     <select id="entriesFilter">
         <option value="all">Todos</option>
+        <option value="income-all">Todos os ganhos</option>
         <option value="income-paid">Ganhos recebidos</option>
         <option value="income-pending">Ganhos pendentes</option>
+        <option value="expense-all">Todas as despesas</option>
         <option value="expense-paid">Despesas pagas</option>
         <option value="expense-pending">Despesas pendentes</option>
     </select>
@@ -826,6 +828,6 @@ document.getElementById('backLogo')?.addEventListener('click', function (event) 
 <script src="/perfil-financeiro-ui.js?v=1"></script>
 <script src="/ferramentas-financeiras.js?v=2"></script>
 <script src="/categorias.js?v=20261020-1"></script>
-<script src="/tutorial.js?v=20261021-3"></script><script src="/reserva-caixinha.js?v=1"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script></body>
+<script src="/tutorial.js?v=20261021-3"></script><script src="/reserva-caixinha.js?v=1"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script><script src="/app-shell.js?v=20261026-shell1"></script></body>
 
 </html>

@@ -1,1 +1,197 @@
-<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Resumo de casa | Rota Financeira</title><link rel="stylesheet" href="/casa-produtos.css"><link rel="stylesheet" href="/transicoes.css?v=20261021-3"><header><b>ROTA <span style="color:#e2bc59">FINANCEIRA</span></b><a href="/dashboard.html">Voltar</a></header><main><div class="eyebrow">Divisão de despesas da casa</div><h1>Resumo de casa</h1><p>Uma divisão justa, um acerto simples. Cada despesa é dividida igualmente entre os moradores cadastrados.</p><label for="houseMonth">Mês de referência</label><input id="houseMonth" type="month" style="max-width:230px"><div id="feedback" role="status"></div><section class="grid"><article class="card"><small>Despesas do mês</small><strong id="total">—</strong><small>Pagas e previstas com vencimento neste mês</small></article><article class="card"><small>Minha parte no mês</small><strong id="share">—</strong><small>Incluída automaticamente no planejamento</small></article><article class="card highlight"><small>Movimentação do acerto no mês</small><strong id="balance">—</strong><small id="direction"></small></article></section><p id="previousBalance"></p><p id="closingBalance"></p><button type="button" id="openPeople" style="margin-bottom:24px">Pessoas da casa</button><section class="card" style="margin-bottom:24px"><h2>Acerto entre as pessoas</h2><div id="memberBalances"></div><h2 style="margin-top:24px">Quem devolve a quem</h2><div id="transfers"></div></section><div class="split"><section><form id="expense"><h2>Registrar despesa da casa</h2><label for="recurrence">Repetição</label><select id="recurrence" name="recurrence"><option value="single">Uma única vez</option><option value="fixed">Fixa — todos os meses</option></select><label for="description">Descrição</label><input id="description" name="description" maxlength="160" required placeholder="Ex.: mercado, internet, energia"><label for="day">Data / primeiro vencimento</label><input id="day" name="day" type="date" required><label for="amount">Valor total (R$)</label><input id="amount" name="amount" type="number" min="0.02" max="1000000" step="0.01" required><label for="paid">Situação</label><select id="paid" name="paid"><option value="true">Já foi paga</option><option value="false">Prevista — ainda não paga</option></select><label for="payer">Quem pagou?</label><select id="payer" name="payer"><option value="me">Eu paguei</option><option value="other">A outra pessoa pagou</option><option value="both">Ambos pagaram — metade cada</option></select><div id="expensePayments"></div><p id="recurrenceHelp">A divisão é igual entre as pessoas da casa. Valores pagos podem ser diferentes. Contas fixas geram parcelas previstas até três meses à frente.</p><button class="primary">Salvar despesa</button></form><form id="settle" style="margin-top:18px"><h2>Registrar devolução</h2><label for="settleAmount">Valor devolvido (R$)</label><input id="settleAmount" name="amount" type="number" min="0.01" max="1000000" step="0.01" required><label for="settleFrom">Quem devolveu?</label><select id="settleFrom" name="from_member"></select><label for="settleTo">Quem recebeu?</label><select id="settleTo" name="to_member"></select><button>Registrar acerto</button></form></section><section class="card"><h2>Contas fixas ativas</h2><div id="recurringEntries"></div><h2 style="margin-top:28px">Despesas e devoluções do mês</h2><p>Despesas pelo mês de vencimento. Acertos e devoluções pela data efetiva do pagamento.</p><div id="entries"></div></section></div></main><dialog id="payDialog"><form id="payForm"><h2>Confirmar pagamento da conta</h2><label for="payDate">Data efetiva</label><input id="payDate" type="date" required><label for="payPayer">Quem pagou?</label><select id="payPayer"><option value="me">Eu paguei</option><option value="other">A outra pessoa pagou</option><option value="both">Ambos — metade cada</option></select><div id="confirmationPayments"></div><button class="primary">Confirmar pagamento</button><button type="button" id="closePay">Cancelar</button></form></dialog><dialog id="peopleDialog"><form id="peopleForm"><h2>Pessoas da casa</h2><div id="peopleRows"></div><button type="button" id="addPerson">Adicionar pessoa</button><p>De 2 a 20 pessoas. Pagamentos anteriores mantêm a divisão original. Contas fixas ainda não pagas de hoje em diante se adaptam à nova quantidade.</p><button class="primary">Salvar pessoas</button><button type="button" id="closePeople">Cancelar</button><p id="peopleError" role="alert"></p></form></dialog><script src="/resumo-casa.js"></script><script src="/tutorial.js?v=20261021-3"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Resumo de casa | Rota Financeira</title>
+  <link rel="stylesheet" href="/casa-produtos.css?v=20261026-house-v2">
+  <link rel="stylesheet" href="/app-shell.css?v=20261026-shell1">
+  <link rel="stylesheet" href="/transicoes.css?v=20261021-3">
+  <link rel="stylesheet" href="/refinamento.css?v=20261021-3">
+</head>
+<body class="rf-app-shell rf-household-page">
+  <header class="rf-workspace-topbar" aria-label="Cabeçalho do resumo de casa">
+    <div class="rf-workspace-title">
+      <span class="rf-topbar-eyebrow">DIVISÃO DE DESPESAS DA CASA</span>
+      <strong>Resumo de casa</strong>
+      <small>Uma divisão justa, um acerto simples.</small>
+    </div>
+    <div class="rf-workspace-actions rf-house-top-actions">
+      <button id="houseHelpBtn" type="button">ⓘ Como usar esta tela</button>
+      <label class="rf-month-field" for="houseMonth">Mês de referência<input id="houseMonth" type="month"></label>
+    </div>
+  </header>
+
+  <main class="rf-house-main">
+    <p class="rf-house-intro">Cada despesa é dividida igualmente entre os moradores cadastrados. Os acertos ajudam a acompanhar quem pagou e quem precisa devolver.</p>
+    <div id="feedback" class="rf-house-feedback" role="status" aria-live="polite"></div>
+
+    <section class="rf-house-metrics" aria-label="Resumo do mês">
+      <article class="rf-house-metric">
+        <span class="rf-metric-icon rf-icon-gold" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="15" rx="2.5"/><path d="M16 12h5M3 9h18"/></svg></span>
+        <div><small>Despesas do mês</small><strong id="total">—</strong><p>Despesas registradas no mês</p></div>
+      </article>
+      <article class="rf-house-metric">
+        <span class="rf-metric-icon rf-icon-green" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20v-1.3A5.7 5.7 0 0 1 8.2 13h1.6a5.7 5.7 0 0 1 5.7 5.7V20M16 4.8a3.5 3.5 0 0 1 0 6.7M17 13.4a5.4 5.4 0 0 1 4.5 5.3V20"/></svg></span>
+        <div><small>Minha parte no mês</small><strong id="share">—</strong><p>Sua parte nas despesas da casa</p></div>
+      </article>
+      <article class="rf-house-metric rf-house-metric-highlight">
+        <span class="rf-metric-icon rf-icon-gold" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h14l-3.5-3.5M20 17H6l3.5 3.5"/><path d="M18 7l2 3-2 3M6 17l-2-3 2-3"/></svg></span>
+        <div><small>Acertos do mês</small><strong id="balance">—</strong><p id="direction">Calculando diferença entre pagamentos</p></div>
+      </article>
+    </section>
+
+    <section class="rf-house-settlement" aria-labelledby="settlementHeading">
+      <div class="rf-section-heading">
+        <span class="rf-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3.5"/><path d="M2 20v-1.4A5.6 5.6 0 0 1 7.6 13h2.8a5.6 5.6 0 0 1 5.6 5.6V20M17 4a3.5 3.5 0 0 1 0 6.8M18 14a4.5 4.5 0 0 1 4 4.5V20"/></svg></span>
+        <div class="rf-section-title-wrap"><h2 id="settlementHeading">Acerto entre as pessoas</h2><p>Veja o saldo de cada morador e o que já foi acertado.</p></div>
+        <button type="button" id="openPeople" class="rf-outline-button">Pessoas da casa</button>
+      </div>
+      <div id="memberBalances" class="rf-member-balances"></div>
+      <div class="rf-transfer-summary">
+        <div class="rf-transfer-heading"><span class="rf-small-round-icon" aria-hidden="true">↔</span><strong>Quem devolve a quem</strong></div>
+        <p id="previousBalance" class="rf-balance-note"></p>
+        <p id="closingBalance" class="rf-balance-note"></p>
+        <div id="transfers" class="rf-transfers"></div>
+      </div>
+    </section>
+
+    <div class="rf-house-columns">
+      <div class="rf-house-primary-column">
+        <section class="rf-action-panel" aria-labelledby="registerExpenseHeading">
+          <div class="rf-action-panel-head">
+            <span class="rf-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3.5h10l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 20z"/><path d="M14.5 3.5V8H19M8 12h8M8 15.5h8M8 19h5"/></svg></span>
+            <div><h2 id="registerExpenseHeading">Registrar despesa</h2><p>Lance uma nova despesa ou faça vários lançamentos de uma vez.</p></div>
+          </div>
+          <div class="rf-action-buttons">
+            <button type="button" id="openExpenseModal" class="rf-primary-action"><span aria-hidden="true">＋</span> Lançar uma despesa</button>
+            <button type="button" id="openBulkHouseExpense" class="rf-secondary-action"><span aria-hidden="true">☷</span> Lançar em massa</button>
+          </div>
+        </section>
+
+        <section class="rf-action-panel rf-refund-action-panel" aria-labelledby="registerRefundHeading">
+          <div class="rf-action-panel-head">
+            <span class="rf-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8 9.5c0-1 1.2-1.8 3-1.8s3 .7 3 1.8-1 1.7-3 1.7-3 .7-3 1.8 1.2 1.8 3 1.8 3-.7 3-1.8M12 5.5v1.7M12 16.8v1.7"/></svg></span>
+            <div><h2 id="registerRefundHeading">Registrar devolução</h2><p>Registre quando alguém devolver um valor para outra pessoa.</p></div>
+          </div>
+          <div class="rf-action-buttons">
+            <button type="button" id="openSettleModal" class="rf-primary-action"><span aria-hidden="true">＋</span> Registrar devolução</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="rf-house-secondary-column">
+        <section class="rf-house-list-panel" aria-labelledby="recurringHeading">
+          <div class="rf-list-heading"><span class="rf-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 4.4-3.4 7.5-8 9-4.6-1.5-8-4.6-8-9V6z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg></span><h2 id="recurringHeading">Contas fixas ativas</h2></div>
+          <div id="recurringEntries" class="rf-house-list"></div>
+        </section>
+        <section class="rf-house-list-panel rf-month-entries-panel" aria-labelledby="monthEntriesHeading">
+          <div class="rf-list-heading"><span class="rf-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3.5h10l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 20z"/><path d="M14.5 3.5V8H19M8 12h8M8 16h8"/></svg></span><h2 id="monthEntriesHeading">Despesas e devoluções do mês</h2></div>
+          <p class="rf-list-description">Despesas pelo mês de vencimento. Acertos e devoluções pela data efetiva do pagamento.</p>
+          <div id="entries" class="rf-house-list"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <dialog id="expenseDialog" class="rf-dialog" aria-labelledby="expenseDialogTitle">
+    <section class="rf-dialog-card">
+      <button type="button" class="rf-dialog-close" id="closeExpenseDialog" aria-label="Fechar cadastro de despesa">×</button>
+      <div class="rf-dialog-eyebrow">NOVA DESPESA</div>
+      <h2 id="expenseDialogTitle">Lançar uma despesa</h2>
+      <p class="rf-dialog-intro">Preencha os dados abaixo. A despesa será dividida entre as pessoas cadastradas.</p>
+      <form id="expense" class="rf-house-form">
+        <div class="rf-form-grid">
+          <label for="recurrence">Repetição<select id="recurrence" name="recurrence"><option value="single">Uma única vez</option><option value="fixed">Fixa — todos os meses</option></select></label>
+          <label for="description">Descrição<input id="description" name="description" maxlength="160" required placeholder="Ex.: mercado, internet, energia"></label>
+          <label for="day">Data / primeiro vencimento<input id="day" name="day" type="date" required></label>
+          <label for="amount">Valor total (R$)<input id="amount" name="amount" type="number" min="0.02" max="1000000" step="0.01" required placeholder="Ex.: 150,00"></label>
+          <label for="paid">Situação<select id="paid" name="paid"><option value="true">Já foi paga</option><option value="false">Prevista — ainda não paga</option></select></label>
+          <label for="payer">Quem pagou?<select id="payer" name="payer"><option value="equal">Todos pagaram sua parte</option><option value="person:me">Eu paguei tudo</option></select></label>
+        </div>
+        <div id="expensePayments" class="rf-custom-payments"></div>
+        <p id="recurrenceHelp" class="rf-form-help">A divisão é igual entre as pessoas da casa. Valores pagos podem ser diferentes. Contas fixas geram parcelas previstas até três meses à frente.</p>
+        <div class="rf-dialog-actions"><button type="button" id="cancelExpenseDialog" class="rf-outline-button">Cancelar</button><button type="submit" class="rf-primary-action">Salvar despesa</button></div>
+      </form>
+    </section>
+  </dialog>
+
+  <dialog id="bulkHouseExpenseDialog" class="rf-dialog rf-bulk-dialog" aria-labelledby="bulkHouseExpenseTitle">
+    <section class="rf-dialog-card rf-bulk-card">
+      <button type="button" class="rf-dialog-close" id="closeBulkHouseExpenseDialog" aria-label="Fechar cadastro em massa">×</button>
+      <div class="rf-dialog-eyebrow">CADASTRO EM MASSA</div>
+      <h2 id="bulkHouseExpenseTitle">Lançar despesas da casa em massa</h2>
+      <p class="rf-dialog-intro">Preencha uma despesa por linha. Apenas as linhas completas serão cadastradas; as demais permanecem na tela para você terminar.</p>
+      <div class="rf-house-bulk-table-scroll" role="region" aria-label="Tabela de despesas da casa" tabindex="0">
+        <table class="rf-house-bulk-table">
+          <thead><tr><th>#</th><th>Descrição</th><th>Valor total (R$)</th><th>Repetição</th><th>Data / 1º vencimento</th><th>Situação</th><th>Quem pagou?</th><th>Ações</th></tr></thead>
+          <tbody id="bulkHouseExpenseRows"></tbody>
+        </table>
+      </div>
+      <div class="rf-bulk-toolbar"><button type="button" id="addHouseBulkRow" class="rf-outline-button">＋ Adicionar linha</button><span id="bulkHouseExpenseMeta">Novas linhas podem ser adicionadas a qualquer momento.</span></div>
+      <p id="bulkHouseExpenseStatus" class="rf-bulk-status" role="status" aria-live="polite"></p>
+      <div class="rf-dialog-actions"><button type="button" id="cancelBulkHouseExpenseDialog" class="rf-outline-button">Cancelar</button><button type="button" id="submitHouseBulkExpenses" class="rf-primary-action">Salvar despesas preenchidas</button></div>
+    </section>
+  </dialog>
+
+  <dialog id="settleDialog" class="rf-dialog" aria-labelledby="settleDialogTitle">
+    <section class="rf-dialog-card">
+      <button type="button" class="rf-dialog-close" id="closeSettleDialog" aria-label="Fechar registro de devolução">×</button>
+      <div class="rf-dialog-eyebrow">ACERTO DA CASA</div>
+      <h2 id="settleDialogTitle">Registrar devolução</h2>
+      <p class="rf-dialog-intro">Informe o valor e quem devolveu e recebeu o dinheiro.</p>
+      <form id="settle" class="rf-house-form">
+        <label for="settleAmount">Valor devolvido (R$)<input id="settleAmount" name="amount" type="number" min="0.01" max="1000000" step="0.01" required placeholder="Ex.: 150,00"></label>
+        <label for="settleFrom">Quem devolveu?<select id="settleFrom" name="from_member" required></select></label>
+        <label for="settleTo">Quem recebeu?<select id="settleTo" name="to_member" required></select></label>
+        <div class="rf-dialog-actions"><button type="button" id="cancelSettleDialog" class="rf-outline-button">Cancelar</button><button type="submit" class="rf-primary-action">Registrar acerto</button></div>
+      </form>
+    </section>
+  </dialog>
+
+  <dialog id="houseHelpDialog" class="rf-dialog" aria-labelledby="houseHelpTitle">
+    <section class="rf-dialog-card rf-help-card">
+      <button type="button" class="rf-dialog-close" id="closeHouseHelpDialog" aria-label="Fechar ajuda">×</button>
+      <div class="rf-dialog-eyebrow">GUIA RÁPIDO</div>
+      <h2 id="houseHelpTitle">Como usar o resumo de casa</h2>
+      <div class="rf-help-steps"><p><strong>1. Cadastre as despesas.</strong> Escolha lançamento individual para uma conta ou em massa para preencher várias linhas.</p><p><strong>2. Confira a divisão.</strong> Os valores são divididos entre os moradores cadastrados, considerando quem pagou.</p><p><strong>3. Registre as devoluções.</strong> Quando alguém devolver dinheiro, registre o acerto para atualizar os saldos.</p></div>
+      <div class="rf-dialog-actions"><button type="button" id="closeHouseHelpDone" class="rf-primary-action">Entendi</button></div>
+    </section>
+  </dialog>
+
+  <dialog id="payDialog" class="rf-dialog" aria-labelledby="payDialogTitle">
+    <section class="rf-dialog-card">
+      <button type="button" class="rf-dialog-close" id="closePay" aria-label="Fechar confirmação de pagamento">×</button>
+      <div class="rf-dialog-eyebrow">CONTA DA CASA</div>
+      <h2 id="payDialogTitle">Confirmar pagamento da conta</h2>
+      <form id="payForm" class="rf-house-form">
+        <label for="payDate">Data efetiva<input id="payDate" type="date" required></label>
+        <label for="payPayer">Quem pagou?<select id="payPayer"><option value="equal">Todos pagaram sua parte</option></select></label>
+        <div id="confirmationPayments" class="rf-custom-payments"></div>
+        <div class="rf-dialog-actions"><button type="button" id="cancelPay" class="rf-outline-button">Cancelar</button><button type="submit" class="rf-primary-action">Confirmar pagamento</button></div>
+      </form>
+    </section>
+  </dialog>
+
+  <dialog id="peopleDialog" class="rf-dialog" aria-labelledby="peopleDialogTitle">
+    <section class="rf-dialog-card">
+      <button type="button" class="rf-dialog-close" id="closePeople" aria-label="Fechar pessoas da casa">×</button>
+      <div class="rf-dialog-eyebrow">MORADORES</div>
+      <h2 id="peopleDialogTitle">Pessoas da casa</h2>
+      <form id="peopleForm" class="rf-house-form">
+        <div id="peopleRows"></div>
+        <button type="button" id="addPerson" class="rf-outline-button">＋ Adicionar pessoa</button>
+        <p class="rf-form-help">De 2 a 20 pessoas. Pagamentos anteriores mantêm a divisão original. Contas fixas ainda não pagas de hoje em diante se adaptam à nova quantidade.</p>
+        <p id="peopleError" class="rf-bulk-status" role="alert"></p>
+        <div class="rf-dialog-actions"><button type="button" id="cancelPeople" class="rf-outline-button">Cancelar</button><button class="rf-primary-action primary" type="submit">Salvar pessoas</button></div>
+      </form>
+    </section>
+  </dialog>
+
+  <script src="/resumo-casa.js?v=20261026-house-v2"></script>
+  <script src="/tutorial.js?v=20261021-3"></script>
+  <script src="/transicoes.js?v=20261021-3"></script>
+  <script src="/refinamento.js?v=20261021-3"></script>
+  <script src="/app-shell.js?v=20261026-shell1"></script>
+</body>
+</html>
