@@ -16,3 +16,114 @@ body.rf-app-shell{padding-left:var(--rf-sidebar-width)!important;min-width:0;ove
 @media(max-width:800px) and (min-width:601px){:root{--rf-sidebar-width:72px}.rf-app-sidebar{padding:17px 7px 12px;gap:17px}.rf-sidebar-brand{justify-content:center;padding:0 0 16px}.rf-brand-name{display:none}.rf-brand-mark{width:36px;height:36px}.rf-sidebar-nav{gap:6px}.rf-sidebar-link{display:flex;justify-content:center;padding:10px 5px;min-height:45px}.rf-sidebar-link span{display:none}.rf-sidebar-link svg{width:21px;height:21px}.rf-sidebar-note{display:none}.rf-sidebar-footer .rf-sidebar-link span{display:none}.rf-app-shell .header{padding:0 20px}.rf-app-shell .planning-container{width:96%}.rf-app-shell .planning-head{flex-wrap:wrap}}
 @media(max-width:600px){:root{--rf-sidebar-width:0px}body.rf-app-shell{padding-left:0!important;padding-bottom:70px}.rf-app-sidebar{top:auto;bottom:0;left:0;right:0;width:100%;height:66px;box-sizing:border-box;flex-direction:row;gap:0;padding:4px 5px calc(4px + env(safe-area-inset-bottom));border-right:0;border-top:1px solid #23313d;overflow:hidden}.rf-sidebar-brand,.rf-sidebar-spacer,.rf-sidebar-footer{display:none}.rf-sidebar-nav{display:flex;flex:1;gap:2px;align-items:stretch;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}.rf-sidebar-nav::-webkit-scrollbar{display:none}.rf-sidebar-link{flex:1 0 54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:0;padding:5px 3px;border-radius:7px;font-size:9px;text-align:center;white-space:normal}.rf-sidebar-link svg{width:18px;height:18px}.rf-sidebar-link span{display:block;max-width:72px;line-height:1.05}.rf-sidebar-link[aria-current=page]::before{left:8px;right:8px;top:0;bottom:auto;width:auto;height:2px;border-radius:0 0 3px 3px}.rf-app-shell header.header{left:0;width:100%;height:62px;min-height:62px;padding:0 14px}.rf-app-shell .header .nav{height:62px;min-height:62px}.rf-app-shell .header .logo-text{font-size:14px}.rf-app-shell .rf-workspace-topbar{left:0;min-height:76px;padding:9px 14px;gap:10px}.rf-workspace-title strong{font-size:18px}.rf-workspace-title small{font-size:11px}.rf-workspace-actions{gap:6px}.rf-workspace-actions a,.rf-workspace-actions button{min-height:35px;padding:7px 9px;font-size:11px}.rf-app-shell .page{padding-top:78px!important}.rf-app-shell .planning-page{padding-top:78px!important}.rf-app-shell main.operations{padding-top:95px!important;width:calc(100% - 28px);}.rf-app-shell .container,.rf-app-shell .planning-container{width:calc(100% - 28px)}.rf-app-shell .client-area,.rf-app-shell .client-settings .page,.rf-app-shell .client-services .client-area{padding-top:78px!important}}
 @media(prefers-reduced-motion:reduce){.rf-sidebar-link{transition:none!important}}
+
+
+/* Harmonização com a identidade visual original da Rota Financeira.
+   Mantém a navegação lateral, mas usa o preto, o dourado e os cartões sólidos do produto. */
+:root{
+  --rf-shell-bg:#030405;
+  --rf-shell-panel:#0b0d0f;
+  --rf-shell-line:rgba(255,255,255,.08);
+  --rf-shell-muted:#b7b7b7;
+  --rf-shell-gold:#d9a928;
+  --rf-shell-gold-soft:#f6d675;
+}
+body.rf-app-shell{background:#030405;color:#fff}
+.rf-app-sidebar{background:#050607;border-right:1px solid rgba(255,255,255,.08);color:#c8c8c8;box-shadow:8px 0 30px rgba(0,0,0,.12)}
+.rf-sidebar-brand{padding:4px 12px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
+.rf-brand-name{font-family:Arial,Helvetica,sans-serif;font-size:16px;letter-spacing:2px;font-weight:800;color:#fff}
+.rf-brand-name span{color:#d9a928;font-size:11px;letter-spacing:2.6px}
+.rf-sidebar-link{color:#b7b7b7;border-radius:7px;font-family:Arial,Helvetica,sans-serif;font-size:12.5px}
+.rf-sidebar-link:hover{background:#111214;color:#f6d675}
+.rf-sidebar-link[aria-current=page]{background:#17140d;border-color:rgba(217,169,40,.2);color:#f6d675}
+.rf-sidebar-link[aria-current=page]::before{background:#d9a928}
+.rf-sidebar-footer .rf-sidebar-note{border-top-color:rgba(255,255,255,.08);color:#777}
+.rf-sidebar-note strong{color:#d6d6d6}
+.rf-app-shell header.header{background:rgba(3,4,5,.94);border-bottom-color:rgba(255,255,255,.08);backdrop-filter:blur(12px)}
+.rf-app-shell .rf-workspace-topbar{background:rgba(3,4,5,.95);border-bottom-color:rgba(255,255,255,.08);backdrop-filter:blur(12px)}
+.rf-workspace-title .rf-topbar-eyebrow{color:#d9a928}
+.rf-workspace-title strong,.rf-header-caption strong{color:#fff}
+.rf-workspace-title small,.rf-header-caption small{color:#b7b7b7}
+.rf-workspace-actions a,.rf-workspace-actions button{border-color:rgba(255,255,255,.15);color:#d2d2d2;background:#08090b}
+.rf-workspace-actions button:hover,.rf-workspace-actions a:hover{border-color:#d9a928;color:#f6d675}
+.rf-app-shell .header .btn{border-color:rgba(255,255,255,.18);color:#ddd}
+.rf-app-shell .header .btn:hover{border-color:#d9a928;color:#f6d675}
+.rf-app-shell .planning-container{width:min(1180px,94%);max-width:1180px}
+.rf-app-shell .container{width:min(1180px,94%)}
+.rf-app-shell main.operations{width:min(1180px,94%)}
+@media(max-width:1100px) and (min-width:801px){:root{--rf-sidebar-width:218px}.rf-app-shell .planning-container,.rf-app-shell .container{width:96%}.rf-app-shell main.operations{width:96%}}
+
+.rf-brand-mark{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border:1px solid rgba(217,169,40,.25);border-radius:9px;background:#17130a;color:#d9a928;box-shadow:none}
+.rf-brand-mark svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* Responsividade do conteúdo central: a largura útil acompanha o espaço restante
+   depois do menu lateral, sem manter um painel estreito em monitores maiores. */
+:root{--rf-content-max:1600px}
+body.rf-app-shell{min-width:0;overflow-x:clip}
+.rf-app-shell .planning-page,
+.rf-app-shell .page,
+.rf-app-shell .client-area{width:100%;min-width:0}
+.rf-app-shell .planning-container,
+.rf-app-shell .container,
+.rf-app-shell main.operations,
+.rf-app-shell .rf-house-main{
+  width:min(var(--rf-content-max),calc(100% - clamp(28px,4vw,64px)))!important;
+  max-width:var(--rf-content-max)!important;
+  min-width:0;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+.rf-app-shell .header .nav{max-width:var(--rf-content-max)}
+.rf-app-shell main,
+.rf-app-shell .planning-container,
+.rf-app-shell .container,
+.rf-app-shell .planning-head,
+.rf-app-shell .month-selector,
+.rf-app-shell .ux-today,
+.rf-app-shell .ux-overview,
+.rf-app-shell .summary-grid,
+.rf-app-shell .action-grid,
+.rf-app-shell .cards,
+.rf-app-shell .grid,
+.rf-app-shell .split,
+.rf-app-shell .section-title,
+.rf-app-shell .house-page-heading,
+.rf-app-shell .house-page-title,
+.rf-app-shell .house-workspace,
+.rf-app-shell .house-actions-column,
+.rf-app-shell .house-ledger-column{min-width:0;max-width:100%}
+.rf-app-shell input,
+.rf-app-shell select,
+.rf-app-shell textarea,
+.rf-app-shell button{max-width:100%}
+.rf-app-shell img,
+.rf-app-shell canvas,
+.rf-app-shell video,
+.rf-app-shell iframe{max-width:100%}
+
+/* Em notebooks, empilhamos apenas os blocos que ficariam comprimidos. */
+@media(max-width:1200px) and (min-width:801px){
+  .rf-app-shell .planning-head{align-items:flex-start;flex-wrap:wrap;gap:16px 22px}
+  .rf-app-shell .month-selector{max-width:100%;flex-wrap:wrap}
+  .rf-app-shell .month-selector input{min-width:0;max-width:100%}
+  .rf-app-shell .client-planning .ux-overview{grid-template-columns:minmax(0,1fr)}
+  .rf-app-shell .client-planning .ux-overview .ux-panel{order:-1}
+  .rf-app-shell .client-home .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rf-app-shell .rf-house-main .split.house-workspace{grid-template-columns:minmax(0,1fr);gap:14px}
+}
+@media(max-width:900px) and (min-width:601px){
+  .rf-app-shell .client-planning .action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rf-app-shell .client-home .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rf-app-shell .rf-house-main .grid.house-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rf-app-shell .rf-house-main .grid.house-metrics>.card:last-child{grid-column:1/-1}
+  .rf-app-shell .rf-house-main .split.house-workspace{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:600px){
+  .rf-app-shell .planning-container,
+  .rf-app-shell .container,
+  .rf-app-shell main.operations,
+  .rf-app-shell .rf-house-main{width:calc(100% - 28px)!important}
+  .rf-app-shell .client-home .cards{grid-template-columns:minmax(0,1fr)}
+  .rf-app-shell .rf-house-main .grid.house-metrics{grid-template-columns:minmax(0,1fr)}
+  .rf-app-shell .rf-house-main .grid.house-metrics>.card:last-child{grid-column:auto}
+}

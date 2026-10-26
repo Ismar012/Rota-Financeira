@@ -1,24 +1,26 @@
-# Atualização de layout — navegação lateral e Resumo de casa
+# Ajustes de layout — Rota Financeira
 
-## O que mudou
+## Esta revisão
 
-- Incluída a navegação lateral responsiva na área do cliente, com Início, Planejamento financeiro, Despesas, Receitas, Resumo de casa, Metas e Relatórios, além de Configurações.
-- Os atalhos de Despesas e Receitas abrem os lançamentos do planejamento já filtrados. Metas e Relatórios levam às respectivas áreas do planejamento.
-- Ajustados largura útil, cabeçalhos e espaçamento das páginas de cliente para telas de notebook e computador. Em telas estreitas, a navegação vira uma barra compacta na parte inferior; em telas médias, vira uma faixa lateral de ícones.
-- Redesenhada a página Resumo de casa sem trocar os IDs usados pela lógica existente de saldo, divisão, pagamentos, moradores, contas fixas e histórico.
-- O cadastro individual de despesa agora abre em janela própria, acionado por “Lançar uma despesa”. O botão separado “Lançar em massa” abre uma tabela editável.
-- A tabela em massa da casa permite descrição, valor, repetição, data/primeiro vencimento, situação e quem pagou. Só as linhas completas são enviadas; linhas incompletas ou com erro ficam na tabela para correção.
-- “Registrar devolução” também abre uma janela própria. A edição de pessoas e a confirmação de pagamentos continuam disponíveis.
+- A tela “Resumo de casa” voltou à organização que já existia no projeto: título e descrição no conteúdo, três indicadores, acerto entre os moradores e duas colunas para ações e movimentações.
+- Os formulários longos não ficam mais abertos permanentemente na página. “Lançar uma despesa”, “Lançar em massa” e “Registrar devolução” são botões compactos que abrem seus próprios diálogos.
+- O cadastro em massa continua disponível, com tabela editável, validação de linhas e manutenção das linhas que precisam ser completadas.
+- Os diálogos de despesa, devolução, pagamento e moradores foram preservados. A lógica e os endpoints existentes em `resumo-casa.js` não foram substituídos nesta revisão.
+- A identidade visual foi aproximada da versão original da Rota Financeira: fundo preto, dourado da marca, cartões sólidos, bordas discretas e tipografia Arial/Helvetica.
+- A navegação lateral permanece disponível com Início, Planejamento financeiro, Despesas, Receitas, Resumo de casa, Metas, Relatórios e Configurações. O nome da marca é mantido como texto, acompanhado de um símbolo simples de evolução financeira, sem o monograma fictício anterior.
+- A largura máxima foi ajustada para 1180 px e os pontos de quebra empilham as colunas quando não há largura útil suficiente, considerando o espaço reservado à navegação lateral.
 
-## Integração e preservação
+## Arquivos principais
 
-- Reutilizados os endpoints atuais `/api/house`, `/api/house/recurring`, `/api/house/settle` e `/api/house/people`; não foi adicionada migração de banco.
-- As despesas em massa são enviadas uma por vez, usando a API atual. Se uma linha falhar, as linhas já salvas não são revertidas automaticamente; a linha com erro permanece para correção.
-- Os links da navegação apontam para páginas/áreas já existentes. Despesas, Receitas, Metas e Relatórios não passaram a ser páginas independentes.
-- Os arquivos originais do cadastro de despesas em massa do planejamento foram preservados.
+- `app-shell.css` e `app-shell.js`: navegação lateral, cabeçalho e larguras responsivas.
+- `casa-layout.css`: estilos finais para a tela de casa, carregados depois das folhas globais para evitar conflitos de tipografia.
+- `resumo-casa.html`: estrutura principal de volta ao arranjo original e diálogos para as ações.
+- `resumo-casa.js` e `casa-produtos.css`: lógica de cadastro e estilos auxiliares, incluindo cadastro em massa.
 
-## Verificações feitas
+## Validação e limites
 
-- Verificada a sintaxe JavaScript de `app-shell.js`, `resumo-casa.js` e `planejamento.js`.
-- Verificados IDs duplicados e referências a CSS/JavaScript inexistentes nas páginas principais da área do cliente.
-- A navegação e os envios precisam ser confirmados também no ambiente de teste conectado à API e ao banco de dados da aplicação. Nenhuma publicação no GitHub/Render foi feita por esta atualização.
+- Todos os arquivos JavaScript passaram por `node --check`.
+- Verifiquei a unicidade dos IDs de `resumo-casa.html` e confirmei que os elementos referenciados por `resumo-casa.js` estão presentes.
+- As regras CSS editadas têm chaves balanceadas e os caminhos locais principais foram verificados.
+- Uma captura visual automatizada do Chromium não pôde ser concluída neste ambiente. A gravação real e o comportamento com dados precisam ser confirmados executando o projeto com o backend e um banco de teste configurados.
+- Nenhuma alteração foi publicada no GitHub ou no Render.

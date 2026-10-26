@@ -34,7 +34,7 @@
   aside.setAttribute('aria-label','Navegação principal');
   aside.innerHTML = `
     <a class="rf-sidebar-brand" href="/dashboard.html" aria-label="Rota Financeira — início">
-      <span class="rf-brand-mark" aria-hidden="true">RF</span>
+      <span class="rf-brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 18 8.5 9l3.5 5 5-9 4 6"/><path d="M17 5h1.8v1.8"/></svg></span>
       <span class="rf-brand-name">ROTA<span>FINANCEIRA</span></span>
     </a>
     <nav class="rf-sidebar-nav" aria-label="Seções financeiras">${nav.map(link).join('')}</nav>
@@ -51,7 +51,7 @@
     if (oldLogo) oldLogo.style.display = 'none';
     const sectionTitle = document.createElement('div');
     sectionTitle.className = 'rf-header-caption';
-    const titleMap = {inicio:'Início',planejamento:'Planejamento financeiro',despesas:'Despesas',receitas:'Receitas',casa:'Resumo de casa',metas:'Metas',relatorios:'Relatórios',configuracoes:'Configurações',servicos:'Serviços'};
+    const titleMap = {inicio:'Início',planejamento:'Planejamento financeiro',despesas:'Despesas',receitas:'Receitas',casa:'Área da casa',metas:'Metas',relatorios:'Relatórios',configuracoes:'Configurações',servicos:'Serviços'};
     const title = path === '/atividades.html' ? 'Atividades e fluxo de caixa' : path === '/importacao.html' ? 'Lançar por planilha' : (titleMap[activeKey] || 'Área financeira');
     sectionTitle.innerHTML = `<strong>${title}</strong><small>Organize suas finanças em um só lugar.</small>`;
     headerNav.insertBefore(sectionTitle, headerNav.firstChild);
