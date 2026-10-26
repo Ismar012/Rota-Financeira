@@ -11,7 +11,7 @@
 
 <!-- Estilos principais da Rota Financeira -->
 <link rel="stylesheet" href="/styles.css">
-<link rel="stylesheet" href="/planejamento.css?v=20261020-1">
+<link rel="stylesheet" href="/planejamento.css?v=20261026-bulk1">
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -606,11 +606,64 @@
             Salvar lançamento
         </button>
 
+        <button
+            id="openBulkExpenses"
+            class="secondary-btn bulk-entry-shortcut"
+            type="button">
+            Cadastrar em massa <span aria-hidden="true">→</span>
+        </button>
+
     </form>
 
 </div>
 
 
+</div>
+
+    <!-- =====================================================
+     MODAL — CADASTRO DE DESPESAS EM MASSA
+===================================================== -->
+<div id="bulkExpenseModal" class="modal hidden bulk-expense-modal" aria-labelledby="bulkExpenseTitle" role="dialog" aria-modal="true">
+    <section class="modal-box bulk-expense-box">
+        <button id="closeBulkExpenseModal" class="modal-close" type="button" aria-label="Fechar cadastro em massa">×</button>
+
+        <div class="eyebrow">Nova despesa</div>
+        <datalist id="bulkExpenseCategories"><option value="Outros"><option value="Alimentação"><option value="Moradia"><option value="Transporte"><option value="Saúde"><option value="Educação"><option value="Lazer"><option value="Contas e serviços"><option value="Dívidas e empréstimos"></datalist>
+        <h2 id="bulkExpenseTitle">Cadastrar despesas em massa</h2>
+        <p class="bulk-expense-intro">Preencha uma despesa por linha. Só serão cadastradas as linhas completas; linhas incompletas ficam aqui para você terminar depois.</p>
+
+        <div class="bulk-table-scroll" role="region" aria-label="Tabela de despesas para cadastro em massa" tabindex="0">
+            <table class="bulk-expense-table">
+                <thead>
+                    <tr>
+                        <th scope="col" class="bulk-col-number">#</th>
+                        <th scope="col">Nome da despesa</th>
+                        <th scope="col">Valor (R$)</th>
+                        <th scope="col">Tipo de despesa</th>
+                        <th scope="col">Categoria</th>
+                        <th scope="col">Data do cadastro</th>
+                        <th scope="col">Data de pagamento</th>
+                        <th scope="col">Parcelas / 2º dia</th>
+                        <th scope="col" class="bulk-col-actions">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="bulkExpenseRows"></tbody>
+            </table>
+        </div>
+
+        <div class="bulk-table-toolbar">
+            <button id="bulkAddRow" class="secondary-btn" type="button">＋ Adicionar linha</button>
+            <span id="bulkRowCounter" class="bulk-row-counter">0 linhas</span>
+        </div>
+
+        <p class="bulk-expense-hint"><span aria-hidden="true">ⓘ</span> Linhas sem nome e valor serão ignoradas. Linhas começadas, mas incompletas, não serão cadastradas e permanecerão para edição.</p>
+        <p id="bulkExpenseFeedback" class="notice" role="status" aria-live="polite"></p>
+
+        <div class="bulk-expense-actions">
+            <button id="bulkBackToIndividual" class="secondary-btn" type="button">Voltar ao cadastro individual</button>
+            <button id="bulkSubmitExpenses" class="primary-btn" type="button">Cadastrar despesas preenchidas</button>
+        </div>
+    </section>
 </div>
 
     <!-- =====================================================
@@ -760,7 +813,7 @@
      IMPORTANTE: carregar por último
 ========================== -->
 
-<script src="/planejamento.js?v=20261021-3"></script>
+<script src="/planejamento.js?v=20261026-bulk1"></script>
 <script>
 document.getElementById('backLogo')?.addEventListener('click', function (event) {
     event.preventDefault();

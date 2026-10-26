@@ -84,3 +84,47 @@
 @media(max-width:650px){.planning-page{padding-top:100px}.planning-head{align-items:flex-start;flex-direction:column}.month-selector{width:100%}.month-selector input{flex:1;min-width:0}.summary-grid,.action-grid{grid-template-columns:1fr}.section-title{align-items:flex-start;flex-direction:column}.chart-wrap{height:280px}.entry-row{grid-template-columns:1fr}.entry-value{justify-self:start}.entry-actions{width:100%}.entry-actions .secondary-btn{flex:1}.modal-box{padding:24px 18px}}
 
 .ux-pending-actions{display:flex;gap:8px;flex-wrap:wrap}.ux-panel table th,.ux-panel table td{padding:8px;text-align:left;border-bottom:1px solid #555}.ux-panel table{font-size:14px}
+
+/* Cadastro em massa: tabela editável para desktop/notebook. */
+.bulk-entry-shortcut{width:100%;justify-content:center;gap:8px;white-space:normal}
+.bulk-entry-shortcut span{font-size:15px}
+.bulk-expense-modal{z-index:120;padding:16px}
+.bulk-expense-box{width:min(1580px,calc(100vw - 32px));max-width:none;max-height:94vh;overflow:hidden;display:flex;flex-direction:column;padding:26px 28px 22px}
+.bulk-expense-box h2{margin:4px 40px 8px 0;font-size:clamp(23px,2.2vw,30px);letter-spacing:-.7px}
+.bulk-expense-intro{color:#aaa;font-size:13px;line-height:1.55;margin:0 0 18px;max-width:920px}
+.bulk-table-scroll{overflow:auto;max-height:min(49vh,540px);border:1px solid rgba(255,255,255,.1);border-radius:10px;overscroll-behavior:contain}
+.bulk-expense-table{width:100%;min-width:1160px;border-collapse:separate;border-spacing:0;font-size:12px}
+.bulk-expense-table th{position:sticky;top:0;z-index:1;background:#111416;color:#9c9c9c;text-align:left;font-size:10px;letter-spacing:.25px;font-weight:700;padding:11px 8px;border-bottom:1px solid rgba(255,255,255,.11);white-space:nowrap}
+.bulk-expense-table td{padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.06);background:#0b0d0f;vertical-align:middle}
+.bulk-expense-table tbody tr:last-child td{border-bottom:0}
+.bulk-expense-table tbody tr:hover td{background:rgba(255,255,255,.015)}
+.bulk-expense-table .bulk-col-number{width:36px;text-align:center}
+.bulk-expense-table .bulk-col-actions{width:48px;text-align:center}
+.bulk-row-number{color:#777;text-align:center;font-variant-numeric:tabular-nums}
+.bulk-expense-table input,.bulk-expense-table select{width:100%;min-width:0;box-sizing:border-box;min-height:39px;padding:8px 9px;background:#050607;border:1px solid rgba(255,255,255,.13);border-radius:7px;color:#f4f4f4;font-size:12px;outline:none;color-scheme:dark}
+.bulk-expense-table input:focus,.bulk-expense-table select:focus{border-color:var(--gold);box-shadow:0 0 0 2px rgba(242,203,91,.08)}
+.bulk-expense-table input[aria-invalid="true"],.bulk-expense-table select[aria-invalid="true"]{border-color:#c86b6b;box-shadow:0 0 0 1px rgba(200,107,107,.16)}
+.bulk-expense-table .bulk-name-cell{min-width:165px}
+.bulk-expense-table .bulk-amount-cell{min-width:96px}
+.bulk-expense-table .bulk-type-cell{min-width:148px}
+.bulk-expense-table .bulk-category-cell{min-width:135px}
+.bulk-expense-table .bulk-date-cell{min-width:145px}
+.bulk-expense-table .bulk-extra-cell{min-width:115px}
+.bulk-expense-table .bulk-delete-row{display:flex;align-items:center;justify-content:center;width:33px;min-width:33px;height:35px;padding:0;background:transparent;border:1px solid transparent;border-radius:7px;color:#8c8c8c;cursor:pointer;font-size:17px}
+.bulk-expense-table .bulk-delete-row:hover{color:#f0a1a1;border-color:rgba(240,161,161,.25);background:rgba(240,161,161,.06)}
+.bulk-expense-table .bulk-extra-wrap{display:flex;align-items:center;gap:5px}
+.bulk-expense-table .bulk-extra-wrap label{display:block;white-space:nowrap;color:#888;font-size:10px}
+.bulk-expense-table .bulk-extra-wrap input{min-width:60px}
+.bulk-expense-table .bulk-extra-empty{color:#555;text-align:center}
+.bulk-expense-table tr.bulk-row-incomplete td{background:rgba(210,153,50,.035)}
+.bulk-expense-table tr.bulk-row-error td{background:rgba(200,107,107,.045)}
+.bulk-table-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 2px}
+.bulk-row-counter{color:#777;font-size:11px}
+.bulk-expense-hint{display:flex;align-items:flex-start;gap:7px;color:#888;font-size:11px;line-height:1.5;margin:10px 0 0}
+.bulk-expense-hint span{color:var(--gold2)}
+.bulk-expense-box .notice{margin:6px 0 0;min-height:0}
+.bulk-expense-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.bulk-expense-actions button{min-height:44px;white-space:normal;text-align:center}
+.bulk-expense-actions .primary-btn{font-size:12px}
+@media(max-width:1000px){.bulk-expense-box{padding:24px 18px 18px}.bulk-table-scroll{max-height:45vh}.bulk-expense-intro{max-width:calc(100% - 20px)}}
+@media(max-width:650px){.bulk-expense-modal{padding:8px}.bulk-expense-box{width:calc(100vw - 16px);max-height:96vh;padding:22px 12px 14px}.bulk-expense-box h2{font-size:22px;margin-right:26px}.bulk-expense-intro{font-size:12px}.bulk-table-scroll{max-height:48vh}.bulk-expense-actions{grid-template-columns:1fr}.bulk-table-toolbar{align-items:flex-start;flex-direction:column}.bulk-expense-table{min-width:1160px}}
