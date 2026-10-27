@@ -1271,6 +1271,21 @@ $('closeConfirmDateModal')?.addEventListener('click', () => {
 
   document.addEventListener('click', () => hideMenus());
 
+  $('menuDeleteAll')?.addEventListener('click', async (event) => {
+    event.stopPropagation();
+    hideMenus();
+    if (!window.confirm('Excluir TODOS os seus lançamentos de todos os meses? Ganhos e despesas serão apagados e as despesas recorrentes serão interrompidas. Lançamentos vinculados a descanso, casa, metas ou desafio serão preservados e devem ser gerenciados nas respectivas áreas. Esta ação não pode ser desfeita.')) return;
+    if (window.prompt('Para confirmar, digite EXCLUIR:') !== 'EXCLUIR') return;
+    try {
+      const result = await api('/api/finance/entries', { method: 'DELETE' });
+      await loadSummary();
+      feedback(`${result.deletedCount} lançamento(s) excluído(s). ${result.protectedCount} vinculado(s) a outras áreas foram preservados.`, 'success');
+    } catch (error) {
+      if (error.status === 401 || error.status === 403) { window.location.href = '/login.html'; return; }
+      feedback(error.message, 'error');
+    }
+  });
+
   $('menuEdit')?.addEventListener('click', (event) => {
     event.stopPropagation();
     hideMenus();
