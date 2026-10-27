@@ -1,0 +1,12 @@
+ROTA FINANCEIRA — PACOTE COMPLETO RECUPERADO
+
+Este pacote foi reconstruído a partir do ZIP "Rota-Financeira-mascote-ajustado-v2(1).zip"
+disponível nesta conversa. O ZIP original rotulado V6 não estava disponível para reenvio.
+Não é garantido que este pacote seja idêntico à V6 anterior.
+
+Melhoria adicional: imagens WebP do mascote original incorporadas diretamente nos HTMLs
+index.html e login.html para evitar erros de carregamento por caminhos ausentes no servidor.
+As imagens originais continuam também no diretório mascotes/.
+O restante dos arquivos da base V2 foi preservado.
+A animação desta base é 2D com troca de poses e deslocamento do corpo, NÃO 3D real.
+Teste localmente antes de publicar no Render.
