@@ -446,6 +446,22 @@ const filteredEntries = state.entries.filter((entry) => {
     });
   }
 
+  function openRequestedConfirmation() {
+    const params = new URLSearchParams(window.location.search);
+    const id = Number(params.get('confirmEntry'));
+    const action = params.get('confirmAction');
+    if (!Number.isSafeInteger(id) || id < 1 || !['pay', 'receive'].includes(action)) return;
+    const entry = state.entries.find(item => Number(item.id) === id);
+    if (!entry || (action === 'receive' && entry.type !== 'income') || (action === 'pay' && entry.type === 'income')) return;
+    const button = $('entriesList')?.querySelector(`button[data-action="${action}"][data-id="${id}"]`);
+    if (!button) return;
+    params.delete('confirmEntry');
+    params.delete('confirmAction');
+    const query = params.toString();
+    window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+    window.setTimeout(() => button.click(), 40);
+  }
+
   async function loadSummary() {
     if (!state.month) return;
     document.dispatchEvent(new CustomEvent('rota-content-loading'));
@@ -458,6 +474,7 @@ const filteredEntries = state.entries.filter((entry) => {
       state.data = data.data || [];
       renderSummary(data);
       renderEntries();
+      openRequestedConfirmation();
       renderRestDays();
       renderChart(state.data);
       document.dispatchEvent(new CustomEvent('rota-summary-loaded',{detail:{month:state.month}}));

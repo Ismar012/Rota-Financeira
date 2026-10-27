@@ -40,7 +40,71 @@
   for(const modal of dialogs){modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.tabIndex=-1;const heading=modal.querySelector('h2');if(heading){if(!heading.id)heading.id=modal.id+'Title';modal.setAttribute('aria-labelledby',heading.id);}let open=!modal.classList.contains('hidden');new MutationObserver(()=>{const next=!modal.classList.contains('hidden');if(next===open)return;open=next;if(open){previousFocus.set(modal,outsideFocus);(modal.querySelector('input:not([type="hidden"]):not([disabled]),button')||modal).focus();}else{const prior=previousFocus.get(modal);if(prior?.isConnected)prior.focus();}}).observe(modal,{attributes:true,attributeFilter:['class']});}
   document.addEventListener('keydown',e=>{const modal=dialogs.find(d=>!d.classList.contains('hidden'));if(!modal)return;if(e.key==='Escape'){e.preventDefault();modal.querySelector('.modal-close')?.click();}if(e.key==='Tab'){const items=[...modal.querySelectorAll('button,input,select,textarea,a[href],[tabindex="0"]')].filter(el=>!el.disabled&&el.getClientRects().length);const first=items[0],last=items[items.length-1];if(!first){e.preventDefault();modal.focus();}else if(e.shiftKey&&(document.activeElement===first||!modal.contains(document.activeElement))){e.preventDefault();last.focus();}else if(!e.shiftKey&&(document.activeElement===last||!modal.contains(document.activeElement))){e.preventDefault();first.focus();}}});
   if(location.pathname.endsWith('/dashboard.html')){
-    const root=document.querySelector('.cards');if(!root)return;const panel=text('section','');panel.className='ux-panel';panel.append(text('h2','Seu planejamento de hoje'));const content=text('p','Carregando resumo…');content.setAttribute('role','status');panel.append(content);root.before(panel);
-    summary().then(data=>{content.remove();const p=data.goalPlan,t=data.totals||{};const entries=(data.entries||[]).filter(e=>e.type==='expense'&&Number(e.paid)!==1&&String(e.due_date).slice(0,10)>=today()&&String(e.due_date).slice(0,7)===today().slice(0,7)).sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date)));const next=entries[0];const grid=text('div','');grid.className='ux-home-grid';const goal=p?.displayDailyGoal??t.dailyGoal;for(const [label,value,help] of [['Meta de hoje',goal==null?'Revisar planejamento':fmt(goal),(p?.availableWorkingDays??t.availableWorkingDays??0)+' dias disponíveis'],['Saldo em caixa',p?fmt(p.cashBalance):'Consultar planejamento','Inclui adiantamentos e devoluções da casa'],['Despesas do mês',fmt(t.expense||0),'Inclui sua parte das contas da casa'],['Próximo vencimento',next?fmt(next.amount):'Nenhum neste mês',next?next.name+' · '+dateLabel(String(next.due_date).slice(0,10)):'Consulte também as pendências vencidas']]){const a=text('a','');a.href='/planejamento.html';a.append(text('span',label),text('strong',value),text('small',help));grid.append(a);}panel.append(grid);document.dispatchEvent(new CustomEvent('rota-content-ready'));}).catch(error=>{content.textContent=error.message;document.dispatchEvent(new CustomEvent('rota-content-error'));});
+    const grid=$('homeSummaryGrid');
+    const pendingRoot=$('pendingConfirmationList');
+    const periodLabel=$('homePeriodLabel');
+    const metricIcons={
+      goal:'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.5"/><path d="m13.5 10.5 5-5M16 5.5h2.5V8"/>',
+      cash:'<rect x="3" y="5" width="18" height="15" rx="2.5"/><path d="M3 9h18M7 5V3h10v2M14 13h4v3h-4z"/>',
+      expenses:'<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M7 8h10M7 12h4M7 16h7M16 12h1"/>',
+      calendar:'<rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M7.5 3v4M16.5 3v4M3.5 9.5h17M7.5 13h3M13.5 13h3"/>',
+      pending:'<rect x="4" y="3.5" width="13" height="17" rx="2"/><path d="M8 8h5M8 12h5M8 16h3M17 7l3 3-3 3"/>',
+      check:'<circle cx="12" cy="12" r="9"/><path d="m7.5 12 3 3 6-6"/>',
+    };
+    const icon=(name,className)=>{const el=text('span','');el.className=className;el.setAttribute('aria-hidden','true');el.innerHTML=`<svg viewBox="0 0 24 24">${metricIcons[name]||metricIcons.pending}</svg>`;return el;};
+    const dateSort=(entry)=>String(entry.due_date||'9999-12-31').slice(0,10);
+    const goToConfirmation=(entry)=>{
+      const action=entry.type==='income'?'receive':'pay';
+      const view=entry.type==='income'?'receitas':'despesas';
+      window.location.href=`/planejamento.html?view=${view}&confirmEntry=${encodeURIComponent(entry.id)}&confirmAction=${action}`;
+    };
+    if(periodLabel){periodLabel.textContent=new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric',timeZone:'America/Bahia'}).format(new Date());}
+    summary().then(data=>{
+      const plan=data.goalPlan,t=data.totals||{};
+      const entries=(data.entries||[]).filter(e=>e&&Number(e.paid)!==1&&(e.type==='expense'||e.type==='income')).sort((a,b)=>dateSort(a).localeCompare(dateSort(b)));
+      const upcomingExpenses=entries.filter(e=>e.type==='expense'&&dateSort(e)>=today().slice(0,10)&&dateSort(e).slice(0,7)===today().slice(0,7));
+      const next=upcomingExpenses[0];
+      const goal=plan?.displayDailyGoal??t.dailyGoal;
+      if(grid){
+        grid.replaceChildren();
+        const metrics=[
+          ['goal','Meta de hoje',goal==null?'Revisar planejamento':fmt(goal),(plan?.availableWorkingDays??t.availableWorkingDays??0)+' dias disponíveis'],
+          ['cash','Saldo em caixa',plan?fmt(plan.cashBalance):'Consultar planejamento','Inclui adiantamentos e devoluções da casa'],
+          ['expenses','Despesas do mês',fmt(t.expense||0),'Inclui sua parte das contas da casa'],
+          ['calendar','Próximo vencimento',next?fmt(next.amount):'Nenhum neste mês',next?`${next.name} · ${dateLabel(dateSort(next))}`:'Consulte as pendências para ver os próximos lançamentos']
+        ];
+        for(const [iconName,label,value,help] of metrics){
+          const a=text('a','');a.href='/planejamento.html';a.className='ux-home-metric';
+          const labelEl=text('span',label);labelEl.className='ux-home-metric-label';
+          const valueEl=text('strong',value);valueEl.className='ux-home-metric-value';
+          const helpEl=text('small',help);helpEl.className='ux-home-metric-help';
+          a.append(icon(iconName,'ux-home-metric-icon'),labelEl,valueEl,helpEl);grid.append(a);
+        }
+      }
+      if(pendingRoot){
+        pendingRoot.replaceChildren();
+        if(!entries.length){
+          const empty=text('div','');empty.className='ux-home-empty';empty.append(icon('check','ux-home-empty-icon'),text('p','Tudo em dia — não há lançamentos pendentes para confirmar neste mês.'));pendingRoot.append(empty);
+        }else{
+          for(const entry of entries.slice(0,3)){
+            const row=text('article','');row.className='ux-home-pending-row';
+            const iconWrap=icon('pending','ux-home-pending-icon');
+            const details=text('div','');details.className='ux-home-pending-details';
+            details.append(text('strong',entry.name|| (entry.type==='income'?'Recebimento':'Despesa')));
+            details.append(text('small',`${entry.type==='income'?'Ganho':'Despesa'} · ${fmt(entry.amount)}`));
+            const due=text('div','');due.className='ux-home-pending-date';
+            due.append(icon('calendar','ux-home-date-icon'),text('span','Vencimento'),text('strong',dateSort(entry)!=='9999-12-31'?dateLabel(dateSort(entry)):'Data não informada'));
+            const action=text('a',entry.type==='income'?'Confirmar recebimento':'Confirmar pagamento');action.className='ux-home-confirm-btn';action.href='#';action.addEventListener('click',event=>{event.preventDefault();goToConfirmation(entry);});
+            row.append(iconWrap,details,due,action);pendingRoot.append(row);
+          }
+          if(entries.length>3){const more=text('a',`Ver mais ${entries.length-3} pendências →`);more.href='/planejamento.html';more.className='ux-home-more-pending';pendingRoot.append(more);}
+        }
+      }
+      document.dispatchEvent(new CustomEvent('rota-content-ready'));
+    }).catch(error=>{
+      if(grid){grid.replaceChildren();const errorText=text('p',error.message||'Não foi possível carregar os indicadores.');errorText.className='ux-home-error';grid.append(errorText);}
+      if(pendingRoot){pendingRoot.replaceChildren();const errorText=text('p','Não foi possível carregar as pendências. Abra o planejamento para consultar seus lançamentos.');errorText.className='ux-home-error';pendingRoot.append(errorText);}
+      document.dispatchEvent(new CustomEvent('rota-content-error'));
+    });
   }
 })();

@@ -34,13 +34,14 @@
   aside.setAttribute('aria-label','Navegação principal');
   aside.innerHTML = `
     <a class="rf-sidebar-brand" href="/dashboard.html" aria-label="Rota Financeira — início">
-      <span class="rf-brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 18 8.5 9l3.5 5 5-9 4 6"/><path d="M17 5h1.8v1.8"/></svg></span>
+      <span class="rf-brand-mark" aria-hidden="true">RF</span>
       <span class="rf-brand-name">ROTA<span>FINANCEIRA</span></span>
     </a>
     <nav class="rf-sidebar-nav" aria-label="Seções financeiras">${nav.map(link).join('')}</nav>
     <div class="rf-sidebar-spacer"></div>
     <div class="rf-sidebar-footer">
       ${link(['configuracoes','Configurações','/perfil.html'])}
+      <button type="button" class="tour-help rf-sidebar-help" aria-label="Como usar esta tela" title="Como usar esta tela">Como usar esta tela</button>
       <div class="rf-sidebar-note"><strong>Rota Financeira</strong>Seu dinheiro, mais organizado.</div>
     </div>`;
   body.insertAdjacentElement('afterbegin', aside);
@@ -53,7 +54,10 @@
     sectionTitle.className = 'rf-header-caption';
     const titleMap = {inicio:'Início',planejamento:'Planejamento financeiro',despesas:'Despesas',receitas:'Receitas',casa:'Área da casa',metas:'Metas',relatorios:'Relatórios',configuracoes:'Configurações',servicos:'Serviços'};
     const title = path === '/atividades.html' ? 'Atividades e fluxo de caixa' : path === '/importacao.html' ? 'Lançar por planilha' : (titleMap[activeKey] || 'Área financeira');
-    sectionTitle.innerHTML = `<strong>${title}</strong><small>Organize suas finanças em um só lugar.</small>`;
+    const headingIcon = activeKey === 'inicio'
+      ? '<span class="rf-header-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9M9 20v-6h6v6"/></svg></span>'
+      : '';
+    sectionTitle.innerHTML = `${headingIcon}<strong>${title}</strong>`;
     headerNav.insertBefore(sectionTitle, headerNav.firstChild);
   }
 
@@ -62,7 +66,7 @@
     const heading = main?.querySelector('h1')?.textContent?.trim() || 'Área financeira';
     const bar = document.createElement('header');
     bar.className = 'rf-workspace-topbar';
-    bar.innerHTML = `<div class="rf-workspace-title"><span class="rf-topbar-eyebrow">ROTA FINANCEIRA</span><strong>${heading.replace(/[&<>"']/g, '')}</strong><small>Organize suas finanças em um só lugar.</small></div><div class="rf-workspace-actions"><a href="/planejamento.html">Planejamento financeiro</a></div>`;
+    bar.innerHTML = `<div class="rf-workspace-title"><span class="rf-topbar-eyebrow">ROTA FINANCEIRA</span><strong>${heading.replace(/[&<>"']/g, '')}</strong></div><div class="rf-workspace-actions"><a href="/planejamento.html">Planejamento financeiro</a></div>`;
     aside.insertAdjacentElement('afterend', bar);
   }
 

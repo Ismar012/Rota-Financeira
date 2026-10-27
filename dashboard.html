@@ -6,47 +6,86 @@
   <title>Minha área | Rota Financeira</title>
   <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/melhorias.css?v=20261014">
-<link rel="stylesheet" href="/experiencia-cliente.css?v=20261015-layout4">
+<link rel="stylesheet" href="/experiencia-cliente.css?v=20261027-home3">
 <link rel="stylesheet" href="/plataforma.css?v=20261015-consultoria">
-<link rel="stylesheet" href="/transicoes.css?v=20261021-3"><link rel="stylesheet" href="/refinamento.css?v=20261021-3"><link rel="stylesheet" href="/app-shell.css?v=20261026-shell3"></head>
+<link rel="stylesheet" href="/transicoes.css?v=20261021-3"><link rel="stylesheet" href="/refinamento.css?v=20261021-3"><link rel="stylesheet" href="/app-shell.css?v=20261027-home3"></head>
 <body class="client-home">
 <header class="header">
   <nav class="nav">
     <a class="logo-text" href="/dashboard.html" id="backLogo">ROTA <span>FINANCEIRA</span></a>
-    <div class="nav-actions">
+    <div class="nav-actions dashboard-nav-actions">
+        <button id="dashboardNotifications" class="rf-notification-btn" type="button" aria-label="Ver pendências para confirmar" title="Ver pendências">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+        </button>
         <button id="logout" class="btn btn-outline">Sair</button>
     </div>
   </nav>
 </header>
-<main aria-busy="true" class="rota-data-loading page">
-  <div class="container">
-    <div class="page-head">
-      <div class="eyebrow">Área do cliente</div>
-      <h1 class="title">Olá, <span id="name">cliente</span></h1>
-      <p class="muted">
-        Seu próximo passo para manter as contas em dia.
-      </p>
+<main aria-busy="true" class="rota-data-loading page dashboard-home">
+  <div class="container dashboard-home-container">
+    <div class="home-welcome">
+      <div class="page-head">
+        <div class="eyebrow">Área do cliente</div>
+        <h1 class="title">Olá, <span id="name">cliente</span></h1>
+      </div>
+      <div class="home-period" aria-label="Mês de referência">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M7.5 3v4M16.5 3v4M3.5 9.5h17"/></svg>
+        <span id="homePeriodLabel">Carregando período…</span>
+      </div>
     </div>
-    <div class="cards">
-      <a class="card card-link" href="/planejamento.html">
-        <div class="card-num">01</div>
-        <h3>Meu planejamento</h3>
-        <p>Registre ganhos e despesas, confirme pagamentos e acompanhe sua meta.</p>
-        <span class="card-arrow">Abrir planejamento →</span>
-      </a>
-      <a class="card card-link" href="/servicos.html">
-        <div class="card-num">02</div>
-        <h3>Meus serviços</h3>
-        <p>Veja seus serviços e consulte opções de acompanhamento financeiro.</p>
-        <span class="card-arrow">Abrir serviços →</span>
-      </a>
-      <a class="card card-link" href="/perfil.html">
-        <div class="card-num">03</div>
-        <h3>Meu perfil</h3>
-        <p>Atualize seus dados e gerencie sua conta.</p>
-        <span class="card-arrow">Abrir perfil →</span>
-      </a>
-    </div>
+
+    <section class="ux-panel ux-home-summary" aria-labelledby="homeSummaryTitle">
+      <div class="ux-home-section-heading">
+        <span class="ux-home-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><path d="m14 10 5-5M17 5h2v2"/></svg></span>
+        <h2 id="homeSummaryTitle">Seu planejamento de hoje</h2>
+      </div>
+      <div id="homeSummaryGrid" class="ux-home-grid" aria-live="polite">
+        <p class="ux-home-loading" role="status">Carregando seus indicadores…</p>
+      </div>
+    </section>
+
+    <section class="ux-home-quick" aria-labelledby="quickAccessTitle">
+      <div class="ux-home-section-heading">
+        <span class="ux-home-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13.5 2.5 4 13h6l-.5 8.5L20 10h-6.5z"/></svg></span>
+        <h2 id="quickAccessTitle">Acesso rápido</h2>
+      </div>
+      <div class="cards home-action-grid">
+        <a class="card card-link home-action-card" href="/planejamento.html">
+          <span class="home-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M7.5 3v4M16.5 3v4M3.5 9.5h17M7.5 13h3M7.5 16h6"/></svg></span>
+          <span class="home-action-title">Meu planejamento</span>
+          <span class="home-action-arrow" aria-hidden="true">›</span>
+          <p>Registre ganhos e despesas, confirme pagamentos e acompanhe sua meta.</p>
+          <span class="card-arrow">Abrir planejamento <span aria-hidden="true">→</span></span>
+        </a>
+        <a class="card card-link home-action-card" href="/servicos.html">
+          <span class="home-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg></span>
+          <span class="home-action-title">Meus serviços</span>
+          <span class="home-action-arrow" aria-hidden="true">›</span>
+          <p>Veja seus serviços e consulte opções de acompanhamento financeiro.</p>
+          <span class="card-arrow">Abrir serviços <span aria-hidden="true">→</span></span>
+        </a>
+        <a class="card card-link home-action-card" href="/perfil.html">
+          <span class="home-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1.5a8 8 0 0 1 16 0V21"/></svg></span>
+          <span class="home-action-title">Meu perfil</span>
+          <span class="home-action-arrow" aria-hidden="true">›</span>
+          <p>Atualize seus dados e gerencie sua conta.</p>
+          <span class="card-arrow">Abrir perfil <span aria-hidden="true">→</span></span>
+        </a>
+      </div>
+    </section>
+
+    <section id="dashboardPending" class="ux-panel ux-home-pending" aria-labelledby="pendingTitle">
+      <div class="ux-home-panel-heading">
+        <div class="ux-home-section-heading">
+          <span class="ux-home-heading-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="3.5" width="13" height="17" rx="2"/><path d="M8 8h5M8 12h5M8 16h3M17 7l3 3-3 3"/></svg></span>
+          <h2 id="pendingTitle">Pendências para confirmar</h2>
+        </div>
+        <a class="ux-home-see-all" href="/planejamento.html">Ver todas <span aria-hidden="true">→</span></a>
+      </div>
+      <div id="pendingConfirmationList" class="ux-pending-list" aria-live="polite">
+        <p class="ux-home-loading" role="status">Consultando seus lançamentos…</p>
+      </div>
+    </section>
     <p id="feedback" class="notice"></p>
   </div>
 </main>
@@ -87,9 +126,13 @@ document.getElementById('backLogo')?.addEventListener('click', function (event) 
   event.preventDefault();
   window.location.href = '/dashboard.html';
 });
+
+document.getElementById('dashboardNotifications')?.addEventListener('click', function () {
+  document.getElementById('dashboardPending')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 </script>
 <script src="/navegacao.js?v=20261021-3"></script>
-<script src="/experiencia-cliente.js?v=20261021-3"></script>
+<script src="/experiencia-cliente.js?v=20261027-home3"></script>
 <script src="/plataforma.js?v=20261021-3"></script>
-<script src="/tutorial.js?v=20261021-3"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script><script src="/app-shell.js?v=20261026-shell2"></script></body>
+<script src="/tutorial.js?v=20261027-home3"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script><script src="/app-shell.js?v=20261027-home3"></script></body>
 </html>
