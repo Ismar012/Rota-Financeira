@@ -3298,6 +3298,26 @@ async function handleFinanceApi(
   const userId =
     Number(user.id);
 
+  // Limpeza integral da própria conta, incluindo séries recorrentes.
+  if (req.method === 'DELETE' && url === '/api/finance/entries') {
+    try {
+      await db.exec('BEGIN');
+      await db.prepare('UPDATE expense_schedules SET active=FALSE WHERE user_id=?').run(userId);
+      const removed = await db.prepare(`DELETE FROM finance_entries f WHERE f.user_id=?
+        AND f.rest_day_id IS NULL AND f.house_expense_id IS NULL
+        AND NOT EXISTS (SELECT 1 FROM challenge_deposits d WHERE d.entry_id=f.id)
+        AND NOT EXISTS (SELECT 1 FROM goal_regularizations g WHERE g.entry_id=f.id)
+        RETURNING f.id`).all(userId);
+      const protectedEntries = await db.prepare('SELECT COUNT(*) AS total FROM finance_entries WHERE user_id=?').get(userId);
+      await db.exec('COMMIT');
+      return sendJson(res, 200, { deletedCount: removed.length, protectedCount: Number(protectedEntries.total) });
+    } catch (error) {
+      try { await db.exec('ROLLBACK'); } catch (_) {}
+      console.error('Erro ao excluir lançamentos:', error);
+      return sendJson(res, 500, { error: 'Não foi possível excluir os lançamentos. Nenhuma alteração foi confirmada.' });
+    }
+  }
+
   if (req.method === 'GET' && (url === '/api/finance/report' || url === '/api/finance/goal-report')) {
     const requestedMonth = parsedUrl.searchParams.get('month') || getTodayLocal().slice(0, 7);
     if (!validMonth(requestedMonth)) return sendJson(res, 400, { error: 'Mês inválido.' });
