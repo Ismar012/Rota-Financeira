@@ -163,3 +163,103 @@ body.rf-app-shell{background:#030405;color:#fff}
 .rf-app-shell .rf-back-link:focus-visible { outline: 2px solid #f0c94d; outline-offset: 3px; }
 .rf-app-shell .rf-back-link span { display: block; margin-top: -1px; }
 @media (max-width: 600px) { .rf-app-shell .rf-back-link { width: 32px; height: 32px; min-height: 32px; } }
+
+/* Refinamento global dos controles superiores e da central de suporte. */
+.rf-app-shell .rf-shell-header-actions,
+.rf-app-shell .rf-workspace-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:nowrap;min-width:0}
+.rf-app-shell .rf-shell-back,
+.rf-app-shell .rf-shell-logout{display:inline-flex!important;align-items:center;justify-content:center;gap:6px;min-height:36px!important;height:36px;padding:7px 11px!important;border:1px solid #2b3946!important;border-radius:8px!important;background:#05090d!important;color:#d7e0e9!important;font:600 12px/1 system-ui,sans-serif!important;text-decoration:none!important;white-space:nowrap;box-shadow:none!important}
+.rf-app-shell .rf-shell-back svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rf-app-shell .rf-shell-back:hover,.rf-app-shell .rf-shell-logout:hover{border-color:#b88d2e!important;color:#f5d36b!important;background:#0b1118!important}
+.rf-app-shell .rf-shell-notifications{position:relative;display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;min-height:36px;padding:0;border:1px solid #2b3946;border-radius:8px;background:#05090d;color:#e7bd45;cursor:pointer;box-shadow:none}
+.rf-app-shell .rf-shell-notifications svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rf-app-shell .rf-shell-notifications:hover{border-color:#b88d2e;background:#13130f;color:#ffda6b}
+.rf-app-shell .rf-header-caption{display:flex;align-items:center;gap:10px}
+.rf-app-shell .rf-header-caption strong{font-size:17px}
+.rf-app-shell .rf-brand-mark{overflow:hidden;background:#fff0bd;border:1px solid #e8bd48;box-shadow:0 5px 16px #e4b93924}
+.rf-app-shell .rf-brand-mark img{display:block;width:100%;height:100%;object-fit:contain;mix-blend-mode:multiply;transform:scale(1.04)}
+.rf-sidebar-footer .rf-sidebar-help,
+.rf-sidebar-footer .rf-sidebar-support{position:relative;display:grid;grid-template-columns:21px minmax(0,1fr);align-items:center;gap:12px;width:100%;min-height:42px;margin:0;padding:9px 12px;border:1px solid transparent;border-radius:9px;background:transparent;color:#afbdcc;text-align:left;font:500 13px/1.25 system-ui,sans-serif;cursor:pointer}
+.rf-sidebar-footer .rf-sidebar-help svg,
+.rf-sidebar-footer .rf-sidebar-support svg{width:20px;height:20px;stroke:currentColor;stroke-width:1.7;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.rf-sidebar-footer .rf-sidebar-help:hover,
+.rf-sidebar-footer .rf-sidebar-support:hover{background:#111b25;border-color:#25313c;color:#f3d36b}
+.rf-sidebar-footer .rf-sidebar-support{color:#d4c18d}
+.rf-sidebar-footer .rf-sidebar-help span,
+.rf-sidebar-footer .rf-sidebar-support span{min-width:0}
+
+.rf-support-overlay{position:fixed;inset:0;z-index:100500;display:grid;place-items:center;padding:18px;background:rgba(2,5,8,.78);backdrop-filter:blur(8px)}
+.rf-support-overlay[hidden]{display:none!important}
+.rf-support-dialog{width:min(590px,100%);max-height:min(88vh,780px);overflow:auto;box-sizing:border-box;border:1px solid #31404c;border-radius:18px;background:linear-gradient(145deg,#101821,#080d12);color:#eef3f8;box-shadow:0 24px 80px #000b;padding:22px}
+.rf-support-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding-bottom:17px;border-bottom:1px solid #24323e}
+.rf-support-eyebrow{display:block;margin-bottom:7px;color:#e8bd43;font-size:10px;font-weight:800;letter-spacing:1.7px}
+.rf-support-header h2{margin:0;color:#f5f7fa;font-size:22px;line-height:1.25;letter-spacing:-.4px}
+.rf-support-header p{margin:7px 0 0;color:#9eafc0;font-size:13px;line-height:1.5}
+.rf-support-close{flex:0 0 34px;width:34px;height:34px;border:1px solid #2a3b4a;border-radius:9px;background:#080e14;color:#ced9e3;font-size:24px;line-height:1;cursor:pointer}
+.rf-support-close:hover{border-color:#b88d2e;color:#f4cf58}
+.rf-support-whatsapp{display:grid;grid-template-columns:42px minmax(0,1fr) 15px;align-items:center;gap:12px;margin:17px 0;padding:14px;border:1px solid #35694a;border-radius:12px;background:linear-gradient(110deg,#10251a,#0c1715);color:#d9f2e2;text-decoration:none}
+.rf-support-whatsapp:hover{border-color:#4ba76c;background:#122b1e}
+.rf-support-whatsapp-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:#153d28;color:#71dfa0;font-size:23px}
+.rf-support-whatsapp strong,.rf-support-whatsapp small{display:block;overflow-wrap:anywhere}
+.rf-support-whatsapp strong{font-size:13px;line-height:1.4}
+.rf-support-whatsapp small{margin-top:3px;color:#9fc8ad;font-size:11px;line-height:1.4}
+.rf-support-section-title{margin:18px 0 8px;color:#aab8c5;font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:1px}
+.rf-support-faq-list{display:grid;gap:7px}
+.rf-support-faq-list button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:12px 13px;border:1px solid #243340;border-radius:10px;background:#0a1118;color:#dce5ed;font:500 13px/1.4 system-ui,sans-serif;text-align:left;cursor:pointer}
+.rf-support-faq-list button span{color:#d9b441;font-size:22px;line-height:1}
+.rf-support-faq-list button:hover{border-color:#866b28;background:#111810;color:#ffdc72}
+.rf-support-answer{padding-top:17px}
+.rf-support-answer[hidden],.rf-support-home[hidden]{display:none!important}
+.rf-support-back-faq{padding:0;border:0;background:transparent;color:#e8bd43;font:600 12px system-ui,sans-serif;cursor:pointer}
+.rf-support-answer h3{margin:18px 0 8px;font-size:18px;color:#f5f7fa}
+.rf-support-answer p{margin:0;color:#c1ced9;font-size:14px;line-height:1.65;white-space:normal}
+.rf-support-answer-actions{margin-top:17px}
+.rf-support-open-page{display:inline-flex;align-items:center;min-height:37px;padding:8px 12px;border:1px solid #b88d2e;border-radius:9px;background:#201b0b;color:#f5d36b;font-size:12px;font-weight:700;text-decoration:none}
+.rf-support-team-link{display:inline-block;margin-top:16px;color:#eac44d;font-size:11px;font-weight:650;text-decoration:underline;text-underline-offset:3px}
+.rf-support-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:14px;border-top:1px solid #24323e;color:#8193a4;font-size:11px}
+.rf-support-footer a{color:#e9c34b;font-size:11px;font-weight:650;text-decoration:underline;text-underline-offset:3px}
+body.rf-support-open{overflow:hidden}
+.rf-app-shell main .rf-back-link{display:none!important}
+@media(max-width:800px) and (min-width:601px){
+ .rf-sidebar-footer .rf-sidebar-help,.rf-sidebar-footer .rf-sidebar-support{display:flex;justify-content:center;width:44px;min-width:44px;height:44px;padding:8px;margin-inline:auto;font-size:0;gap:0}
+ .rf-sidebar-footer .rf-sidebar-help span,.rf-sidebar-footer .rf-sidebar-support span{display:none}
+ .rf-sidebar-footer .rf-sidebar-help::after{content:"?";position:absolute;font-size:14px;font-weight:750}
+ .rf-sidebar-footer .rf-sidebar-support::after{content:"↗";position:absolute;font-size:18px;font-weight:750}
+}
+@media(max-width:600px){
+ .rf-app-shell .rf-header-caption strong{font-size:14px;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .rf-app-shell .rf-shell-header-actions,.rf-app-shell .rf-workspace-actions{gap:5px}
+ .rf-app-shell .rf-shell-back,.rf-app-shell .rf-shell-logout{min-height:34px!important;height:34px;padding:6px 8px!important;font-size:11px!important}
+ .rf-app-shell .rf-shell-back svg{width:13px;height:13px}
+ .rf-app-shell .rf-shell-notifications{width:34px;height:34px;flex-basis:34px}
+ .rf-sidebar-footer .rf-sidebar-help.tour-help{right:12px;bottom:78px;left:auto;width:auto;min-height:40px;padding:8px 11px;display:flex;align-items:center;gap:7px;font-size:11px;border:1px solid #354352;border-radius:10px;background:#080d13;box-shadow:0 8px 22px #0007}
+ .rf-sidebar-footer .rf-sidebar-help.tour-help svg{width:17px;height:17px}
+ .rf-sidebar-footer .rf-sidebar-support{position:fixed;z-index:1501;right:12px;bottom:124px;left:auto;width:auto;min-height:40px;padding:8px 11px;display:flex;align-items:center;gap:7px;font-size:11px;border:1px solid #35694a;border-radius:10px;background:#0c1715;box-shadow:0 8px 22px #0007;color:#b9f0cb}
+ .rf-sidebar-footer .rf-sidebar-support svg{width:17px;height:17px}
+ .rf-support-dialog{padding:17px;border-radius:15px;max-height:calc(100vh - 26px)}
+ .rf-support-header h2{font-size:20px}
+ .rf-support-whatsapp{grid-template-columns:36px minmax(0,1fr) 12px;padding:11px;gap:9px}
+ .rf-support-whatsapp-icon{width:35px;height:35px}
+ .rf-support-faq-list button{padding:11px;font-size:12px}
+}
+
+.rf-app-shell .challenge-request-home{display:none!important}
+@media(max-width:600px){
+  .rf-app-sidebar .rf-sidebar-footer{display:block!important;position:static;width:0;height:0;min-width:0;min-height:0;padding:0;margin:0;overflow:visible;flex:0 0 0;border:0}
+  .rf-app-sidebar .rf-sidebar-footer>.rf-sidebar-link,
+  .rf-app-sidebar .rf-sidebar-note{display:none!important}
+  .rf-app-sidebar .rf-sidebar-footer .rf-sidebar-help.tour-help,
+  .rf-app-sidebar .rf-sidebar-footer .rf-sidebar-support{display:flex!important}
+}
+
+@media(max-width:800px) and (min-width:601px){.rf-sidebar-footer .rf-sidebar-help::after,.rf-sidebar-footer .rf-sidebar-support::after{content:none!important}}
+
+/* O menu inferior/rodapé mantém as ações legíveis em telas largas; usa um único ícone de ajuda. */
+.rf-app-sidebar{align-items:stretch}
+.rf-sidebar-footer{width:100%;align-self:stretch;box-sizing:border-box}
+.rf-sidebar-footer .rf-sidebar-help,.rf-sidebar-footer .rf-sidebar-support{box-sizing:border-box;min-width:0;white-space:nowrap}
+.rf-sidebar-footer .rf-sidebar-help span,.rf-sidebar-footer .rf-sidebar-support span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rf-sidebar-help::before{content:none!important;display:none!important}
+.rf-support-dialog,.rf-support-dialog button,.rf-support-dialog a{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+
+.rf-support-dialog{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
