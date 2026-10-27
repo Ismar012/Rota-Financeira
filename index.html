@@ -4,41 +4,104 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#050607">
-    <meta name="description" content="Organize sua vida financeira com a Rota Financeira. Clareza, planejamento e direção para construir seu amanhã.">
-    <title>Rota Financeira | Dirija hoje, construa seu amanhã.</title>
+    <title>Rota Financeira | Bem-vindo</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="mascote-experiencia.css">
     <link rel="stylesheet" href="abertura-aprovada.css">
+<link rel="stylesheet" href="abertura-fiel-v9.css" />
 </head>
-<body class="rf-home">
+<body class="rf-login">
 <header class="header rf-header">
     <nav class="nav rf-nav" aria-label="Navegação principal">
         <a class="rf-brand" href="index.html" aria-label="Rota Financeira — página inicial">
             <img src="marca-rf.png" alt="" class="rf-brand-mark">
             <span class="rf-brand-name">ROTA <strong>FINANCEIRA</strong></span>
         </a>
-        <div class="nav-links rf-nav-links">
-            <a href="rota.html">Conheça a Rota</a>
-            <a href="rota.html#servicos">Serviços</a>
-            <a href="contato.html">Contato</a>
-            <a class="btn btn-outline rf-nav-login" href="login.html">Já sou cliente</a>
-            <a class="btn btn-gold rf-nav-cta rf-pose-pointing" data-rf-pose="pointing" href="login.html">Começar agora <span aria-hidden="true">↗</span></a>
-        </div>
+        <a class="btn btn-outline rf-nav-login" href="contato.html">Fale conosco <span aria-hidden="true">↗</span></a>
     </nav>
 </header>
 
-<main class="rf-static-home" id="conteudo">
-  <div class="rf-static-portrait" role="img" aria-label="Representante da Rota Financeira recebendo os visitantes em um escritório executivo"></div>
-  <section class="rf-static-welcome" aria-labelledby="welcome-title">
-    <span class="rf-static-eyebrow">BEM-VINDO À ROTA FINANCEIRA</span>
-    <h1 id="welcome-title">Sua rota para uma <em>vida financeira melhor.</em></h1>
-    <p>Organização, planejamento e acompanhamento para você conquistar seus objetivos.</p>
-    <div class="rf-static-actions">
-      <a class="btn btn-gold" href="login.html">Entrar na plataforma <span aria-hidden="true">→</span></a>
-      <a class="btn btn-outline" href="cadastro.html">Criar minha conta</a>
+<main class="rf-interactive-area rf-login-main">
+    <div class="rf-login-shell">
+        <section class="rf-static-login-showcase" aria-label="Boas-vindas à Rota Financeira">
+          <div class="rf-static-login-portrait" role="img" aria-label="Representante da Rota Financeira recebendo você no escritório"></div>
+          <div class="rf-static-login-caption">Organização hoje, <strong>liberdade amanhã.</strong></div>
+        </section>
+
+        <section class="auth rf-auth-card" aria-labelledby="rf-auth-title">
+            <div class="rf-auth-card-top"><span class="rf-auth-lock" aria-hidden="true">⌑</span><span>ÁREA DO CLIENTE</span><span class="rf-auth-status"><i aria-hidden="true"></i> ACESSO SEGURO</span></div>
+            <img class="auth-logo rf-auth-logo" src="marca-rf.png" alt="Símbolo da Rota Financeira">
+            <h2 id="rf-auth-title">Bem-vindo de volta</h2>
+            <p class="auth-sub">Acesse sua área da Rota Financeira.</p>
+
+            <form id="loginForm">
+                <div class="field rf-field">
+                    <label for="email">E-MAIL</label>
+                    <div class="rf-input-shell"><span aria-hidden="true">✉</span><input id="email" name="email" type="email" autocomplete="email" placeholder="seuemail@email.com" required></div>
+                </div>
+                <div class="field rf-field">
+                    <label for="senha">SENHA</label>
+                    <div class="rf-input-shell"><span aria-hidden="true">♙</span><input id="senha" name="senha" type="password" autocomplete="current-password" placeholder="Sua senha" required><button class="rf-password-toggle" type="button" aria-label="Mostrar senha" aria-pressed="false">◉</button></div>
+                </div>
+                <div class="rf-auth-options"><span class="rf-remember"><span class="rf-check-icon" aria-hidden="true">✓</span> Conexão protegida</span><a href="recuperar-senha.html">Esqueci minha senha</a></div>
+                <button class="btn btn-gold rf-submit-btn" type="submit"><span>Entrar na minha rota</span><span aria-hidden="true">→</span></button>
+                <p id="feedback" class="notice rf-login-feedback" aria-live="polite"></p>
+            </form>
+            <div class="rf-auth-divider"><span>AINDA NÃO É CLIENTE?</span></div>
+            <a class="btn btn-outline rf-create-account rf-pose-ok" data-rf-pose="ok" href="cadastro.html">Criar minha conta <span aria-hidden="true">↗</span></a>
+            <p class="rf-auth-foot">Ao continuar, você acessa sua área pessoal da Rota Financeira.</p>
+            <div class="auth-foot rf-back-home"><a href="index.html">← Voltar para a página inicial</a></div>
+        </section>
     </div>
-    <div class="rf-static-features"><span>↗ &nbsp;Organize suas finanças</span><span>◎ &nbsp;Planeje seus objetivos</span><span>✦ &nbsp;Construa sua liberdade</span></div>
-  </section>
 </main>
+
+<script>
+(function () {
+    const form = document.getElementById('loginForm');
+    const emailInput = document.getElementById('email');
+    const senhaInput = document.getElementById('senha');
+    const feedback = document.getElementById('feedback');
+    const submitButton = form.querySelector('button[type="submit"]');
+    const submitLabel = submitButton.querySelector('span');
+    const originalLabel = submitLabel.textContent;
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        feedback.textContent = 'Verificando seu acesso...';
+        feedback.classList.remove('is-error');
+        submitButton.disabled = true;
+        submitLabel.textContent = 'Acessando sua rota...';
+        if (false && window.RotaMascote) window.RotaMascote.setPose('pointing', 'Só um instante. Estou preparando sua rota.');
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: emailInput.value, password: senhaInput.value })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Falha no login.');
+            sessionStorage.setItem('rotaShowFinanceReminder', '1');
+            if (false && window.RotaMascote) window.RotaMascote.setPose('ok', 'Tudo certo! Vamos para sua área.');
+            window.location.href = 'dashboard.html';
+        } catch (error) {
+            feedback.textContent = error.message || 'Não foi possível entrar. Tente novamente.';
+            feedback.classList.add('is-error');
+            submitButton.disabled = false;
+            submitLabel.textContent = originalLabel;
+            if (false && window.RotaMascote) window.RotaMascote.setPose('writing', 'Confira seu e-mail e sua senha. Vamos tentar novamente.');
+        }
+    });
+
+    const passwordToggle = document.querySelector('.rf-password-toggle');
+    passwordToggle.addEventListener('click', () => {
+        const show = senhaInput.type === 'password';
+        senhaInput.type = show ? 'text' : 'password';
+        passwordToggle.setAttribute('aria-pressed', String(show));
+        passwordToggle.setAttribute('aria-label', show ? 'Ocultar senha' : 'Mostrar senha');
+        passwordToggle.textContent = show ? '◎' : '◉';
+        if (false && window.RotaMascote) window.RotaMascote.setPose(show ? 'ok' : 'pointing', show ? 'Agora você pode conferir sua senha.' : 'Sua senha fica protegida.');
+    });
+})();
+</script>
 </body>
 </html>

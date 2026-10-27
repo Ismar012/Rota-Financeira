@@ -1,0 +1,1 @@
+V9: a abertura de index.html e login.html segue a referência aprovada. Imagem fixa recortada somente na área esquerda; formulário real e autenticação original à direita. Sem animação. Testar login, cadastro e responsividade antes de publicar. Nenhum arquivo de servidor ou módulo financeiro alterado.

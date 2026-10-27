@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="mascote-experiencia.css">
     <link rel="stylesheet" href="abertura-aprovada.css">
+<link rel="stylesheet" href="abertura-fiel-v9.css" />
 </head>
 <body class="rf-login">
 <header class="header rf-header">
@@ -70,7 +71,7 @@
         feedback.classList.remove('is-error');
         submitButton.disabled = true;
         submitLabel.textContent = 'Acessando sua rota...';
-        if (window.RotaMascote) window.RotaMascote.setPose('pointing', 'Só um instante. Estou preparando sua rota.');
+        if (false && window.RotaMascote) window.RotaMascote.setPose('pointing', 'Só um instante. Estou preparando sua rota.');
         try {
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
@@ -80,14 +81,14 @@
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Falha no login.');
             sessionStorage.setItem('rotaShowFinanceReminder', '1');
-            if (window.RotaMascote) window.RotaMascote.setPose('ok', 'Tudo certo! Vamos para sua área.');
+            if (false && window.RotaMascote) window.RotaMascote.setPose('ok', 'Tudo certo! Vamos para sua área.');
             window.location.href = 'dashboard.html';
         } catch (error) {
             feedback.textContent = error.message || 'Não foi possível entrar. Tente novamente.';
             feedback.classList.add('is-error');
             submitButton.disabled = false;
             submitLabel.textContent = originalLabel;
-            if (window.RotaMascote) window.RotaMascote.setPose('writing', 'Confira seu e-mail e sua senha. Vamos tentar novamente.');
+            if (false && window.RotaMascote) window.RotaMascote.setPose('writing', 'Confira seu e-mail e sua senha. Vamos tentar novamente.');
         }
     });
 
@@ -98,7 +99,7 @@
         passwordToggle.setAttribute('aria-pressed', String(show));
         passwordToggle.setAttribute('aria-label', show ? 'Ocultar senha' : 'Mostrar senha');
         passwordToggle.textContent = show ? '◎' : '◉';
-        if (window.RotaMascote) window.RotaMascote.setPose(show ? 'ok' : 'pointing', show ? 'Agora você pode conferir sua senha.' : 'Sua senha fica protegida.');
+        if (false && window.RotaMascote) window.RotaMascote.setPose(show ? 'ok' : 'pointing', show ? 'Agora você pode conferir sua senha.' : 'Sua senha fica protegida.');
     });
 })();
 </script>

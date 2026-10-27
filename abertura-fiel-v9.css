@@ -1,0 +1,25 @@
+/* V9 — abertura fixa, layout completo; autenticação original preservada */
+body.rf-login,body.rf-home{margin:0!important;background:#09090b!important;color:#fff!important}
+body.rf-login::before,body.rf-home::before{display:none!important}
+body.rf-login .rf-header,body.rf-home .rf-header{display:none!important}
+body.rf-login .rf-login-main,body.rf-home .rf-login-main{padding:0!important;margin:0!important;min-height:100vh!important;background:#0a0b10!important;display:block!important}
+body.rf-login .rf-login-shell,body.rf-home .rf-login-shell{max-width:none!important;width:100%!important;min-height:100vh!important;margin:0!important;padding:0!important;display:grid!important;grid-template-columns:minmax(0,62%) minmax(360px,38%)!important;gap:0!important;align-items:stretch!important;background:linear-gradient(100deg,#080808,#11111b)!important}
+.rf-static-login-showcase{min-height:100vh!important;position:relative!important;overflow:hidden!important;background:#101013!important}
+.rf-static-login-portrait{position:absolute!important;inset:0!important;height:100%!important;min-height:0!important;background-image:url('abertura-referencia-esquerda.webp')!important;background-repeat:no-repeat!important;background-size:cover!important;background-position:center center!important}
+.rf-static-login-caption{display:none!important}
+.rf-auth-card{box-sizing:border-box!important;align-self:center!important;justify-self:center!important;position:relative!important;z-index:2!important;width:calc(100% - 56px)!important;max-width:535px!important;margin:24px!important;padding:clamp(24px,3.1vw,48px)!important;border-radius:19px!important;border:1px solid #d5a451!important;background:linear-gradient(145deg,#17171cf5,#0b0b0ff9)!important;box-shadow:0 18px 60px #000a!important}
+.rf-auth-card-top,.rf-auth-card .rf-back-home,.rf-auth-card .rf-auth-foot{display:none!important}
+.rf-auth-logo{width:78px!important;height:70px!important;object-fit:contain!important;margin:0 auto 14px!important;display:block!important}
+.rf-auth-card h2{text-align:center!important;font-size:clamp(27px,2.8vw,38px)!important;margin:12px 0 8px!important}
+.rf-auth-card .auth-sub{text-align:center!important;font-size:15px!important;line-height:1.5!important;margin-bottom:28px!important;color:#e3e0df!important}
+.rf-auth-card .rf-field{margin:0 0 15px!important}
+.rf-auth-card .rf-field label{display:none!important}
+.rf-auth-card .rf-input-shell{min-height:53px!important;border:1px solid #4a4950!important;border-radius:9px!important;background:#191a20!important;display:flex!important;align-items:center!important;padding:0 13px!important}
+.rf-auth-card .rf-input-shell input{min-width:0!important;flex:1!important;color:#fff!important;background:transparent!important;border:0!important;outline:0!important;font-size:15px!important}
+.rf-auth-options{margin:15px 0 22px!important;display:flex!important;justify-content:space-between!important;gap:12px!important;align-items:center!important}
+.rf-submit-btn{min-height:56px!important;width:100%!important;background:linear-gradient(110deg,#f8d57f,#d99a2e)!important;color:#15100a!important;border:0!important;border-radius:9px!important;font-size:16px!important;font-weight:750!important}
+.rf-create-account{min-height:54px!important;display:flex!important;align-items:center!important;justify-content:center!important;border:1px solid #65636b!important;border-radius:9px!important}
+.rf-auth-divider{margin:19px 0!important}
+.rf-auth-divider span{font-size:0!important}.rf-auth-divider span::after{content:'ou';font-size:14px!important;color:#ddd!important}
+@media(max-width:900px){body.rf-login .rf-login-shell,body.rf-home .rf-login-shell{grid-template-columns:1fr!important}.rf-static-login-showcase{min-height:360px!important;height:42vh!important}.rf-static-login-portrait{background-position:center 37%!important}.rf-auth-card{margin:20px auto 35px!important;width:min(92%,530px)!important}.rf-auth-logo{height:50px!important}}
+@media(max-width:500px){.rf-static-login-showcase{min-height:270px!important;height:34vh!important}.rf-auth-card{padding:24px 20px!important}.rf-auth-card h2{font-size:28px!important}}
