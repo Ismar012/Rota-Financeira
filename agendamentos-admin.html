@@ -1,10 +1,47 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Área de agendamentos | Rota Financeira</title><link rel="stylesheet" href="/agendamentos.css"><link rel="stylesheet" href="/transicoes.css?v=20261021-3"><link rel="stylesheet" href="/refinamento.css?v=20261021-3"><link rel="stylesheet" href="/admin-shell.css?v=20261027-adminnav1"></head><body>
-<header><nav><a class="logo" href="/admin.html">ROTA <span>FINANCEIRA</span></a><a href="/admin.html">← Voltar ao administrador</a></nav></header>
-<main><h1>Área de agendamentos</h1><p class="muted">Configure a disponibilidade e acompanhe as consultorias. Horários da Bahia.</p><div id="adminContent" class="hidden">
-<section class="box"><h2>Disponibilizar horários</h2><form id="availabilityForm"><div class="grid">
-<label>Modo<select id="mode"><option value="single">Cadastrar um dia</option><option value="repeat">Cadastrar e replicar até uma data</option><option value="range">Cadastrar sequência de dias</option></select></label>
-<label>Dia inicial<input id="from" type="date" required></label><label id="toLabel" class="hidden">Até a data<input id="to" type="date"></label>
-<label>Início do atendimento<input id="start" type="time" value="09:00" required></label><label>Fim do atendimento<input id="end" type="time" value="17:00" required></label><label>Consultorias por dia<input id="limit" type="number" min="1" max="23" value="8" required></label></div>
-<div id="weekdays" class="weekdays hidden"></div><p class="muted">Horários consecutivos de uma hora a partir do início, limitados à quantidade diária e ao fim informado. Ao replicar, selecione os dias da semana. Reservas existentes são preservadas.</p><div class="actions"><button id="saveAvailability">Salvar disponibilidade</button></div></form><p id="feedback" class="feedback" role="status" aria-live="polite"></p></section>
-<section class="box"><h2>Consultorias marcadas</h2><div class="actions"><button id="refresh" class="outline">Atualizar</button><button id="markSeen" class="outline">Marcar novidades exibidas como vistas</button></div><div id="bookings"></div></section>
-<section class="box"><h2>Horários disponibilizados</h2><div id="slots"></div></section></div><p id="accessFeedback" role="status"></p></main><script src="/agendamentos.js"></script><script src="/tutorial.js?v=20261021-3"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script><script src="/admin-shell.js?v=20261027-adminnav1"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Acompanhar agendamentos | Rota Financeira</title>
+  <link rel="stylesheet" href="/agendamentos.css?v=20261027-agenda2">
+  <link rel="stylesheet" href="/admin.css?v=20261027-admin-premium2">
+  <link rel="stylesheet" href="/agendamentos-admin.css?v=20261027-agenda2">
+  <link rel="stylesheet" href="/transicoes.css?v=20261027-admin-premium2">
+  <link rel="stylesheet" href="/refinamento.css?v=20261027-admin-premium2">
+  <link rel="stylesheet" href="/admin-shell.css?v=20261027-adminnav2">
+</head>
+<body>
+<header><nav><b>ROTA FINANCEIRA</b></nav></header>
+<main class="admin-page">
+  <div class="admin-container">
+    <section class="agenda-page-head"><div class="eyebrow">Área administrativa</div><h1>Acompanhar agendamentos</h1><p class="muted">Veja a agenda mensal, os clientes marcados e os horários disponíveis. Todos os horários estão no fuso da Bahia.</p></section>
+    <div id="adminContent" class="hidden">
+      <section class="agenda-calendar-card">
+        <div class="agenda-section-head">
+          <div><div class="eyebrow small">Calendário de consultorias</div><h2>Agenda do mês</h2><p>Selecione um dia para conferir clientes e horários.</p></div>
+          <div class="agenda-calendar-controls"><button id="calendarPrev" type="button" aria-label="Mês anterior">‹</button><input id="calendarMonth" type="month" aria-label="Mês da agenda"><button id="calendarNext" type="button" aria-label="Próximo mês">›</button></div>
+        </div>
+        <div class="agenda-calendar-layout">
+          <div class="agenda-calendar-grid-wrap"><div id="monthCalendar" class="agenda-calendar-grid" aria-label="Calendário mensal"></div><div class="agenda-calendar-legend"><span><i class="agenda-legend-dot booked"></i> Agendamento</span><span><i class="agenda-legend-dot free"></i> Horários disponíveis</span><span><i class="agenda-legend-dot selected"></i> Dia selecionado</span></div></div>
+          <aside class="agenda-day-detail"><div class="agenda-day-detail-head"><span class="eyebrow small">Detalhes do dia</span><h3 id="calendarDayTitle">Selecione uma data</h3></div><div id="calendarDayBookings" class="agenda-day-bookings"><p>Os agendamentos do dia selecionado aparecem aqui.</p></div></aside>
+        </div>
+      </section>
+
+      <section class="agenda-metrics-grid" aria-label="Resumo dos agendamentos"><article><span>Agendamentos no mês</span><strong id="agendaMonthCount">0</strong><small>Reservas ativas no período</small></article><article><span>Novos agendamentos</span><strong id="agendaUnreadCount">0</strong><small>Aguardando visualização</small></article><article><span>Horários disponíveis</span><strong id="agendaFreeCount">0</strong><small>No calendário do mês</small></article></section>
+
+      <section class="agenda-ops-grid">
+        <section class="box agenda-box"><div class="eyebrow small">Disponibilidade</div><h2>Disponibilizar horários</h2><form id="availabilityForm"><div class="grid">
+          <label>Modo<select id="mode"><option value="single">Cadastrar um dia</option><option value="repeat">Cadastrar e replicar até uma data</option><option value="range">Cadastrar sequência de dias</option></select></label>
+          <label>Dia inicial<input id="from" type="date" required></label><label id="toLabel" class="hidden">Até a data<input id="to" type="date"></label>
+          <label>Início do atendimento<input id="start" type="time" value="09:00" required></label><label>Fim do atendimento<input id="end" type="time" value="17:00" required></label><label>Consultorias por dia<input id="limit" type="number" min="1" max="23" value="8" required></label></div>
+          <div id="weekdays" class="weekdays hidden"></div><p class="muted">Os horários são criados em blocos consecutivos de uma hora. Agendamentos existentes são preservados.</p><div class="actions"><button id="saveAvailability" type="submit">Salvar disponibilidade</button></div></form><p id="feedback" class="feedback" role="status" aria-live="polite"></p></section>
+        <section class="box agenda-box"><div class="eyebrow small">Reservas</div><h2>Consultorias marcadas</h2><div class="actions"><button id="refresh" class="outline" type="button">Atualizar</button><button id="markSeen" class="outline" type="button">Marcar novidades como vistas</button></div><div id="bookings" class="agenda-bookings-list"></div></section>
+      </section>
+      <section class="box agenda-slots-box"><div class="eyebrow small">Grade de horários</div><h2>Horários disponibilizados</h2><div id="slots" class="agenda-slots-list"></div></section>
+    </div>
+    <p id="accessFeedback" role="status" aria-live="polite"></p>
+  </div>
+</main>
+<script src="/agendamentos.js?v=20261027-agenda2"></script>
+<script src="/admin-shell.js?v=20261027-adminnav2"></script>
+</body></html>

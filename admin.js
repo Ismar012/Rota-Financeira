@@ -1,4 +1,4 @@
-const state = { month: '', clients: [], selectedClientId: null, chart: null, clientsLoading: false, clientsError: '', detailRequest: 0 };
+const state = { month: '', clients: [], selectedClientId: null, chart: null, categoryChart: null, clientsLoading: false, clientsError: '', detailRequest: 0, autoOpenedClientId: null };
 
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const dateFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' });
@@ -48,6 +48,11 @@ async function loadClients() {
     renderAggregate(data.aggregate || {});
     state.clientsLoading = false;
     renderClients();
+    const requestedClientId = new URLSearchParams(location.search).get('client');
+    if (requestedClientId && state.autoOpenedClientId !== requestedClientId && state.clients.some(client => String(client.id) === requestedClientId)) {
+      state.autoOpenedClientId = requestedClientId;
+      window.setTimeout(() => openClient(Number(requestedClientId)), 80);
+    }
   } catch (error) {
     state.clientsLoading = false;
     state.clientsError = error.message;
@@ -71,11 +76,21 @@ function renderClients() {
       ? 'Nenhum cliente encontrado para esta busca.' : 'Nenhum cliente cadastrado.');
   const body=$('clientsBody');if(!body)return;
   const labels={free:'Free',trial:'Trial',pagante:'Pagante',inadimplente:'Inadimplente',cancelado:'Cancelado'};
-  body.innerHTML=rows.map(c=>{const status=c.status||{};return `<tr data-client-id="${Number(c.id)}">
+  const actions = [
+    ['Analisar cliente','analyze'],
+    ['Exportar relatório do cliente','report'],
+    ['Gerenciar produtos','products'],
+    ['Histórico de alterações','history']
+  ].sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));
+  body.innerHTML=rows.map(c=>{const status=c.status||{};const id=Number(c.id);return `<tr data-client-id="${id}">
   <td><span class="client-name">${esc(c.name)}</span><span class="client-email">${esc(c.email)}</span></td>
-  <td><span class="status-badge status-${esc(status.status)}">${esc(labels[status.status]||status.status)}</span><br><select class="status-select" data-status-id="${Number(c.id)}" aria-label="Status de ${esc(c.name)}">${[['auto','Automático'],['pagante','Pagante'],['inadimplente','Inadimplente'],['cancelado','Cancelado']].map(([v,l])=>`<option value="${v}" ${v===(status.billingStatus||'auto')?'selected':''}>${l}</option>`).join('')}</select></td>
-  <td>${c.active?'Ativo':'Sem acesso recente'}</td><td>${status.manual?'Manual':`${Number(status.daysRemaining)||0} dias`}</td><td>${esc(String(c.created_at||'').slice(0,10))}</td><td>${esc(String(c.last_login_at||'—').slice(0,16))}</td><td><button type="button" class="open-client" aria-label="Analisar ${esc(c.name)}">Analisar →</button></td></tr>`;}).join('');
-  body.querySelectorAll('tr').forEach(row=>row.onclick=e=>{if(!e.target.closest('select'))openClient(Number(row.dataset.clientId));});
+  <td><span class="status-badge status-${esc(status.status)}">${esc(labels[status.status]||status.status)}</span><br><select class="status-select" data-status-id="${id}" aria-label="Status de ${esc(c.name)}">${[['auto','Automático'],['pagante','Pagante'],['inadimplente','Inadimplente'],['cancelado','Cancelado']].map(([v,l])=>`<option value="${v}" ${v===(status.billingStatus||'auto')?'selected':''}>${l}</option>`).join('')}</select></td>
+  <td><span class="admin-access-status ${c.active?'is-active':''}">${c.active?'Ativo':'Sem acesso recente'}</span></td><td>${status.manual?'Manual':`${Number(status.daysRemaining)||0} dias`}</td><td>${esc(String(c.created_at||'').slice(0,10))}</td><td>${esc(String(c.last_login_at||'—').slice(0,16))}</td>
+  <td><div class="client-row-actions"><button type="button" class="open-client" aria-label="Analisar ${esc(c.name)}">Analisar <span aria-hidden="true">→</span></button><div class="row-kebab"><button type="button" class="row-kebab-toggle" aria-label="Mais ações para ${esc(c.name)}" aria-haspopup="true" aria-expanded="false">⋮</button><div class="row-kebab-menu hidden" role="menu">${actions.map(([label,action])=>`<button type="button" role="menuitem" data-client-action="${action}" data-client-id="${id}">${label}</button>`).join('')}</div></div></div></td></tr>`;}).join('');
+  body.querySelectorAll('tr').forEach(row=>row.onclick=e=>{if(e.target.closest('select,.client-row-actions'))return;openClient(Number(row.dataset.clientId));});
+  body.querySelectorAll('.open-client').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();openClient(Number(button.closest('tr').dataset.clientId));}));
+  body.querySelectorAll('.row-kebab-toggle').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();const menu=button.parentElement.querySelector('.row-kebab-menu');const opening=menu.classList.contains('hidden');body.querySelectorAll('.row-kebab-menu').forEach(m=>m.classList.add('hidden'));body.querySelectorAll('.row-kebab-toggle').forEach(b=>b.setAttribute('aria-expanded','false'));menu.classList.toggle('hidden',!opening);button.setAttribute('aria-expanded',String(opening));}));
+  body.querySelectorAll('[data-client-action]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();const id=Number(button.dataset.clientId||button.closest('tr')?.dataset.clientId);const action=button.dataset.clientAction;if(!id)return;body.querySelectorAll('.row-kebab-menu').forEach(m=>m.classList.add('hidden'));body.querySelectorAll('.row-kebab-toggle').forEach(b=>b.setAttribute('aria-expanded','false'));if(action==='analyze')openClient(id);else if(action==='report')window.location.href=`/api/admin/clients/${id}/report?month=${encodeURIComponent(state.month)}`;else if(action==='history')window.location.href=`/api/admin/clients/${id}/change-history`;else if(action==='products')window.location.href=`/produtos-admin.html?client=${encodeURIComponent(id)}`;}));
   body.querySelectorAll('select').forEach(select=>select.onchange=async()=>{select.disabled=true;try{await api(`/api/admin/clients/${select.dataset.statusId}/status`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:select.value})});await loadClients();}catch(e){setText('clientsFeedback',e.message);await loadClients();}finally{select.disabled=false;}});
 }
 
@@ -131,6 +146,7 @@ function renderDetail(client, summary) {
   setText('detailMonthLabel', monthLabel(summary.month));
   document.dispatchEvent(new CustomEvent('rota-consultation', {detail:{client,summary}}));
   renderChart(summary.data);
+  renderCategoryChart(summary.entries || [], summary.month);
   renderDailyTable(summary.data);
   window.rotaGoalContext = {plan:summary.goalPlan, admin:true, clientId:state.selectedClientId};
   document.dispatchEvent(new CustomEvent('rota-goal', {detail:window.rotaGoalContext}));
@@ -175,6 +191,39 @@ function renderChart(data) {
     }
   });
 }
+function renderCategoryChart(entries, month) {
+  const canvas = $('clientCategoryChart');
+  const body = $('clientCategoryTable');
+  const totalLabel = $('clientCategoryTotal');
+  setText('detailCategoryMonth', monthLabel(month));
+  const paid = (Array.isArray(entries) ? entries : []).filter(entry => {
+    if (entry.type !== 'expense' || Number(entry.paid) !== 1) return false;
+    const actualDate = String(entry.paid_date || entry.paid_at || entry.due_date || '').slice(0, 10);
+    return actualDate.slice(0, 7) === month;
+  });
+  const byCategory = new Map();
+  for (const entry of paid) {
+    const category = String(entry.financial_category || '').trim() || 'Outros';
+    byCategory.set(category, (byCategory.get(category) || 0) + (Number(entry.amount) || 0));
+  }
+  const categories = [...byCategory.entries()].map(([label, value]) => ({label, value})).sort((a,b)=>b.value-a.value || a.label.localeCompare(b.label,'pt-BR'));
+  const total = categories.reduce((sum, item) => sum + item.value, 0);
+  if (totalLabel) totalLabel.textContent = `Total pago no mês: ${fmt(total)}`;
+  if (body) {
+    body.innerHTML = categories.length ? categories.map(item => `<tr><td>${esc(item.label)}</td><td>${fmt(item.value)}</td><td>${total ? (item.value / total * 100).toLocaleString('pt-BR',{maximumFractionDigits:1,minimumFractionDigits:1})+'%' : '0%'}</td></tr>`).join('') : '<tr><td colspan="3" class="category-empty">Nenhuma despesa paga neste mês.</td></tr>';
+  }
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (state.categoryChart) { state.categoryChart.destroy(); state.categoryChart = null; }
+  const palette = ['#e24b4b','#35c78a','#2f91e8','#e7b83f','#9a7be7','#e68a48','#54bcc7','#b0bdce','#dc6ba1','#8abf52'];
+  const chartLabels = categories.length ? categories.map(item=>item.label) : ['Sem despesas pagas'];
+  const values = categories.length ? categories.map(item=>item.value) : [1];
+  state.categoryChart = new Chart(canvas, {
+    type: 'doughnut',
+    data: { labels: chartLabels, datasets: [{ data: values, backgroundColor: categories.length ? categories.map((_,i)=>palette[i%palette.length]) : ['#263542'], borderColor: '#111923', borderWidth: 2, hoverOffset: 5 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => categories.length ? `${ctx.label}: ${fmt(ctx.parsed)} (${total ? (ctx.parsed/total*100).toLocaleString('pt-BR',{maximumFractionDigits:1}) : '0'}%)` : 'Nenhuma despesa paga' } } } }
+  });
+}
+
 function renderDailyTable(data) {
   const dailyBody = $('dailyBody');
   if (!dailyBody) return;
@@ -219,6 +268,15 @@ if ($('prevMonth')) $('prevMonth').addEventListener('click', () => setMonth(shif
 if ($('nextMonth')) $('nextMonth').addEventListener('click', () => setMonth(shiftMonth(state.month, 1)));
 if ($('monthPicker')) $('monthPicker').addEventListener('change', e => e.target.value && setMonth(e.target.value));
 if ($('clientSearch')) $('clientSearch').addEventListener('input', renderClients);
+
+if ($('adminOverviewMoreToggle')) $('adminOverviewMoreToggle').addEventListener('click', () => {
+  const menu = $('adminOverviewMoreMenu'); if (!menu) return;
+  const opening = menu.classList.contains('hidden');
+  menu.classList.toggle('hidden', !opening);
+  $('adminOverviewMoreToggle').setAttribute('aria-expanded', String(opening));
+});
+
+document.addEventListener('click', event => { if (!event.target.closest('.row-kebab')) { document.querySelectorAll('.row-kebab-menu').forEach(menu=>menu.classList.add('hidden')); document.querySelectorAll('.row-kebab-toggle').forEach(button=>button.setAttribute('aria-expanded','false')); } if (!event.target.closest('.admin-global-more')) { $('adminOverviewMoreMenu')?.classList.add('hidden'); $('adminOverviewMoreToggle')?.setAttribute('aria-expanded','false'); } });
 if ($('closeDetail')) $('closeDetail').addEventListener('click', () => {state.detailRequest++;document.body.classList.remove('viewing-client','presentation-mode');$('presentationToggle')?.setAttribute('aria-pressed','false');$('presentationToggle').textContent='Modo apresentação';$('clientDetail')?.classList.add('hidden');$('clientSearch')?.focus();});
 if ($('exportReport')) $('exportReport').addEventListener('click', () => {
   if (!state.selectedClientId) return;

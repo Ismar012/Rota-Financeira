@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Relatórios de clientes | Rota Financeira</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/admin.css?v=20261027-admin-premium2">
+  <link rel="stylesheet" href="/relatorios-admin.css?v=20261027-adminpremium2">
+  <link rel="stylesheet" href="/admin-shell.css?v=20261027-adminnav2">
+</head>
+<body class="rf-admin-report-page">
+<header><nav><a class="logo-text" href="/admin.html">ROTA <span>FINANCEIRA</span></a></nav></header>
+<main class="admin-page">
+  <div class="admin-container">
+    <section class="admin-head">
+      <div class="admin-head-copy"><div class="eyebrow">Área administrativa</div><h1 class="admin-title">Relatórios de clientes</h1><p class="muted">Filtre um cliente e um mês para exportar a análise financeira ou consultar o histórico de alterações.</p></div>
+      <div class="admin-head-controls"><div class="month-selector"><button id="reportPrevMonth" class="month-btn" type="button" aria-label="Mês anterior">‹</button><input id="reportMonth" type="month" aria-label="Mês do relatório"><button id="reportNextMonth" class="month-btn" type="button" aria-label="Próximo mês">›</button></div></div>
+    </section>
+    <section class="report-filter-card">
+      <div class="report-filter-heading"><span class="report-icon" aria-hidden="true">▤</span><div><h2>Selecionar relatório</h2><p>O PDF usa os lançamentos e confirmações cadastrados para o período escolhido.</p></div></div>
+      <div class="report-filter-grid">
+        <label>Buscar cliente<input id="reportSearch" type="search" placeholder="Digite o nome ou e-mail" autocomplete="off"></label>
+        <label>Cliente<select id="reportClient"><option value="">Carregando clientes…</option></select></label>
+      </div>
+      <p id="reportFeedback" class="report-feedback" role="status" aria-live="polite">Carregando a carteira de clientes…</p>
+    </section>
+    <section id="reportClientSummary" class="report-client-summary" hidden>
+      <div class="report-selected-title"><div><div class="eyebrow small">Cliente selecionado</div><h2 id="reportSelectedName">—</h2><p id="reportSelectedEmail">—</p></div><span id="reportSelectedStatus" class="status-badge">—</span></div>
+      <div class="report-metric-grid">
+        <article class="admin-summary-card"><span>Ganhos previstos no mês</span><strong id="reportIncome">R$ 0,00</strong><small>Conforme vencimentos cadastrados</small></article>
+        <article class="admin-summary-card"><span>Despesas previstas no mês</span><strong id="reportExpenses">R$ 0,00</strong><small>Pagas e pendentes pela data prevista</small></article>
+        <article class="admin-summary-card"><span>Saldo do planejamento</span><strong id="reportCashflow">R$ 0,00</strong><small>Entradas menos despesas previstas</small></article>
+        <article class="admin-summary-card"><span>Meta restante</span><strong id="reportGoal">R$ 0,00</strong><small>Do planejamento do mês</small></article>
+      </div>
+      <div class="report-actions"><button id="exportClientReport" class="btn btn-gold" type="button">Exportar relatório do cliente (PDF)</button><button id="exportClientHistory" class="btn btn-outline" type="button">Exportar histórico de alterações</button><a id="openClientAnalysis" class="btn btn-outline" href="/admin.html#clients">Abrir análise do cliente</a></div>
+    </section>
+    <section class="report-note-card"><div class="eyebrow small">Conteúdo do relatório</div><h2>Uma visão executiva do período</h2><div class="report-contents-grid"><article><strong>Planejamento e caixa</strong><span>Saldo do planejamento, metas e compromisso financeiro.</span></article><article><strong>Movimentação diária</strong><span>Ganhos previstos/realizados e despesas previstas/pagas.</span></article><article><strong>Metas e dias disponíveis</strong><span>Distribuição diária da meta e dias de trabalho/descanso.</span></article><article><strong>Histórico do cliente</strong><span>Relatório separado com alterações cadastrais registradas.</span></article></div></section>
+  </div>
+</main>
+<script src="/relatorios-admin.js?v=20261027-admin-premium2"></script>
+<script src="/admin-shell.js?v=20261027-adminnav2"></script>
+</body></html>

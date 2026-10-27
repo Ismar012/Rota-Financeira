@@ -2,6 +2,11 @@
   'use strict';
 
   async function init() {
+    // A navegação administrativa tem sino/notificações próprios em admin-shell.js.
+    // Não executar este menu antigo nessas páginas para impedir sino duplicado.
+    const adminPaths = new Set(['/admin.html', '/agendamentos-admin.html', '/desafio-admin.html', '/produtos-admin.html', '/relatorios-admin.html']);
+    if (adminPaths.has(location.pathname)) return;
+
     const authResponse = await fetch('/api/auth/me', { credentials: 'same-origin', cache: 'no-store' });
     if (!authResponse.ok) return;
     const me = await authResponse.json();

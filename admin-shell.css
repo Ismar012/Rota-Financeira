@@ -1,30 +1,84 @@
-body.rf-admin-shell{padding-top:74px!important;background:#080d13;color:#edf2f7}
-body.rf-admin-shell header.rf-admin-topbar{position:fixed!important;z-index:5000;top:0;left:0;right:0;width:100%;height:64px;min-height:64px;box-sizing:border-box;display:flex;align-items:center;padding:0 clamp(14px,3vw,36px);background:rgba(6,10,15,.96);backdrop-filter:blur(14px);border-bottom:1px solid #1f303d;color:#eef3f8}
-.rf-admin-nav{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-width:0;margin:0!important;padding:0!important}
-.rf-admin-brand{display:inline-flex;align-items:center;gap:9px;min-width:0;color:#f4f6f8;text-decoration:none;font:800 13px/1.15 system-ui,sans-serif;letter-spacing:1.3px}
-.rf-admin-brand img{width:34px;height:34px;object-fit:contain;border-radius:9px;border:1px solid #d9ae3a;background:#fff0bd;mix-blend-mode:normal}
-.rf-admin-brand span{display:block;white-space:nowrap}.rf-admin-brand strong{display:block;color:#e5b936;font-size:10px;letter-spacing:2px;margin-top:3px}
-.rf-admin-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-shrink:0}
-.rf-admin-actions .admin-badge{margin-right:8px;color:#aebdca;font-size:12px}
-.rf-admin-actions .rf-admin-back,.rf-admin-actions .rf-admin-logout{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:36px;min-height:36px;padding:7px 11px;border:1px solid #2b3946;border-radius:8px;background:#05090d;color:#d7e0e9;font:600 12px/1 system-ui,sans-serif;text-decoration:none;white-space:nowrap;cursor:pointer}
-.rf-admin-actions .rf-admin-back svg,.rf-admin-actions .rf-admin-notify svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.rf-admin-actions .rf-admin-back:hover,.rf-admin-actions .rf-admin-logout:hover{border-color:#b88d2e;color:#f5d36b}
-.rf-admin-actions .rf-admin-notify{position:relative;display:grid;place-items:center;width:36px;height:36px;min-height:36px;padding:0;border:1px solid #2b3946;border-radius:8px;background:#05090d;color:#e7bd45;cursor:pointer}
-.rf-admin-actions .rf-admin-notify:hover{border-color:#b88d2e;color:#ffda6b}
-.rf-admin-notify-count{position:absolute;top:-6px;right:-6px;min-width:17px;height:17px;box-sizing:border-box;padding:1px 4px;border-radius:10px;background:#e9bb3f;color:#111;font:800 10px/15px system-ui,sans-serif;text-align:center;border:1px solid #090c10}
-.rf-admin-notice-overlay{position:fixed;inset:0;z-index:100900;display:grid;place-items:center;padding:18px;background:#020509c9;backdrop-filter:blur(8px)}
+/* Shell administrativo único: cabeçalho, sino, navegação lateral e conteúdo fluido. */
+:root{--rf-admin-gold:#e7b936;--rf-admin-gold-strong:#f1c64b;--rf-admin-ink:#070c12;--rf-admin-panel:#111923;--rf-admin-line:#243746;--rf-admin-text:#eef4fb;--rf-admin-muted:#a9bbcc}
+html{scroll-padding-top:82px;scroll-behavior:smooth}
+body.rf-admin-shell{margin:0!important;padding:0!important;min-height:100vh;background:#070c12!important;color:var(--rf-admin-text)!important;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+body.rf-admin-shell header.rf-admin-topbar{position:fixed!important;z-index:5000;top:0;left:0;right:0;width:100%;height:65px;min-height:65px;box-sizing:border-box;display:flex;align-items:center;padding:0 clamp(14px,2vw,30px);background:rgba(5,10,15,.97);border-bottom:1px solid #1e303e;color:var(--rf-admin-text);backdrop-filter:blur(16px)}
+.rf-admin-nav{display:flex!important;align-items:center;justify-content:space-between;gap:22px;width:100%;min-width:0;margin:0!important;padding:0!important}
+.rf-admin-topbar-left{display:flex;align-items:center;gap:22px;min-width:0}
+.rf-admin-brand{display:inline-flex;align-items:center;gap:9px;min-width:0;color:#f5f7fa;text-decoration:none;font:850 13px/1.12 system-ui,sans-serif;letter-spacing:1.4px;white-space:nowrap}
+.rf-admin-brand img{display:block;width:37px;height:37px;object-fit:contain;border-radius:10px;border:1px solid #d9ae3a;background:#fff2c8;mix-blend-mode:normal}
+.rf-admin-brand span{display:block}.rf-admin-brand strong{display:block;color:var(--rf-admin-gold);font-size:10px;letter-spacing:2px;margin-top:3px}
+.rf-admin-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-shrink:0}
+.rf-admin-actions .admin-badge{margin-right:7px;color:#afbdcb;font-size:11px;letter-spacing:.4px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid #273948;border-radius:20px;padding:7px 11px}
+.rf-admin-action{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:37px;min-height:37px;padding:7px 11px;border:1px solid #2c3d4b;border-radius:9px;background:#070d13;color:#dce6ef;font:650 12px/1 system-ui,sans-serif;text-decoration:none;white-space:nowrap;cursor:pointer;box-sizing:border-box}
+.rf-admin-action svg,.rf-admin-side-link svg{width:18px;height:18px;flex:0 0 18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.rf-admin-action:hover{border-color:#b88e2d;color:#f6d46b}.rf-admin-action:disabled{opacity:.6;cursor:wait}
+.rf-admin-actions .rf-admin-notify{position:relative;width:38px;height:38px;padding:0;color:var(--rf-admin-gold);border-color:#263848;background:#09111a}
+.rf-admin-actions .rf-admin-notify:hover{background:#161a15;border-color:#d4aa35}
+.rf-admin-notify-count{position:absolute;top:-6px;right:-6px;min-width:17px;height:17px;box-sizing:border-box;padding:1px 4px;border:1px solid #070c12;border-radius:10px;background:#f0c545;color:#111;font:850 10px/15px system-ui,sans-serif;text-align:center}
+.rf-admin-sidebar{position:fixed;z-index:4900;left:0;top:65px;bottom:0;width:254px;box-sizing:border-box;display:flex;flex-direction:column;padding:18px 12px 16px;background:linear-gradient(180deg,#080f16 0%,#070c12 100%);border-right:1px solid #1d303e;overflow-y:auto;overflow-x:hidden}
+.rf-admin-side-links{display:grid;gap:6px;align-content:start}
+.rf-admin-side-link{position:relative;display:flex;align-items:center;gap:12px;min-height:44px;box-sizing:border-box;padding:10px 12px;border:1px solid transparent;border-radius:10px;color:#bfd0e0;text-decoration:none;font:600 12px/1.35 system-ui,sans-serif;transition:background .15s ease,border-color .15s ease,color .15s ease;min-width:0}
+.rf-admin-side-link svg{color:#9bb2c8}
+.rf-admin-side-link span:not(.rf-admin-side-count){min-width:0;overflow-wrap:anywhere}
+.rf-admin-side-link:hover{background:#111a22;border-color:#253746;color:#f1f5fa}
+.rf-admin-side-link.active{color:#f4cf59;background:linear-gradient(100deg,rgba(231,185,54,.16),rgba(231,185,54,.055));border-color:#5b4920}
+.rf-admin-side-link.active:before{content:"";position:absolute;top:7px;bottom:7px;left:-1px;width:3px;border-radius:0 4px 4px 0;background:#f2c94c}
+.rf-admin-side-link.active svg{color:#f2c94c}
+.rf-admin-side-count{margin-left:auto;min-width:19px;height:19px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;border-radius:12px;background:#dcb036;color:#12100a;font-size:10px;font-weight:850}
+.rf-admin-side-count[hidden]{display:none!important}
+.rf-admin-sidebar-bottom{display:grid;gap:13px;margin-top:auto;padding-top:18px}
+.rf-admin-settings-link{border-top:1px solid #1e303d;border-radius:0;border-top-left-radius:8px;border-top-right-radius:8px;padding-top:20px}
+.rf-admin-side-brand{padding:12px 11px 0;border-top:1px solid #1e303d;display:grid;gap:5px;color:#e1eaf3;font-size:11px}
+.rf-admin-side-brand span{font-size:10px;line-height:1.4;color:#8296a9}
+body.rf-admin-shell .admin-page{position:relative;margin:0 0 0 254px!important;width:calc(100% - 254px)!important;max-width:none!important;min-height:100vh;box-sizing:border-box;padding:91px clamp(18px,2.2vw,38px) 48px!important;background:radial-gradient(ellipse at 90% 0%,rgba(222,173,46,.055),transparent 25%),#080e14!important}
+body.rf-admin-shell .admin-container{width:100%!important;max-width:1700px!important;margin:0 auto!important}
+body.rf-admin-shell main:not(.admin-page){display:block;box-sizing:border-box;margin:0 0 0 254px!important;width:calc(100% - 254px)!important;max-width:none!important;padding:32px clamp(18px,2.2vw,38px) 50px!important}
+body.rf-admin-shell .admin-head{align-items:flex-end;gap:24px;margin-bottom:26px}
+body.rf-admin-shell .admin-title{font-size:clamp(30px,2.4vw,42px);line-height:1.1;letter-spacing:-1.2px;margin:7px 0 9px}
+body.rf-admin-shell .admin-head .muted{max-width:780px;color:#a6b7c7;font-size:13px;line-height:1.5}
+body.rf-admin-shell .admin-summary-grid{gap:13px;margin-bottom:19px}
+body.rf-admin-shell .admin-summary-card,body.rf-admin-shell .clients-card,body.rf-admin-shell .chart-card,body.rf-admin-shell .daily-card,body.rf-admin-shell .admin-settings-card{background:#111923;border:1px solid #24323f;border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.09)}
+body.rf-admin-shell .admin-summary-card{padding:18px 19px}
+body.rf-admin-shell .admin-summary-card span{color:#afbecc;font-size:12px}
+body.rf-admin-shell .admin-summary-card strong{color:#f5f7fa;font-size:27px;line-height:1.2}
+body.rf-admin-shell .admin-summary-card.highlight{background:linear-gradient(135deg,#242116,#121b23);border-color:#695322}
+body.rf-admin-shell .admin-summary-card.highlight strong{color:#f1c755}
+body.rf-admin-shell .admin-summary-card small{color:#9dacbc;line-height:1.45}
+body.rf-admin-shell .clients-card,body.rf-admin-shell .daily-card,body.rf-admin-shell .admin-settings-card{padding:21px;margin-top:20px}
+body.rf-admin-shell .clients-card h2,body.rf-admin-shell .admin-settings-card h2{font-size:22px;letter-spacing:-.4px;margin:4px 0 7px}
+body.rf-admin-shell .admin-section-subtitle{margin:6px 0 0;color:#9cabb9;font-size:12px;line-height:1.5}
+body.rf-admin-shell .status-help{border-color:#554622;background:#1a1f24;color:#aebdca}
+body.rf-admin-shell .status-help strong{color:#e5c768}
+body.rf-admin-shell .clients-table th,body.rf-admin-shell .daily-table th{color:#8ea2b5;border-bottom-color:#253643}
+body.rf-admin-shell .clients-table td,body.rf-admin-shell .daily-table td{border-bottom-color:#1e2d38;color:#dce6ef}
+body.rf-admin-shell .client-email{color:#8da2b7}
+body.rf-admin-shell .search-input,body.rf-admin-shell .status-select,body.rf-admin-shell select,body.rf-admin-shell input[type="month"],body.rf-admin-shell input[type="date"],body.rf-admin-shell input[type="time"]{background:#070d13;border-color:#2c3d4a;color:#e8eff5}
+body.rf-admin-shell .month-selector input{background:#070d13;border-color:#2b3b48;color:#f1f5f9}
+body.rf-admin-shell .month-btn{background:#0a1118;border-color:#2a3a47}
+body.rf-admin-shell .btn{border-radius:9px}
+body.rf-admin-shell .btn-gold{background:linear-gradient(110deg,#f1ca58,#d4a322);color:#15130c;border-color:#dfb438}
+body.rf-admin-shell .admin-settings-card{padding:23px;margin-top:24px;scroll-margin-top:84px}
+.admin-settings-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:17px}
+.admin-settings-grid a{display:grid;gap:6px;padding:16px;border:1px solid #293b49;border-radius:11px;background:#0b131b;color:#edf4fa;text-decoration:none;min-width:0}
+.admin-settings-grid a:hover{border-color:#a98731;background:#161a17}
+.admin-settings-grid a strong{font-size:12px}.admin-settings-grid a span{font-size:11px;line-height:1.5;color:#9db0c2}
+.rf-admin-notice-overlay{position:fixed;inset:0;z-index:100900;display:grid;place-items:center;padding:18px;background:#020509d9;backdrop-filter:blur(8px)}
 .rf-admin-notice-overlay[hidden]{display:none!important}
-.rf-admin-notice-dialog{width:min(600px,100%);max-height:min(86vh,740px);overflow:auto;box-sizing:border-box;padding:22px;border:1px solid #35434f;border-radius:17px;background:linear-gradient(145deg,#111a23,#080d12);box-shadow:0 25px 75px #000b;color:#edf2f7}
+.rf-admin-notice-dialog{width:min(690px,100%);max-height:min(88vh,820px);overflow:auto;box-sizing:border-box;padding:22px;border:1px solid #35434f;border-radius:17px;background:linear-gradient(145deg,#111a23,#080d12);box-shadow:0 25px 75px #000b;color:#edf2f7}
 .rf-admin-notice-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;border-bottom:1px solid #263540;padding-bottom:16px}
 .rf-admin-eyebrow{display:block;margin-bottom:6px;color:#e9bf49;font-size:10px;font-weight:800;letter-spacing:1.5px}
 .rf-admin-notice-head h2{margin:0;font-size:21px;line-height:1.3}.rf-admin-notice-head p{margin:7px 0 0;color:#9faebc;font-size:12px;line-height:1.5}
 .rf-admin-notice-close{width:33px;height:33px;flex:0 0 33px;border:1px solid #30404e;border-radius:8px;background:#090e13;color:#dce5ed;font-size:24px;cursor:pointer}
 .rf-admin-notice-status{margin:14px 0;color:#aebdca;font-size:12px;line-height:1.5}
-.rf-admin-request-list{display:grid;gap:9px}.rf-admin-request-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;padding:13px;border:1px solid #253744;border-radius:11px;background:#0a1118}
+.rf-admin-notice-section{border-top:1px solid #263540;padding-top:13px;margin-top:15px}.rf-admin-notice-section h3{margin:0 0 10px;font-size:13px;color:#e9c653}
+.rf-admin-product-list,.rf-admin-agenda-list,.rf-admin-request-list{display:grid;gap:8px}.rf-admin-notice-empty{margin:0;padding:12px;border:1px dashed #31404c;border-radius:9px;color:#96a8b7;font-size:12px;line-height:1.5}
+.rf-admin-request-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;padding:12px;border:1px solid #253744;border-radius:11px;background:#0a1118}
 .rf-admin-request-details{display:grid;gap:4px;min-width:0}.rf-admin-request-details strong{font-size:13px;color:#f2f5f8}.rf-admin-request-details span,.rf-admin-request-details small{font-size:11px;line-height:1.4;color:#9eafbd;overflow-wrap:anywhere}
-.rf-admin-review-request{min-height:35px;padding:8px 12px;border:1px solid #8f7025;border-radius:8px;background:#211b0b;color:#f6d56c;font:700 12px system-ui,sans-serif;white-space:nowrap;cursor:pointer}
-.rf-admin-review-request:hover{background:#302610;border-color:#e3b83d}.rf-admin-request-empty{padding:20px 14px;border:1px dashed #334350;border-radius:10px;color:#aebdca;font-size:13px;line-height:1.6;text-align:center}
+.rf-admin-review-request{display:inline-flex;align-items:center;justify-content:center;min-height:35px;box-sizing:border-box;padding:8px 12px;border:1px solid #8f7025;border-radius:8px;background:#211b0b;color:#f6d56c;font:700 12px system-ui,sans-serif;text-decoration:none;white-space:nowrap;cursor:pointer}
+.rf-admin-review-request:hover{background:#302610;border-color:#e3b83d}.rf-admin-notice-link{display:inline-block;margin-top:8px;color:#efc34c;font-size:11px;text-decoration:underline;text-underline-offset:3px}
 .rf-admin-decision[hidden],.rf-admin-request-list[hidden]{display:none!important}.rf-admin-decision{padding-top:16px}.rf-admin-decision-back{border:0;background:transparent;color:#e5bc4b;font:650 12px system-ui,sans-serif;cursor:pointer}.rf-admin-decision-question{margin:20px 0 9px;font-size:20px;line-height:1.4}.rf-admin-decision-meta{color:#a8b7c4;font-size:12px;line-height:1.55;overflow-wrap:anywhere}.rf-admin-decision-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap;margin-top:22px}.rf-admin-decision-actions button{min-height:40px;padding:9px 14px;border:1px solid #334451;border-radius:9px;background:#080e14;color:#dfe7ee;font:650 12px system-ui,sans-serif;cursor:pointer}.rf-admin-decision-actions .rf-admin-approve{border-color:#bf982d;background:linear-gradient(110deg,#f1ca56,#d5a222);color:#15130d}.rf-admin-decision-actions .rf-admin-reject{border-color:#694040;color:#ffb8b8}.rf-admin-decision-actions button:disabled{opacity:.55;cursor:wait}
-body.rf-admin-notices-open{overflow:hidden}
-body.rf-admin-shell main>.back{display:none!important}
-@media(max-width:600px){body.rf-admin-shell{padding-top:65px!important}.rf-admin-brand img{width:30px;height:30px}.rf-admin-brand{gap:6px;font-size:11px;letter-spacing:.8px}.rf-admin-brand strong{font-size:9px;letter-spacing:1.5px}.rf-admin-actions{gap:4px}.rf-admin-actions .rf-admin-back,.rf-admin-actions .rf-admin-logout{height:33px;min-height:33px;padding:6px 8px;font-size:11px}.rf-admin-actions .rf-admin-notify{width:33px;height:33px}.rf-admin-actions .admin-badge{display:none}.rf-admin-notice-dialog{padding:16px}.rf-admin-notice-head h2{font-size:18px}.rf-admin-request-row{grid-template-columns:1fr}.rf-admin-review-request{justify-self:start}.rf-admin-decision-actions{display:grid;grid-template-columns:1fr}.rf-admin-decision-actions button{width:100%}}
+body.rf-admin-notices-open{overflow:hidden}.rf-admin-shell main>.back{display:none!important}
+@media(max-width:1120px){.rf-admin-sidebar{width:220px}.rf-admin-brand{font-size:12px}body.rf-admin-shell .admin-page{margin-left:220px!important;width:calc(100% - 220px)!important}body.rf-admin-shell main:not(.admin-page){margin-left:220px!important;width:calc(100% - 220px)!important}.admin-settings-grid{grid-template-columns:1fr}.rf-admin-side-link{gap:9px;padding:10px 9px}}
+@media(max-width:760px){body.rf-admin-shell header.rf-admin-topbar{height:60px;min-height:60px;padding:0 12px}.rf-admin-sidebar{top:60px;width:65px;padding:12px 7px}.rf-admin-brand span{display:none}.rf-admin-brand img{width:33px;height:33px}.rf-admin-topbar-left{gap:12px}.rf-admin-side-link{justify-content:center;padding:10px 7px;min-height:43px}.rf-admin-side-link span:not(.rf-admin-side-count){display:none}.rf-admin-side-link svg{width:20px;height:20px;flex-basis:20px}.rf-admin-side-count{position:absolute;right:1px;top:0;min-width:15px;height:15px;font-size:9px}.rf-admin-sidebar-bottom{padding-top:12px}.rf-admin-settings-link{padding-top:16px}.rf-admin-side-brand{display:none}body.rf-admin-shell .admin-page{margin-left:65px!important;width:calc(100% - 65px)!important;padding:82px 13px 34px!important}body.rf-admin-shell main:not(.admin-page){margin-left:65px!important;width:calc(100% - 65px)!important;padding:24px 13px 34px!important}.rf-admin-actions{gap:5px}.rf-admin-actions .admin-badge{display:none}.rf-admin-action{height:34px;min-height:34px;padding:6px 8px;font-size:11px}.rf-admin-action svg{width:15px;height:15px}.rf-admin-actions .rf-admin-notify{height:34px;min-height:34px;width:34px}.rf-admin-notice-dialog{padding:16px}.rf-admin-notice-head h2{font-size:18px}.rf-admin-request-row{grid-template-columns:1fr}.rf-admin-review-request{justify-self:start}.rf-admin-decision-actions{display:grid;grid-template-columns:1fr}.rf-admin-decision-actions button{width:100%}}
+@media(max-width:520px){.rf-admin-brand{gap:0}.rf-admin-topbar-left{gap:8px}.rf-admin-actions .rf-admin-back span,.rf-admin-actions .rf-admin-logout span{display:inline}.rf-admin-actions .rf-admin-back,.rf-admin-actions .rf-admin-logout{padding:6px 7px}.rf-admin-notice-dialog{max-height:90vh}.rf-admin-notice-section h3{font-size:12px}}
