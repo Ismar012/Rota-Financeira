@@ -908,3 +908,11 @@ body.rf-login {
     .rf-auth-card .rf-create-account { font-size: 13px; }
     .rf-auth-foot { font-size: 11px; }
 }
+
+/* V3: personagem articulado, mantendo a imagem original e identidade visual. */
+.rf-mascot-stage .rf-mascot-figure {display:none!important}
+.rf-mascot-motion {position:relative;}
+.rf-puppet {display:block;position:absolute;bottom:0;left:50%;height:98%;width:auto;max-width:98%;overflow:visible;transform:translateX(-50%);filter:drop-shadow(0 18px 20px rgba(0,0,0,.3));will-change:transform;pointer-events:none;}
+.rf-puppet .rf-joint {transition:none;will-change:transform;}
+.rf-puppet-walk {transform-origin:130px 690px;}
+@media (prefers-reduced-motion:reduce){.rf-puppet,.rf-puppet .rf-joint{animation:none!important;transition:none!important}}

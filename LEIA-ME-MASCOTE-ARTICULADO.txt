@@ -1,0 +1,7 @@
+VERSAO 3 - MASCOTE 2D ARTICULADO
+
+Mantida a imagem original como base visual. A imagem foi segmentada em cabeca, tronco, bracos e pernas via SVG clipPath, cada parte com movimento independente. Nenhuma troca de imagem por pose.
+
+Atualizados apenas: index.html, login.html, mascote-interacoes.js e mascote-experiencia.css. Todo o restante foi preservado.
+
+LIMITACAO: articulacao a partir de fotografia unica pode apresentar pequenas descontinuidades nas juntas. Animacao cinematografica/realista exigiria modelo 3D rigado ou arte 2D separada em camadas. Teste em navegador antes de publicar.
