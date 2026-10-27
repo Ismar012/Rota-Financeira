@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const allowed = new Set(['/dashboard.html','/planejamento.html','/resumo-casa.html','/atividades.html','/importacao.html','/servicos.html','/perfil.html']);
+  const allowed = new Set(['/dashboard.html','/planejamento.html','/resumo-casa.html','/atividades.html','/importacao.html','/servicos.html','/perfil.html','/desafio.html']);
   const path = window.location.pathname;
   if (!allowed.has(path)) return;
   const body = document.body;
@@ -8,7 +8,7 @@
   const params = new URLSearchParams(window.location.search);
   const view = params.get('view') || '';
   const planningPath = path === '/planejamento.html';
-  const activeKey = planningPath && view ? view : (path === '/dashboard.html' ? 'inicio' : path === '/planejamento.html' ? 'planejamento' : path === '/resumo-casa.html' ? 'casa' : path === '/perfil.html' ? 'configuracoes' : path === '/servicos.html' ? 'servicos' : 'planejamento');
+  const activeKey = path === '/desafio.html' ? 'desafio' : planningPath && view ? view : (path === '/dashboard.html' ? 'inicio' : path === '/planejamento.html' ? 'planejamento' : path === '/resumo-casa.html' ? 'casa' : path === '/perfil.html' ? 'configuracoes' : path === '/servicos.html' ? 'servicos' : 'planejamento');
   const icons = {
     inicio: '<path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9M9 20v-6h6v6"/>',
     planejamento: '<rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M8 2.5v4M16 2.5v4M3.5 9h17M7.5 13h3M7.5 16h7"/>',
@@ -17,6 +17,7 @@
     casa: '<path d="m3 10 9-7 9 7"/><path d="M5 9.5V21h14V9.5M9 21v-6h6v6"/><path d="M12 3v3"/>',
     metas: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="2"/><path d="m14 10 5-5"/>',
     relatorios: '<path d="M4 20V11h4v9M10 20V4h4v16M16 20v-7h4v7"/><path d="M2 20h20"/>',
+    desafio: '<path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.2 2.2 4.8-5"/>',
     configuracoes: '<circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.5 2.6-1.8-.6a8 8 0 0 1-1.8 1l-.3 1.9h-3l-.3-1.9a8 8 0 0 1-1.8-1l-1.8.6-1.5-2.6L6.5 15a7 7 0 0 1 0-2l-1.4-1.1 1.5-2.6 1.8.6a8 8 0 0 1 1.8-1l.3-1.9h3l.3 1.9a8 8 0 0 1 1.8 1l1.8-.6 1.5 2.6-1.4 1.1a7 7 0 0 1-.1 2Z"/>'
   };
   const nav = [
@@ -26,6 +27,7 @@
     ['receitas','Receitas','/planejamento.html?view=receitas'],
     ['casa','Resumo de casa','/resumo-casa.html'],
     ['metas','Metas','/planejamento.html?view=metas'],
+    ['desafio','Reserva da Liberdade','/desafio.html'],
     ['relatorios','Relatórios','/planejamento.html?view=relatorios']
   ];
   const link = ([key,label,href]) => `<a class="rf-sidebar-link" href="${href}" ${key === activeKey ? 'aria-current="page"' : ''} aria-label="${label}" title="${label}"><svg viewBox="0 0 24 24" aria-hidden="true">${icons[key]}</svg><span>${label}</span></a>`;
@@ -52,7 +54,7 @@
     if (oldLogo) oldLogo.style.display = 'none';
     const sectionTitle = document.createElement('div');
     sectionTitle.className = 'rf-header-caption';
-    const titleMap = {inicio:'Início',planejamento:'Planejamento financeiro',despesas:'Despesas',receitas:'Receitas',casa:'Área da casa',metas:'Metas',relatorios:'Relatórios',configuracoes:'Configurações',servicos:'Serviços'};
+    const titleMap = {inicio:'Início',planejamento:'Planejamento financeiro',despesas:'Despesas',receitas:'Receitas',casa:'Resumo de casa',metas:'Metas',desafio:'Reserva da Liberdade',relatorios:'Relatórios',configuracoes:'Configurações',servicos:'Serviços'};
     const title = path === '/atividades.html' ? 'Atividades e fluxo de caixa' : path === '/importacao.html' ? 'Lançar por planilha' : (titleMap[activeKey] || 'Área financeira');
     const headingIcon = activeKey === 'inicio'
       ? '<span class="rf-header-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7"/><path d="M5 9v11h14V9M9 20v-6h6v6"/></svg></span>'
@@ -70,37 +72,6 @@
     aside.insertAdjacentElement('afterend', bar);
   }
 
-  function navigatePlanningView() {
-    if (!planningPath || !view) return;
-    if (view === 'despesas' || view === 'receitas') {
-      const disclosure = document.getElementById('entriesDisclosure');
-      const section = document.getElementById('entriesSection');
-      const filter = document.getElementById('entriesFilter');
-      if (disclosure) disclosure.open = true;
-      if (section) section.classList.remove('hidden');
-      if (filter) filter.value = view === 'despesas' ? 'expense-all' : 'income-all';
-      window.__rotaNavigationView = view;
-      window.setTimeout(() => section?.scrollIntoView({behavior:'smooth',block:'start'}), 260);
-      return;
-    }
-    if (view === 'relatorios') {
-      window.setTimeout(() => document.getElementById('reportsSection')?.scrollIntoView({behavior:'smooth',block:'start'}), 300);
-      return;
-    }
-    if (view === 'metas') {
-      const tryScroll = () => {
-        const target = document.getElementById('metaMensalPanel');
-        if (!target) return false;
-        target.scrollIntoView({behavior:'smooth',block:'start'});
-        return true;
-      };
-      if (tryScroll()) return;
-      const host = document.querySelector('.planning-container') || document.body;
-      const observer = new MutationObserver(() => { if (tryScroll()) observer.disconnect(); });
-      observer.observe(host,{childList:true,subtree:true});
-      window.setTimeout(() => observer.disconnect(),10000);
-    }
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', navigatePlanningView, {once:true});
-  else navigatePlanningView();
+  // As abas internas de planejamento são renderizadas por finance-views.js.
+
 })();

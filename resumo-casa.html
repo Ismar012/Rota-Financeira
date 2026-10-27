@@ -5,18 +5,17 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Resumo de casa | Rota Financeira</title>
   <link rel="stylesheet" href="/casa-produtos.css?v=20261026-house-v4">
-  <link rel="stylesheet" href="/app-shell.css?v=20261027-home3">
+  <link rel="stylesheet" href="/app-shell.css?v=20261027-views3">
   <link rel="stylesheet" href="/transicoes.css?v=20261021-3">
   <link rel="stylesheet" href="/refinamento.css?v=20261021-3">
   <link rel="stylesheet" href="/casa-layout.css?v=20261026-layout2">
+  <link rel="stylesheet" href="/finance-views.css?v=20261027-views3">
 </head>
 <body class="rf-app-shell rf-household-page">
   <header class="header">
     <nav class="nav">
       <a class="logo-text" href="/dashboard.html">ROTA <span>FINANCEIRA</span></a>
-      <div class="nav-actions">
-        <button type="button" id="houseHelpBtn" class="btn btn-outline">Como usar esta tela</button>
-      </div>
+      <div class="nav-actions"></div>
     </nav>
   </header>
 
@@ -27,7 +26,10 @@
         <h1>Resumo de casa</h1>
         <p>Uma divisão justa, um acerto simples. Cada despesa é dividida igualmente entre os moradores cadastrados.</p>
       </div>
-      <label class="house-month-field" for="houseMonth">Mês de referência<input id="houseMonth" type="month"></label>
+      <div class="house-header-tools">
+        <label class="house-month-field" for="houseMonth">Mês de referência<input id="houseMonth" type="month"></label>
+        <button type="button" id="downloadHouseReport" class="rf-view-primary">Baixar resumo da casa</button>
+      </div>
     </div>
 
     <div id="feedback" class="rf-house-feedback" role="status" aria-live="polite"></div>
@@ -199,10 +201,10 @@
     </section>
   </dialog>
 
-  <script src="/resumo-casa.js?v=20261026-house-v2"></script>
-  <script src="/tutorial.js?v=20261027-home3"></script>
+  <script src="/resumo-casa.js?v=20261027-views3"></script>
+  <script src="/tutorial.js?v=20261027-views3"></script>
   <script src="/transicoes.js?v=20261021-3"></script>
   <script src="/refinamento.js?v=20261021-3"></script>
-  <script src="/app-shell.js?v=20261027-home3"></script>
+  <script src="/app-shell.js?v=20261027-views3"></script>
 </body>
 </html>

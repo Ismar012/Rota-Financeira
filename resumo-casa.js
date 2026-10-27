@@ -132,4 +132,4 @@ async function submitHouseBulkExpenses(){
 }
 el('submitHouseBulkExpenses')?.addEventListener('click',submitHouseBulkExpenses);
 
-el('day').value=today();el('houseMonth').value=today().slice(0,7);el('houseMonth').onchange=load;mode();load();
+el('day').value=today();el('houseMonth').value=today().slice(0,7);el('houseMonth').onchange=load;el('downloadHouseReport')?.addEventListener('click',()=>{const month=el('houseMonth')?.value||today().slice(0,7);location.href='/api/house/report?month='+encodeURIComponent(month);});mode();load();

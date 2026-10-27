@@ -424,6 +424,201 @@ function pdfFileName(name, month) {
   return `Relatorio_${clean}_${month}.pdf`;
 }
 
+function buildExecutiveTablePdf(report) {
+  const pages = [];
+  const esc = value => pdfSafe(pdfAscii(value));
+  const text = (c, x, y, value, size = 8, bold = false, color = [0.16, 0.19, 0.23]) => {
+    c.push(`${color[0]} ${color[1]} ${color[2]} rg`);
+    c.push(`BT /F${bold ? 2 : 1} ${size} Tf ${x} ${y} Td (${esc(value)}) Tj ET`);
+  };
+  const line = (c, x1, y1, x2, y2, color = [0.82, 0.85, 0.88]) => {
+    c.push(`${color[0]} ${color[1]} ${color[2]} RG 0.6 w ${x1} ${y1} m ${x2} ${y2} l S`);
+  };
+  const rect = (c, x, y, w, h, color, stroke = false) => {
+    c.push(`${color[0]} ${color[1]} ${color[2]} ${stroke ? 'RG' : 'rg'} ${x} ${y} ${w} ${h} re ${stroke ? 'S' : 'f'}`);
+  };
+  const header = (c, number) => {
+    rect(c, 0, 790, 595, 52, [0.04, 0.07, 0.10]);
+    text(c, 38, 815, 'ROTA FINANCEIRA', 15, true, [1, 1, 1]);
+    text(c, 38, 798, report.title || 'RELATORIO FINANCEIRO', 8, false, [0.78, 0.83, 0.88]);
+    text(c, 525, 814, String(number).padStart(2, '0'), 9, true, [0.92, 0.76, 0.25]);
+  };
+  const footer = c => {
+    line(c, 38, 32, 557, 32);
+    text(c, 38, 19, 'Relatorio executivo · ROTA FINANCEIRA', 7, false, [0.45, 0.49, 0.54]);
+    text(c, 430, 19, `Gerado em ${new Date(report.generatedAt || Date.now()).toLocaleDateString('pt-BR')}`, 7, false, [0.45, 0.49, 0.54]);
+  };
+  const newPage = () => { const c = []; pages.push(c); header(c, pages.length); return c; };
+  let c = newPage();
+  text(c, 38, 758, report.title || 'RELATORIO FINANCEIRO', 17, true, [0.08, 0.12, 0.17]);
+  if (report.clientName) text(c, 38, 739, `Cliente: ${report.clientName}`, 9, false, [0.35, 0.39, 0.44]);
+  if (report.month) text(c, 38, 723, `Periodo: ${pdfMonth(report.month)}`, 9, true, [0.35, 0.39, 0.44]);
+  let y = report.month ? 698 : 714;
+
+  const metrics = Array.isArray(report.metrics) ? report.metrics : [];
+  for (let i = 0; i < metrics.length; i += 2) {
+    if (y < 90) { footer(c); c = newPage(); y = 758; }
+    const left = metrics[i];
+    const right = metrics[i + 1];
+    [[left, 38], [right, 302]].forEach(([item, x]) => {
+      if (!item) return;
+      rect(c, x, y - 32, 255, 39, [0.94, 0.96, 0.97]);
+      text(c, x + 9, y - 7, item.label, 7.3, false, [0.37, 0.41, 0.46]);
+      text(c, x + 9, y - 23, item.value, 10, true, [0.09, 0.13, 0.18]);
+    });
+    y -= 47;
+  }
+
+  const drawTableHeader = (section, current, startY, continuation = false) => {
+    const sectionTitle = continuation ? `${section.title} (continuacao)` : section.title;
+    text(current, 38, startY, sectionTitle, 11, true, [0.08, 0.12, 0.17]);
+    let x = 38;
+    const totalWidth = (section.columns || []).reduce((sum, col) => sum + col.width, 0) || 519;
+    rect(current, x, startY - 27, totalWidth, 19, [0.08, 0.12, 0.17]);
+    (section.columns || []).forEach(col => {
+      text(current, x + 4, startY - 20, col.label, 6.8, true, [1, 1, 1]);
+      x += col.width;
+    });
+    return startY - 39;
+  };
+  for (const section of report.sections || []) {
+    if (!section || !Array.isArray(section.columns) || !section.columns.length) continue;
+    if (y < 115) { footer(c); c = newPage(); y = 758; }
+    y = drawTableHeader(section, c, y);
+    const rows = Array.isArray(section.rows) ? section.rows : [];
+    let rowIndex = 0;
+    if (!rows.length) {
+      text(c, 44, y - 2, section.emptyText || 'Nenhum registro para o periodo.', 8, false, [0.42, 0.46, 0.51]);
+      y -= 24;
+    }
+    while (rowIndex < rows.length) {
+      const row = rows[rowIndex];
+      const cells = section.columns.map((col, index) => {
+        const value = Array.isArray(row) ? row[index] : row[col.key];
+        const charWidth = Math.max(7, Math.floor((col.width - 9) / 4.1));
+        return pdfWrap(value == null ? '—' : String(value), charWidth).slice(0, 2);
+      });
+      const lineCount = Math.max(1, ...cells.map(lines => lines.length));
+      const rowHeight = Math.max(19, lineCount * 9 + 7);
+      if (y - rowHeight < 55) {
+        footer(c); c = newPage(); y = drawTableHeader(section, c, 758, true);
+      }
+      let x = 38;
+      cells.forEach((lines, index) => {
+        lines.forEach((value, lineIndex) => text(c, x + 4, y - 5 - lineIndex * 9, value, 6.8, false, [0.18, 0.21, 0.25]));
+        x += section.columns[index].width;
+      });
+      line(c, 38, y - rowHeight + 2, 557, y - rowHeight + 2, [0.87, 0.89, 0.91]);
+      y -= rowHeight;
+      rowIndex++;
+    }
+    y -= 20;
+  }
+  footer(c);
+
+  const objects = [];
+  const addObject = buffer => { objects.push(buffer); return objects.length; };
+  const catalog = addObject(Buffer.alloc(0));
+  const pagesObj = addObject(Buffer.alloc(0));
+  const fontRegular = addObject(Buffer.from('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>', 'latin1'));
+  const fontBold = addObject(Buffer.from('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>', 'latin1'));
+  const pageRefs = [];
+  for (const commands of pages) {
+    const content = Buffer.from(commands.join('\n') + '\n', 'latin1');
+    const contentObj = addObject(Buffer.from(`<< /Length ${content.length} >>\nstream\n`, 'latin1'));
+    objects[contentObj - 1] = Buffer.concat([objects[contentObj - 1], content, Buffer.from('endstream', 'latin1')]);
+    const pageObj = addObject(Buffer.from(`<< /Type /Page /Parent ${pagesObj} 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${fontRegular} 0 R /F2 ${fontBold} 0 R >> >> /Contents ${contentObj} 0 R >>`, 'latin1'));
+    pageRefs.push(pageObj);
+  }
+  objects[catalog - 1] = Buffer.from(`<< /Type /Catalog /Pages ${pagesObj} 0 R >>`, 'latin1');
+  objects[pagesObj - 1] = Buffer.from(`<< /Type /Pages /Kids [${pageRefs.map(ref => `${ref} 0 R`).join(' ')}] /Count ${pageRefs.length} >>`, 'latin1');
+  const chunks = [Buffer.from('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n', 'latin1')];
+  const offsets = [0]; let offset = chunks[0].length;
+  objects.forEach((obj, index) => { offsets.push(offset); const h = Buffer.from(`${index + 1} 0 obj\n`, 'latin1'); const f = Buffer.from('\nendobj\n', 'latin1'); chunks.push(h, obj, f); offset += h.length + obj.length + f.length; });
+  const xrefOffset = offset; let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (let i = 1; i < offsets.length; i++) xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`;
+  xref += `trailer\n<< /Size ${objects.length + 1} /Root ${catalog} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  chunks.push(Buffer.from(xref, 'latin1'));
+  return Buffer.concat(chunks);
+}
+
+function buildGoalReportPdf(summary, clientName) {
+  const data = summary.data || [];
+  const goal = summary.goalPlan || {};
+  const sum = key => data.reduce((total, day) => total + safeNumber(day[key]), 0);
+  const status = day => day.isRestDay ? 'Descanso' : day.isWeekend ? 'Fim de semana' : 'Disponivel';
+  return buildExecutiveTablePdf({
+    title: 'RELATORIO DE METAS E RESULTADOS DIARIOS',
+    clientName,
+    month: summary.month,
+    metrics: [
+      { label: 'Meta diaria', value: goal.displayDailyGoal == null ? 'Revisar planejamento' : pdfMoney(goal.displayDailyGoal) },
+      { label: 'Dias disponiveis', value: String(goal.availableWorkingDays ?? summary.totals?.availableWorkingDays ?? 0) },
+      { label: 'Despesas previstas', value: pdfMoney(sum('futureExpense')) },
+      { label: 'Despesas pagas', value: pdfMoney(sum('paidExpense')) },
+      { label: 'Ganhos previstos', value: pdfMoney(sum('futureIncome')) },
+      { label: 'Ganhos recebidos', value: pdfMoney(sum('paidIncome')) }
+    ],
+    sections: [{
+      title: 'Meta e resultado de cada dia do mes',
+      columns: [
+        { label: 'DATA', width: 63 }, { label: 'META DIA', width: 67 },
+        { label: 'DESP. PREV.', width: 75 }, { label: 'DESP. PAGA', width: 75 },
+        { label: 'GANHO PREV.', width: 75 }, { label: 'GANHO REC.', width: 75 },
+        { label: 'STATUS', width: 89 }
+      ],
+      rows: data.map(day => [pdfDate(day.date), day.dailyGoal == null ? '—' : pdfMoney(day.dailyGoal), pdfMoney(day.futureExpense), pdfMoney(day.paidExpense), pdfMoney(day.futureIncome), pdfMoney(day.paidIncome), status(day)]),
+      emptyText: 'Sem dados diarios registrados neste periodo.'
+    }]
+  });
+}
+
+function buildHouseReportPdf(report) {
+  const members = report.members || [];
+  const names = Object.fromEntries(members.map(member => [member.id, member.name]));
+  const moneyCents = value => pdfMoney(safeNumber(value) / 100);
+  const expenses = report.expenses || [];
+  const settlements = report.settlements || [];
+  const recurring = report.recurring || [];
+  return buildExecutiveTablePdf({
+    title: 'RELATORIO DO RESUMO DA CASA',
+    clientName: report.clientName,
+    month: report.month,
+    metrics: [
+      { label: 'Despesas totais do mes', value: moneyCents(report.totalCents) },
+      { label: 'Parte somada dos moradores', value: moneyCents(report.shareCents) },
+      { label: 'Despesas pagas', value: moneyCents(report.paidTotalCents) },
+      { label: 'Despesas previstas', value: moneyCents(report.pendingTotalCents) },
+      { label: 'Movimentacao dos acertos no mes', value: moneyCents(report.balance) },
+      { label: 'Saldo anterior', value: moneyCents(report.previousBalance) },
+      { label: 'Saldo final acumulado', value: moneyCents(report.closingBalance) },
+      { label: 'Contas fixas ativas', value: String(recurring.length) }
+    ],
+    sections: [
+      {
+        title: 'Saldo por morador',
+        columns: [{label:'MORADOR',width:155},{label:'ANTERIOR',width:105},{label:'NO MES',width:105},{label:'SALDO',width:105},{label:'SITUACAO',width:49}],
+        rows: members.map(member => [member.name, moneyCents(member.previous), moneyCents(member.month), moneyCents(member.balance), member.balance > 0 ? 'Receber' : member.balance < 0 ? 'Devolver' : 'Acertado'])
+      },
+      {
+        title: 'Despesas da casa no mes',
+        columns: [{label:'VENCIMENTO',width:70},{label:'DESCRICAO',width:175},{label:'VALOR TOTAL',width:90},{label:'MINHA PARTE',width:90},{label:'SITUACAO',width:94}],
+        rows: expenses.map(item => [pdfDate(item.due_date), item.description, moneyCents(item.total_cents), moneyCents(item.share_cents), item.paid ? 'Paga' : 'Pendente'])
+      },
+      {
+        title: 'Devolucoes e acertos registrados no mes',
+        columns: [{label:'DATA',width:75},{label:'QUEM ENVIOU',width:145},{label:'QUEM RECEBEU',width:145},{label:'VALOR',width:154}],
+        rows: settlements.map(item => [pdfDate(item.day), names[item.from_member] || item.from_member || 'Morador', names[item.to_member] || item.to_member || 'Morador', moneyCents(item.amount_cents ?? Math.abs(item.delta_cents))])
+      },
+      {
+        title: 'Contas fixas ativas',
+        columns: [{label:'PRIMEIRO VENCIMENTO',width:120},{label:'DESCRICAO',width:245},{label:'VALOR MENSAL',width:154}],
+        rows: recurring.map(item => [pdfDate(item.first_due), item.description, moneyCents(item.total_cents)])
+      }
+    ]
+  });
+}
+
 function buildClientReportPdf(report) {
   const { client, period, totals, summary, monthly } = report;
   const pages = [];
@@ -624,6 +819,175 @@ function buildClientReportPdf(report) {
       text(c, 38, 78, 'Caixa utilizado uma unica vez, por ordem de prazo. Deficit historico nao e somado a meta.', 8);
       footer(c);
     } while (cursor < debtRows.length);
+  }
+
+  // Detalhamento executivo de despesas, receitas, categorias e resumo da casa.
+  const reportMonth = String(summary?.month || period.endMonth);
+  const monthlyActivityEntry = entry => {
+    const paid = Number(entry.paid) === 1 || entry.paid === true;
+    const activityDate = paid ? String(entry.paid_date || entry.paid_at || entry.due_date || '').slice(0, 10) : String(entry.due_date || '').slice(0, 10);
+    return activityDate.slice(0, 7) === reportMonth;
+  };
+  const monthEntries = (summary?.entries || []).filter(monthlyActivityEntry);
+  const appendReportTable = (title, subtitle, columns, rows, emptyText) => {
+    let cursor = 0;
+    let first = true;
+    do {
+      c = newPage();
+      header(c, pages.length);
+      text(c, 38, 758, title, 13, true);
+      if (subtitle) text(c, 38, 741, subtitle, 8.2, false, 0.42, 0.45, 0.50);
+      let x = 38;
+      rect(c, 38, 710, columns.reduce((sum, col) => sum + col.width, 0), 20, 0.09, 0.12, 0.18);
+      columns.forEach(col => { text(c, x + 4, 717, col.label, 6.8, true, 1, 1, 1); x += col.width; });
+      let y = 690, count = 0;
+      while (cursor < rows.length && count < 23) {
+        const row = rows[cursor++]; x = 38;
+        columns.forEach((col, i) => {
+          const value = String(row[i] ?? '—');
+          const maxChars = Math.max(7, Math.floor((col.width - 8) / 4.1));
+          const wrapped = pdfWrap(value, maxChars).slice(0, 1)[0] || '';
+          text(c, x + 4, y, wrapped, 7.1, false);
+          x += col.width;
+        });
+        line(c, 42, y - 8, 553, y - 8, 0.92, 0.93, 0.95);
+        y -= 25; count++;
+      }
+      if (first && !rows.length) text(c, 44, 688, emptyText || 'Nenhum registro neste periodo.', 8, false, 0.45, 0.48, 0.53);
+      footer(c);
+      first = false;
+    } while (cursor < rows.length);
+  };
+  const expenseEntries = monthEntries.filter(entry => entry.type === 'expense');
+  const incomeEntries = monthEntries.filter(entry => entry.type === 'income');
+  const summarizeEntries = entries => {
+    const byCategory = new Map();
+    for (const entry of entries) {
+      const key = String(entry.financial_category || 'Outros').trim() || 'Outros';
+      const current = byCategory.get(key) || { total: 0, paid: 0, pending: 0 };
+      const amount = safeNumber(entry.amount);
+      current.total += amount;
+      if (Number(entry.paid) === 1 || entry.paid === true) current.paid += amount; else current.pending += amount;
+      byCategory.set(key, current);
+    }
+    return [...byCategory.entries()].sort((a,b)=>b[1].total-a[1].total).map(([name, totals]) => [name, money(totals.total), money(totals.paid), money(totals.pending)]);
+  };
+  // Pagina visual de resultados: grafico diario e distribuicao por categoria.
+  {
+    c = newPage(); header(c, pages.length);
+    text(c, 38, 758, 'RESULTADOS FINANCEIROS DO PERIODO', 14, true);
+    text(c, 38, 741, `Evolucao diaria em ${pdfMonth(reportMonth)} e categorias com maior participacao.`, 8.2, false, 0.42, 0.45, 0.50);
+    const graphRows = summary?.data || [];
+    const chartX = 92, chartRight = 555, chartTop = 690, chartBottom = 476;
+    const chartWidth = chartRight - chartX, chartHeight = chartTop - chartBottom;
+    const series = [
+      { label: 'Ganho previsto', key: 'futureIncome', color: [0.28, 0.51, 0.68] },
+      { label: 'Ganho recebido', key: 'paidIncome', color: [0.22, 0.62, 0.45] },
+      { label: 'Despesa prevista', key: 'futureExpense', color: [0.85, 0.65, 0.16] },
+      { label: 'Despesa paga', key: 'paidExpense', color: [0.78, 0.34, 0.25] }
+    ];
+    const maxValue = Math.max(1, ...graphRows.flatMap(day => series.map(item => safeNumber(day[item.key]))));
+    for (let tick = 0; tick <= 4; tick++) {
+      const value = maxValue * tick / 4;
+      const yy = chartBottom + chartHeight * tick / 4;
+      line(c, chartX, yy, chartRight, yy, 0.89, 0.90, 0.92);
+      text(c, 38, yy - 3, pdfMoney(value).replace('R$ ', ''), 6.6, false, 0.42, 0.45, 0.50);
+    }
+    line(c, chartX, chartBottom, chartX, chartTop, 0.63, 0.67, 0.71);
+    line(c, chartX, chartBottom, chartRight, chartBottom, 0.63, 0.67, 0.71);
+    const xFor = index => chartX + (graphRows.length <= 1 ? 0 : index * chartWidth / (graphRows.length - 1));
+    const yFor = value => chartBottom + Math.max(0, Math.min(1, safeNumber(value) / maxValue)) * chartHeight;
+    for (let index = 0; index < graphRows.length; index++) {
+      const dayNum = Number(String(graphRows[index].date || '').slice(-2));
+      if (dayNum === 1 || dayNum % 5 === 0 || index === graphRows.length - 1) {
+        text(c, xFor(index) - 5, chartBottom - 14, String(dayNum), 6.7, false, 0.42, 0.45, 0.50);
+      }
+    }
+    for (const item of series) {
+      if (!graphRows.length) break;
+      const commands = [];
+      graphRows.forEach((day, index) => commands.push(`${xFor(index).toFixed(2)} ${yFor(day[item.key]).toFixed(2)} ${index === 0 ? 'm' : 'l'}`));
+      c.push(`${item.color[0]} ${item.color[1]} ${item.color[2]} RG 1.6 w ${commands.join(' ')} S`);
+    }
+    let legendX = 95;
+    series.forEach(item => {
+      c.push(`${item.color[0]} ${item.color[1]} ${item.color[2]} RG 2.5 w ${legendX} 445 m ${legendX + 13} 445 l S`);
+      text(c, legendX + 17, 442, item.label, 6.6, false, 0.25, 0.29, 0.34);
+      legendX += 113;
+    });
+    const categoryMap = entries => {
+      const sums = new Map();
+      for (const entry of entries) {
+        const key = String(entry.financial_category || 'Outros').trim() || 'Outros';
+        sums.set(key, (sums.get(key) || 0) + safeNumber(entry.amount));
+      }
+      return [...sums.entries()].sort((a,b)=>b[1]-a[1]).slice(0, 5);
+    };
+    const drawBars = (title, items, startY, color) => {
+      text(c, 38, startY, title, 9.2, true);
+      const max = Math.max(1, ...items.map(item => item[1]));
+      items.forEach(([name, amount], i) => {
+        const yy = startY - 22 - i * 17;
+        text(c, 42, yy + 2, pdfWrap(name, 24)[0], 6.9, false, 0.25, 0.29, 0.34);
+        rect(c, 150, yy - 1, 250, 8, 0.91, 0.93, 0.95);
+        rect(c, 150, yy - 1, Math.max(2, 250 * amount / max), 8, color[0], color[1], color[2]);
+        text(c, 410, yy + 1, money(amount), 6.9, true, 0.25, 0.29, 0.34);
+      });
+      if (!items.length) text(c, 42, startY - 22, 'Sem lancamentos categorizados.', 7, false, 0.45, 0.48, 0.53);
+    };
+    drawBars('DESPESAS POR CATEGORIA', categoryMap(expenseEntries), 418, [0.85, 0.65, 0.16]);
+    drawBars('RECEITAS POR CATEGORIA', categoryMap(incomeEntries), 310, [0.28, 0.51, 0.68]);
+    footer(c);
+  }
+
+  appendReportTable('DESPESAS DO PERIODO', `Pagamentos confirmados no mes e despesas pendentes com vencimento em ${pdfMonth(summary?.month || period.endMonth)}.`,
+    [{label:'DATA',width:70},{label:'DESCRICAO',width:185},{label:'CATEGORIA',width:105},{label:'VALOR',width:80},{label:'SITUACAO',width:79}],
+    expenseEntries.map(entry => [pdfDate((Number(entry.paid) === 1 || entry.paid === true) ? (entry.paid_date || entry.paid_at || entry.due_date) : entry.due_date), entry.name, entry.financial_category || 'Outros', money(entry.amount), Number(entry.paid) === 1 || entry.paid === true ? 'Paga' : 'Pendente']),
+    'Nenhuma despesa efetiva ou pendente neste mes.');
+  appendReportTable('RECEITAS DO PERIODO', `Recebimentos confirmados no mes e ganhos pendentes com vencimento em ${pdfMonth(summary?.month || period.endMonth)}.`,
+    [{label:'DATA',width:70},{label:'DESCRICAO',width:185},{label:'CATEGORIA',width:105},{label:'VALOR',width:80},{label:'SITUACAO',width:79}],
+    incomeEntries.map(entry => [pdfDate((Number(entry.paid) === 1 || entry.paid === true) ? (entry.paid_date || entry.paid_at || entry.due_date) : entry.due_date), entry.name, entry.financial_category || 'Outros', money(entry.amount), Number(entry.paid) === 1 || entry.paid === true ? 'Recebido' : 'Previsto']),
+    'Nenhum recebimento efetivo ou ganho pendente neste mes.');
+  appendReportTable('RESULTADOS POR CATEGORIA', 'Distribuicao dos pagamentos, recebimentos e pendencias do periodo, por categoria.',
+    [{label:'CATEGORIA',width:190},{label:'TOTAL',width:110},{label:'PAGO / RECEBIDO',width:112},{label:'PENDENTE',width:107}],
+    [ ...summarizeEntries(expenseEntries).map(row => [`Despesa · ${row[0]}`, row[1], row[2], row[3]]),
+      ...summarizeEntries(incomeEntries).map(row => [`Receita · ${row[0]}`, row[1], row[2], row[3]]) ],
+    'Sem lancamentos categorizados neste mes.');
+
+  const house = report.houseSummary;
+  if (house) {
+    c = newPage(); header(c, pages.length);
+    text(c, 38, 758, 'RESUMO DA CASA', 14, true);
+    text(c, 38, 741, `Referencia: ${pdfMonth(house.month)}`, 8.5, false, 0.42, 0.45, 0.50);
+    const houseCards = [
+      ['Despesas do mes', money(safeNumber(house.totalCents) / 100)],
+      ['Minha parte', money(safeNumber(house.shareCents) / 100)],
+      ['Despesas pagas', money(safeNumber(house.paidTotalCents) / 100)],
+      ['Despesas pendentes', money(safeNumber(house.pendingTotalCents) / 100)],
+      ['Movimentacao dos acertos', money(safeNumber(house.balance) / 100)],
+      ['Saldo final acumulado', money(safeNumber(house.closingBalance) / 100)]
+    ];
+    houseCards.forEach((item, i) => dashboardCard(c, 38 + (i % 3) * 174, 660 - Math.floor(i / 3) * 66, 160, item[0], item[1]));
+    text(c, 38, 514, 'SALDO POR MORADOR', 10, true);
+    line(c, 38, 504, 557, 504, 0.80, 0.82, 0.86);
+    rect(c, 38, 477, 519, 20, 0.09, 0.12, 0.18);
+    text(c, 44, 484, 'MORADOR', 7, true, 1, 1, 1); text(c, 230, 484, 'ANTERIOR', 7, true, 1, 1, 1); text(c, 325, 484, 'NO MES', 7, true, 1, 1, 1); text(c, 420, 484, 'SALDO', 7, true, 1, 1, 1);
+    let hy = 457;
+    (house.members || []).slice(0, 8).forEach(member => {
+      text(c, 44, hy, member.name, 7.5, false); text(c, 230, hy, money(safeNumber(member.previous) / 100), 7.5, false); text(c, 325, hy, money(safeNumber(member.month) / 100), 7.5, false); text(c, 420, hy, money(safeNumber(member.balance) / 100), 7.5, true);
+      line(c, 42, hy - 8, 553, hy - 8, 0.92, 0.93, 0.95); hy -= 24;
+    });
+    text(c, 38, Math.min(265, hy - 8), 'As despesas da casa aparecem tambem no planejamento financeiro de acordo com a parte do cliente.', 7.5, false, 0.42, 0.45, 0.50);
+    footer(c);
+    appendReportTable('DESPESAS DA CASA', `Itens com vencimento em ${pdfMonth(house.month)}.`,
+      [{label:'VENCIMENTO',width:70},{label:'DESCRICAO',width:195},{label:'TOTAL',width:82},{label:'MINHA PARTE',width:87},{label:'SITUACAO',width:76}],
+      (house.expenses || []).map(item => [pdfDate(item.due_date), item.description, money(safeNumber(item.total_cents) / 100), money(safeNumber(item.share_cents) / 100), item.paid ? 'Paga' : 'Pendente']),
+      'Nenhuma despesa da casa no periodo.');
+    const memberNames = Object.fromEntries((house.members || []).map(member => [member.id, member.name]));
+    appendReportTable('DEVOLUCOES E ACERTOS DA CASA', 'Movimentacoes registradas no periodo.',
+      [{label:'DATA',width:80},{label:'QUEM ENVIOU',width:145},{label:'QUEM RECEBEU',width:145},{label:'VALOR',width:140}],
+      (house.settlements || []).map(item => [pdfDate(item.day), memberNames[item.from_member] || item.from_member || 'Morador', memberNames[item.to_member] || item.to_member || 'Morador', money(safeNumber(item.amount_cents ?? Math.abs(item.delta_cents)) / 100)]),
+      'Nenhuma devolucao registrada neste mes.');
   }
 
   const objects = [];
@@ -2436,6 +2800,41 @@ const realizedIncome =
   return result;
 }
 
+async function buildHouseMonthlyReport(userId, month, clientName = 'Cliente') {
+  const uid = Number(userId);
+  await require('./casa-ledger').transaction(pool, uid);
+  const [expensesResult, settlementsResult, recurringResult] = await Promise.all([
+    pool.query(`SELECT *,day::text AS day,due_date::text AS due_date FROM house_expenses WHERE user_id=$1 AND deleted=FALSE ORDER BY due_date ASC,id ASC`, [uid]),
+    pool.query(`SELECT *,day::text AS day FROM house_settlements WHERE user_id=$1 ORDER BY day ASC,id ASC`, [uid]),
+    pool.query(`SELECT *,first_due::text AS first_due FROM house_recurring WHERE user_id=$1 AND active=TRUE ORDER BY id`, [uid])
+  ]);
+  const expenses = expensesResult.rows;
+  const settlements = settlementsResult.rows;
+  const recurring = recurringResult.rows;
+  const division = require('./casa-divisao');
+  const people = await division.members(pool, uid);
+  const group = division.balances(expenses, settlements, people, month);
+  const movements = [
+    ...expenses.filter(item => item.paid).map(item => ({ date: item.day, delta: Number(item.mine_cents || 0) - Number(item.share_cents || 0) })),
+    ...settlements.map(item => ({ date: item.day, delta: Number(item.delta_cents || 0) }))
+  ];
+  const balance = movements.filter(item => String(item.date).slice(0, 7) === month).reduce((sum, item) => sum + item.delta, 0);
+  const previousBalance = movements.filter(item => String(item.date).slice(0, 7) < month).reduce((sum, item) => sum + item.delta, 0);
+  const monthExpenses = expenses.filter(item => String(item.due_date).slice(0, 7) === month);
+  const monthSettlements = settlements.filter(item => String(item.day).slice(0, 7) === month);
+  return {
+    month, clientName,
+    people: { my_name: people.find(person => person.id === 'me')?.name || 'Eu', other_name: people.find(person => person.id !== 'me')?.name || 'Outra pessoa' },
+    members: group.members, transfers: group.transfers,
+    expenses: monthExpenses, settlements: monthSettlements, recurring,
+    balance, previousBalance, closingBalance: previousBalance + balance,
+    totalCents: monthExpenses.reduce((sum, item) => sum + Number(item.total_cents || 0), 0),
+    shareCents: monthExpenses.reduce((sum, item) => sum + Number(item.share_cents || 0), 0),
+    paidTotalCents: monthExpenses.filter(item => item.paid).reduce((sum, item) => sum + Number(item.total_cents || 0), 0),
+    pendingTotalCents: monthExpenses.filter(item => !item.paid).reduce((sum, item) => sum + Number(item.total_cents || 0), 0)
+  };
+}
+
 async function recordClientChange(userId, actorUserId, action, fieldName = null, oldValue = null, newValue = null, details = null) {
   await db.prepare(`
     INSERT INTO client_change_log
@@ -2897,6 +3296,80 @@ async function handleFinanceApi(
 
   const userId =
     Number(user.id);
+
+  if (req.method === 'GET' && (url === '/api/finance/report' || url === '/api/finance/goal-report')) {
+    const requestedMonth = parsedUrl.searchParams.get('month') || getTodayLocal().slice(0, 7);
+    if (!validMonth(requestedMonth)) return sendJson(res, 400, { error: 'Mês inválido.' });
+    try {
+      const client = await db.prepare(`SELECT id,name,email,phone,created_at,billing_status,last_login_at FROM users WHERE id = ? AND role = 'client'`).get(userId);
+      if (!client) return sendJson(res, 404, { error: 'Cliente não encontrado.' });
+      const summary = await buildAdminClientSummary(userId, requestedMonth);
+      if (url === '/api/finance/goal-report') {
+        const pdf = buildGoalReportPdf(summary, client.name || 'Cliente');
+        return sendPdf(res, 200, pdf, `Relatorio_Metas_${requestedMonth}.pdf`);
+      }
+      const today = getTodayLocal();
+      const createdDate = String(client.created_at || today).slice(0, 10);
+      const createdMonth = validMonth(createdDate.slice(0, 7)) ? createdDate.slice(0, 7) : today.slice(0, 7);
+      const entries = await db.prepare(`SELECT type,amount,due_date,paid,paid_at,paid_date FROM finance_entries WHERE user_id = ? ORDER BY due_date ASC,id ASC`).all(userId);
+      const restDays = await db.prepare(`SELECT rest_date FROM rest_days WHERE user_id = ? ORDER BY rest_date ASC,id ASC`).all(userId);
+      const monthly = [];
+      let cursor = createdMonth;
+      const lastMonth = today.slice(0, 7);
+      while (cursor <= lastMonth) {
+        const monthEntries = entries.filter(entry => {
+          const paid = Number(entry.paid) === 1 || entry.paid === true;
+          const activityDate = paid
+            ? String(entry.paid_date || entry.paid_at || entry.due_date || '').slice(0, 10)
+            : String(entry.due_date || '').slice(0, 10);
+          return activityDate.slice(0, 7) === cursor;
+        });
+        const income = monthEntries.filter(entry => entry.type === 'income').reduce((sum, entry) => sum + safeNumber(entry.amount), 0);
+        const expense = monthEntries.filter(entry => entry.type === 'expense').reduce((sum, entry) => sum + safeNumber(entry.amount), 0);
+        const restCount = restDays.filter(row => String(row.rest_date || '').slice(0, 7) === cursor).length;
+        monthly.push({ month: cursor, income, expense, cashflow: income - expense, restDays: restCount });
+        const [year, monthNumber] = cursor.split('-').map(Number);
+        const next = new Date(year, monthNumber, 1);
+        cursor = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
+      }
+      const houseSummary = await buildHouseMonthlyReport(userId, requestedMonth, client.name || 'Cliente');
+      // No relatório do mês, a data efetiva dos itens pagos/recebidos prevalece
+      // sobre o vencimento; itens ainda pendentes são considerados pelo vencimento.
+      const reportEntries = (summary.entries || []).filter(entry => {
+        const paid = Number(entry.paid) === 1 || entry.paid === true;
+        const activityDate = paid
+          ? String(entry.paid_date || entry.paid_at || entry.due_date || '').slice(0, 10)
+          : String(entry.due_date || '').slice(0, 10);
+        return activityDate.slice(0, 7) === requestedMonth;
+      });
+      const totalFor = (type, predicate = () => true) => reportEntries
+        .filter(entry => entry.type === type && predicate(entry))
+        .reduce((sum, entry) => sum + safeNumber(entry.amount), 0);
+      const reportTotals = {
+        ...summary.totals,
+        income: totalFor('income'),
+        expense: totalFor('expense'),
+        realizedIncome: totalFor('income', entry => Number(entry.paid) === 1 || entry.paid === true),
+        paidExpense: totalFor('expense', entry => Number(entry.paid) === 1 || entry.paid === true),
+        pendingExpense: totalFor('expense', entry => !(Number(entry.paid) === 1 || entry.paid === true)),
+        pendingIncome: totalFor('income', entry => !(Number(entry.paid) === 1 || entry.paid === true)),
+        cashflow: totalFor('income') - totalFor('expense'),
+        dailyGoal: summary.goalPlan?.displayDailyGoal ?? summary.totals.dailyGoal,
+        goalStatus: summary.goalPlan?.status || summary.totals.goalStatus
+      };
+      const report = {
+        generated_at: new Date().toISOString(),
+        client: { ...client, status: publicClientStatus(client) },
+        period: { start: createdDate, end: today, startMonth: createdMonth, endMonth: today.slice(0, 7) },
+        totals: reportTotals, summary, monthly, houseSummary
+      };
+      const pdf = buildClientReportPdf(report);
+      return sendPdf(res, 200, pdf, pdfFileName(client.name, requestedMonth));
+    } catch (error) {
+      console.error('Erro ao gerar relatório financeiro do cliente:', error);
+      return sendJson(res, 500, { error: 'Não foi possível gerar o relatório financeiro. Tente novamente.' });
+    }
+  }
 
   /* =======================================================
      LEMBRETES DE LANÇAMENTOS VENCIDOS / VENCENDO HOJE
@@ -5527,7 +6000,7 @@ function isStateChangingMethod(method) {
    API PRINCIPAL
 ========================================================= */
 
-const products = require('./casa-produtos-api').create({pool,requireUser,requireAdmin,readBody,sendJson});
+const products = require('./casa-produtos-api').create({pool,requireUser,requireAdmin,readBody,sendJson,buildHouseMonthlyReport,buildHouseReportPdf,sendPdf});
 
 const goals = require('./server-metas').createGoals({pool, requireUser, requireAdmin, readBody, sendJson, recordClientChange});
 
@@ -5862,7 +6335,7 @@ function serveStatic(
 
 let scriptToInject = adminVisibilityScript;
 if (['/planejamento.html', '/admin.html'].includes(pathname)) {
-  scriptToInject += '<link rel="stylesheet" href="/meta-mensal.css?v=20261014-fix2"><script src="/meta-mensal.js?v=20261014-fix2"></script>';
+  scriptToInject += '<link rel="stylesheet" href="/meta-mensal.css?v=20261014-fix2"><script src="/meta-mensal.js?v=20261027-views3"></script>';
 }
 
 // O lembrete financeiro só deve existir no Dashboard.
