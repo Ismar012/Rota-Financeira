@@ -1,0 +1,18 @@
+ROTA FINANCEIRA — CORREÇÃO VISUAL V5
+
+Base: pacote completo V4 enviado pelo usuário.
+
+Mudanças limitadas às telas index.html e login.html através de dois arquivos já existentes (mascote-experiencia.css e mascote-interacoes.js), mais novos assets estáticos. Os arquivos de outras telas, endpoints, scripts financeiros e banco de dados não foram alterados.
+
+MASCOTE
+- Foi eliminado o personagem SVG simplificado da V4.
+- Agora o personagem é reconstruído a partir da imagem original fotográfica de terno preto, com recortes independentes de cabeça, corpo e mão para animação 2,5D.
+- Movimento suave de cabeça, gesto de mão, leve inclinação do corpo e resposta a cursor, hover e foco no login, sem alternar as quatro fotos.
+- Não é um modelo 3D genuíno com rigging: para caminhada e gestos humanos amplos perfeitamente realistas será necessário um modelo GLB/FBX animado produzido por artista 3D.
+
+FUNDO
+- Novo escritório panorâmico cinematográfico integrado ao plano de fundo de ambas as telas; as antigas grades, piso artificial e janela enquadrada foram retiradas.
+
+TESTE
+- Suba a pasta completa e confira index.html e login.html em desktop e celular, inclusive a senha e o POST para /api/auth/login.
+- Nenhuma credencial foi adicionada ou editada no código.
