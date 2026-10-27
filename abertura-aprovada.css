@@ -1,0 +1,21 @@
+/* Abertura V8: imagem fixa aprovada; controles reais e independentes. */
+body.rf-home,body.rf-login{background:#090b12!important;color:#f8f8fa}
+body.rf-home::before,body.rf-login::before{content:none!important}
+.rf-static-home{min-height:calc(100vh - 76px);display:grid;grid-template-columns:minmax(0,56%) minmax(350px,44%);position:relative;background:linear-gradient(100deg,#11131a,#151625);overflow:hidden}
+.rf-static-portrait,.rf-static-login-portrait{background-image:url('abertura-mascote-recepcao.webp');background-repeat:no-repeat;background-position:center center;background-size:cover;min-height:650px}
+.rf-static-welcome{align-self:center;z-index:2;margin:35px clamp(20px,5vw,90px) 35px 0;padding:clamp(25px,4vw,60px);border:1px solid #b68a42;border-radius:22px;background:linear-gradient(145deg,rgba(17,19,28,.96),rgba(7,9,16,.97));box-shadow:0 20px 60px #0008}
+.rf-static-eyebrow{font-size:12px;letter-spacing:2px;color:#e4b65b;font-weight:700}
+.rf-static-welcome h1{font-size:clamp(32px,3.4vw,59px);line-height:1.1;margin:25px 0;color:white}
+.rf-static-welcome h1 em{color:#f1c46e;font-style:normal}
+.rf-static-welcome p{font-size:clamp(16px,1.3vw,20px);line-height:1.6;color:#e4e3e9}
+.rf-static-actions{display:flex;flex-direction:column;gap:13px;margin:30px 0}
+.rf-static-actions .btn{display:flex;justify-content:center;align-items:center;min-height:54px;font-size:16px;font-weight:700}
+.rf-static-features{display:flex;flex-wrap:wrap;gap:14px;color:#f0c67c;font-size:13px;margin-top:25px}
+.rf-login-main{background:linear-gradient(90deg,#0c0c12,#15121a)!important;min-height:calc(100vh - 75px)}
+.rf-login-shell{display:grid!important;grid-template-columns:minmax(0,55%) minmax(350px,45%)!important;align-items:center!important;max-width:1600px!important;gap:0!important;margin:auto!important}
+.rf-static-login-showcase{position:relative;min-height:750px;align-self:stretch}
+.rf-static-login-portrait{height:100%;min-height:750px;background-position:center center}
+.rf-static-login-caption{position:absolute;bottom:35px;left:6%;padding:14px 22px;background:#080b12d9;border:1px solid #a47c36;border-radius:12px;color:white;font-size:clamp(16px,2vw,25px)}
+.rf-static-login-caption strong{color:#eabf70}
+.rf-auth-card{position:relative!important;z-index:2!important;margin:32px clamp(16px,4vw,65px)!important;width:auto!important;max-width:560px!important;background:#090b12f5!important;border:1px solid #b98d42!important}
+@media(max-width:850px){.rf-static-home,.rf-login-shell{display:flex!important;flex-direction:column!important}.rf-static-portrait,.rf-static-login-portrait{min-height:390px!important;width:100%;background-position:center 32%}.rf-static-portrait{height:55vh;max-height:600px}.rf-static-welcome{margin:-25px 15px 35px;padding:25px;width:calc(100% - 30px)}.rf-static-login-showcase{min-height:380px!important;width:100%}.rf-static-login-portrait{height:400px!important}.rf-static-login-caption{bottom:16px}.rf-auth-card{width:calc(100% - 30px)!important;margin:16px auto 40px!important}}
