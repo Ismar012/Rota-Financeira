@@ -27,13 +27,81 @@
       const copy=text('span','');copy.append(text('strong','Despesas da casa'),text('small','Divida despesas e confira os acertos'));link.append(icon,copy);actions.append(link);
     }catch{/* Falha ao consultar permissões mantém o atalho oculto. */}})();
   }
-  if($('entriesList')){
-    const panel=text('section','');panel.className='ux-panel';panel.setAttribute('aria-labelledby','uxPendingTitle');const title=text('h2','Pendências para confirmar');title.id='uxPendingTitle';panel.append(title,text('p','Confirme somente valores que você realmente recebeu ou pagou.'));
-    const list=text('div','');panel.append(list);const all=text('button','Ver todos os lançamentos');all.type='button';all.className='secondary-btn';all.addEventListener('click',()=> {const d=$('entriesDisclosure');if(d){d.open=true;d.scrollIntoView({behavior:'smooth',block:'start'});d.querySelector('summary')?.focus();}});panel.append(all);
-    (actions||chart).after(panel);
-    function refresh(){list.replaceChildren();const rows=[...$('entriesList').querySelectorAll('.entry-row')].filter(row=>row.querySelector('[data-action="receive"],[data-action="pay"]'));for(const row of rows.slice(0,5)){const item=text('div','');item.className='ux-pending-row';const info=text('div','');info.append(text('strong',row.querySelector('.entry-main strong')?.textContent||'Lançamento'),text('small',(row.querySelector('.entry-main small')?.textContent||'')+' · '+(row.querySelector('.entry-value')?.textContent.trim()||'')));const original=row.querySelector('[data-action="receive"],[data-action="pay"]');const button=text('button',original.textContent);button.type='button';button.className='primary-btn';button.addEventListener('click',()=>original.click());const actions=text('div','');actions.className='ux-pending-actions';actions.append(button);const del=row.querySelector('[data-action="delete"]');if(del){const remove=text('button','Excluir');remove.type='button';remove.className='secondary-btn danger';remove.addEventListener('click',()=>del.click());actions.append(remove);}item.append(info,actions);list.append(item);}if(!rows.length)list.append(text('p','Nenhuma pendência neste filtro. Consulte todos os lançamentos para revisar o mês.'));}
-    new MutationObserver(refresh).observe($('entriesList'),{childList:true});refresh();
+  if ($('entriesList')) {
+    const panel = text('section', '');
+    panel.className = 'ux-panel';
+    panel.setAttribute('aria-labelledby', 'uxPendingTitle');
+    const title = text('h2', 'Pendências para confirmar');
+    title.id = 'uxPendingTitle';
+    const intro = text('p', 'Confirme somente valores que você realmente recebeu ou pagou.');
+    const tableHead = text('div', '');
+    tableHead.className = 'ux-pending-table-head';
+    ['Tipo', 'Descrição', 'Valor', 'Vencimento', 'Ações'].forEach(label => tableHead.append(text('span', label)));
+    const list = text('div', '');
+    list.className = 'ux-pending-list';
+    panel.append(title, intro, tableHead, list);
+    const all = text('button', 'Ver todos os lançamentos');
+    all.type = 'button';
+    all.className = 'secondary-btn ux-pending-see-all';
+    all.addEventListener('click', () => {
+      const disclosure = $('entriesDisclosure');
+      if (disclosure) {
+        disclosure.open = true;
+        disclosure.scrollIntoView({behavior:'smooth', block:'start'});
+        disclosure.querySelector('summary')?.focus();
+      }
+    });
+    panel.append(all);
+    (actions || chart).after(panel);
 
+    function refresh() {
+      list.replaceChildren();
+      const rows = [...$('entriesList').querySelectorAll('.entry-row')]
+        .filter(row => row.querySelector('[data-action="receive"],[data-action="pay"]'));
+      for (const row of rows.slice(0, 5)) {
+        const original = row.querySelector('[data-action="receive"],[data-action="pay"]');
+        const isIncome = original?.dataset.action === 'receive';
+        const meta = row.querySelector('.entry-main small')?.textContent || '';
+        const [typeLabel, dueText] = meta.split('·').map(part => part.trim());
+        const item = text('div', '');
+        item.className = 'ux-pending-row';
+        const type = text('span', typeLabel || (isIncome ? 'Ganho' : 'Despesa'));
+        type.className = 'ux-pending-type' + (isIncome ? ' is-income' : '');
+        const details = text('div', '');
+        details.className = 'ux-pending-description';
+        details.append(text('strong', row.querySelector('.entry-main strong')?.textContent || 'Lançamento'));
+        details.append(text('small', isIncome ? 'Recebimento pendente' : 'Pagamento pendente'));
+        const amount = text('strong', row.querySelector('.entry-value')?.textContent.trim() || '—');
+        amount.className = 'ux-pending-amount';
+        const due = text('span', dueText || 'Data não informada');
+        due.className = 'ux-pending-date';
+        const rowActions = text('div', '');
+        rowActions.className = 'ux-pending-actions';
+        const confirm = text('button', 'Confirmar');
+        confirm.type = 'button';
+        confirm.className = 'ux-pending-confirm';
+        confirm.addEventListener('click', () => original.click());
+        rowActions.append(confirm);
+        const deleteOriginal = row.querySelector('[data-action="delete"]');
+        if (deleteOriginal) {
+          const remove = text('button', 'Excluir');
+          remove.type = 'button';
+          remove.className = 'ux-pending-delete';
+          remove.addEventListener('click', () => deleteOriginal.click());
+          rowActions.append(remove);
+        }
+        item.append(type, details, amount, due, rowActions);
+        list.append(item);
+      }
+      if (!rows.length) {
+        tableHead.hidden = true;
+        list.append(text('p', 'Nenhuma pendência neste mês. Consulte todos os lançamentos para revisar o período.'));
+      } else {
+        tableHead.hidden = false;
+      }
+    }
+    new MutationObserver(refresh).observe($('entriesList'), {childList:true});
+    refresh();
   }
   // Complete keyboard navigation for existing dialogs without changing form handlers.
   const dialogs=[...document.querySelectorAll('.modal')];const previousFocus=new WeakMap();let outsideFocus=document.activeElement;document.addEventListener('focusin',event=>{if(!event.target.closest('.modal'))outsideFocus=event.target;});

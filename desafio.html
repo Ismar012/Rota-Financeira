@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reserva da Liberdade | Rota Financeira</title><link rel="stylesheet" href="/app-shell.css?v=20261027-promo1"><link rel="stylesheet" href="/desafio.css?v=20261027-promo1"><link rel="stylesheet" href="/transicoes.css?v=20261021-3"><link rel="stylesheet" href="/refinamento.css?v=20261021-3"></head><body class="rf-app-shell"><main class="page"><a class="back rf-back-link" href="/planejamento.html" aria-label="Voltar ao planejamento" title="Voltar ao planejamento"><span aria-hidden="true">←</span></a><header><span class="eyebrow">UM PASSO POR DIA</span><h1>Reserva da Liberdade</h1><p>Transforme pequenas decisões em uma conquista financeira.</p></header>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reserva da Liberdade | Rota Financeira</title><link rel="stylesheet" href="/app-shell.css?v=20261027-promo1"><link rel="stylesheet" href="/desafio.css?v=20261027-request2"><link rel="stylesheet" href="/transicoes.css?v=20261021-3"><link rel="stylesheet" href="/refinamento.css?v=20261021-3"></head><body class="rf-app-shell"><main class="page"><a class="back rf-back-link" href="/planejamento.html" aria-label="Voltar ao planejamento" title="Voltar ao planejamento"><span aria-hidden="true">←</span></a><header><span class="eyebrow">UM PASSO POR DIA</span><h1>Reserva da Liberdade</h1><p>Transforme pequenas decisões em uma conquista financeira.</p></header>
 <section id="challengePromo" class="challenge-promo panel">
   <span class="eyebrow">SEU PRÓXIMO OBJETIVO</span>
   <h2>Que tal dar esse passo hoje?</h2>
@@ -8,9 +8,35 @@
     <article><strong>Acompanhe seu avanço</strong><span>Veja suas conquistas e os próximos níveis da jornada.</span></article>
     <article><strong>Guarde com propósito</strong><span>Defina uma meta e acompanhe sua evolução ao longo do tempo.</span></article>
   </div>
-  <a class="challenge-cta" href="/contato.html?assunto=Reserva%20da%20Liberdade">Quero iniciar minha Reserva da Liberdade <span aria-hidden="true">→</span></a>
-  <p class="challenge-promo-note">A modalidade é liberada pela equipe. Fale conosco para conhecer as opções e começar sua jornada.</p>
+  <button class="challenge-cta" id="requestChallengeAccess" type="button">Quero iniciar minha Reserva da Liberdade <span aria-hidden="true">→</span></button>
+  <p class="challenge-promo-note">O acesso é liberado após a análise da sua solicitação. Você poderá começar assim que ela for aprovada.</p>
 </section>
+<section id="challengeRequestPending" class="challenge-request-state panel" hidden aria-live="polite">
+  <span class="eyebrow">SOLICITAÇÃO RECEBIDA</span>
+  <h2>Sua solicitação está sendo analisada.</h2>
+  <p>Assim que o administrador liberar a Reserva da Liberdade, você poderá voltar a esta tela para iniciar sua jornada.</p>
+  <a class="challenge-request-home" href="/dashboard.html">← Voltar ao início</a>
+</section>
+<section id="challengeRequestRejected" class="challenge-request-state panel" hidden aria-live="polite">
+  <span class="eyebrow">RESERVA DA LIBERDADE</span>
+  <h2>Sua solicitação ainda não foi liberada.</h2>
+  <p>Você pode enviar uma nova solicitação quando quiser.</p>
+  <button class="challenge-cta" id="requestChallengeAgain" type="button">Solicitar novamente <span aria-hidden="true">→</span></button>
+</section>
+<div id="challengeRequestModal" class="challenge-access-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="challengeRequestTitle">
+  <section class="challenge-access-dialog">
+    <button id="requestChallengeClose" class="challenge-access-close" type="button" aria-label="Fechar">×</button>
+    <span class="eyebrow">RESERVA DA LIBERDADE</span>
+    <h2 id="challengeRequestTitle">Você deseja ter uma reserva de emergência?</h2>
+    <p>Ao escolher sim, sua solicitação será enviada ao administrador para análise.</p>
+    <p id="challengeRequestFeedback" class="challenge-request-feedback" role="status" aria-live="polite"></p>
+    <div class="challenge-request-actions">
+      <button id="requestChallengeNo" class="secondary" type="button">Não</button>
+      <button id="requestChallengeYes" type="button">Sim</button>
+    </div>
+  </section>
+</div>
+<div id="challengeRequestToast" class="challenge-request-toast" role="status" aria-live="polite" hidden></div>
 <div id="challengeAccessContent" hidden><p id="challengeModeLine"><span id="mode">Modalidade definida pela equipe</span></p><p id="timezone"></p><p id="notEnabled" hidden>Solicite à equipe a liberação da modalidade 50, 100 ou 200.</p><p id="status" role="status" aria-live="polite">Carregando seu desafio…</p>
 <section class="rules"><h2>Como funciona</h2><ul><li>Modalidades: valores inteiros de R$ 1 até R$ 50, R$ 100 ou R$ 200. Cada valor pode ser confirmado somente uma vez, em qualquer ordem.</li><li>Um depósito por data. Registro no próprio dia vale 1 ponto; registro posterior vale meio ponto. O fuso do desafio aparece acima.</li><li>Você conclui ao confirmar todos os valores da modalidade. Os 10 níveis seguem a mesma proporção de depósitos; o ranking usa pontos divididos pelo tamanho da modalidade. Somente sua posição é exibida.</li><li>Cada confirmação cria uma despesa paga no planejamento. Não cadastre esse valor novamente. Pontos e saldo reservado ficam no jogo durante a participação.</li><li>Erro de lançamento: corrija ou cancele, informando o motivo. Cancelar remove a despesa e os pontos e libera o valor para uso novamente.</li><li>Retirada real: informe quanto retirou e por quê. Ela reduz a reserva e devolve o valor ao caixa sem criar renda nova. Os depósitos continuam confirmados. O administrador acompanha o histórico.</li><li>Comprometa-se a manter o dinheiro reservado até concluir. A plataforma não verifica depósitos, transfere dinheiro ou bloqueia saques.</li><li>Ao concluir ou encerrar sua participação, o saldo restante aparece numa caixinha de valor guardado no planejamento. Isso não disponibiliza o dinheiro no caixa automaticamente.</li><li>A equipe pode ampliar sua modalidade preservando os valores já confirmados. Por exemplo, ao passar de 50 para 100, os valores de 1 a 50 continuam marcados. Seu nível e ranking são recalculados para a nova meta.</li></ul></section>
 <form id="joinForm" class="panel" hidden><h2>Comece sua jornada</h2><label class="check"><input id="accept" type="checkbox" required> Li as regras e quero participar do desafio e do ranking privado.</label><button type="submit">Iniciar meu desafio</button></form>
@@ -19,4 +45,4 @@
 <section id="depositPanel" class="panel"><h2 id="formTitle">Quanto você guardou?</h2><p>Reserve o dinheiro fora da plataforma. Depois confirme o valor aqui.</p><form id="depositForm"><div class="fields"><label>Data em que guardou<input id="day" type="date" required></label><label>Valor guardado (R$)<select id="amount" required></select></label></div><label id="correctionLabel" hidden>Motivo da correção<input id="correctionReason" minlength="3" maxlength="500"></label><p id="credit"></p><button id="save" type="submit">Confirmar dinheiro guardado</button> <button id="cancelEdit" type="button" class="secondary" hidden>Cancelar correção</button></form></section>
 <section id="errorPanel" class="panel" hidden><h2>Cancelar lançamento feito por engano</h2><p id="errorText"></p><form id="errorForm"><input id="errorId" type="hidden"><label>Motivo<input id="errorReason" required minlength="3" maxlength="500"></label><button type="submit">Confirmar cancelamento do erro</button> <button type="button" id="errorCancel" class="secondary">Voltar</button></form></section>
 <section class="panel"><h2>Retirei um valor</h2><p>Use para dinheiro que realmente saiu da reserva. O valor retorna ao caixa e o motivo fica disponível à equipe.</p><form id="withdrawForm"><div class="fields"><label>Data da retirada<input id="withdrawDay" type="date" required></label><label>Quanto retirou (R$)<input id="withdrawAmount" type="number" min="0.01" step="0.01" required></label></div><label>Por que retirou?<input id="withdrawReason" required minlength="3" maxlength="500"></label><button type="submit">Registrar retirada real</button></form><div class="scroll"><table><thead><tr><th>Data</th><th>Valor retirado</th><th>Motivo</th></tr></thead><tbody id="withdrawHistory"></tbody></table></div></section><section class="panel"><button type="button" id="closeGame" class="secondary">Encerrar minha participação</button><p>Concluir ou encerrar cria a caixinha com o saldo restante. Não cria outra despesa.</p></section>
-<section class="panel"><h2>Histórico da sua reserva</h2><p>O total é a soma dos registros declarados. Não representa um saldo bancário verificado.</p><div class="scroll"><table><thead><tr><th>Data do depósito</th><th>Valor</th><th>Pontos</th><th>Ações</th></tr></thead><tbody id="history"></tbody></table></div></section></div></div></main><script src="/desafio.js?v=20261027-promo1"></script><script src="/tutorial.js?v=20261027-promo1"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script><script src="/app-shell.js?v=20261027-promo1"></script></body></html>
+<section class="panel"><h2>Histórico da sua reserva</h2><p>O total é a soma dos registros declarados. Não representa um saldo bancário verificado.</p><div class="scroll"><table><thead><tr><th>Data do depósito</th><th>Valor</th><th>Pontos</th><th>Ações</th></tr></thead><tbody id="history"></tbody></table></div></section></div></div></main><script src="/desafio.js?v=20261027-request3"></script><script src="/tutorial.js?v=20261027-promo1"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script><script src="/app-shell.js?v=20261027-request2"></script></body></html>

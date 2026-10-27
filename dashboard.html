@@ -134,5 +134,22 @@ document.getElementById('dashboardNotifications')?.addEventListener('click', fun
 <script src="/navegacao.js?v=20261021-3"></script>
 <script src="/experiencia-cliente.js?v=20261027-views3"></script>
 <script src="/plataforma.js?v=20261021-3"></script>
-<script src="/tutorial.js?v=20261027-views3"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script><script src="/app-shell.js?v=20261027-views3"></script></body>
+<script src="/tutorial.js?v=20261027-views3"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script><script src="/app-shell.js?v=20261027-views3"></script><script>
+(() => {
+  let message = '';
+  try {
+    message = sessionStorage.getItem('rf-reserva-liberdade-toast') || '';
+    sessionStorage.removeItem('rf-reserva-liberdade-toast');
+  } catch (_) {}
+  if (!message) return;
+  const toast = document.createElement('div');
+  toast.setAttribute('role', 'status');
+  toast.setAttribute('aria-live', 'polite');
+  toast.textContent = message;
+  toast.style.cssText = 'position:fixed;z-index:100100;left:50%;bottom:28px;transform:translateX(-50%);max-width:calc(100vw - 32px);padding:13px 18px;border:1px solid #397953;border-radius:12px;background:#10271a;color:#c9f5d5;font:650 13px system-ui,sans-serif;box-shadow:0 16px 44px #0009;text-align:center;';
+  document.body.append(toast);
+  window.setTimeout(() => toast.remove(), 3600);
+})();
+</script>
+</body>
 </html>

@@ -1,0 +1,350 @@
+/* Layout premium do Planejamento Financeiro — escopo exclusivo da aba principal. */
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) main.planning-page {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 104px clamp(18px, 2vw, 34px) 48px !important;
+  box-sizing: border-box;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .planning-container {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 14px;
+  width: 100% !important;
+  max-width: 1760px !important;
+  margin: 0 auto !important;
+  padding: 0;
+  min-width: 0;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .rota-back { display: none !important; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .planning-head {
+  grid-column: 1 / -1;
+  display: grid !important;
+  grid-template-columns: minmax(260px, 1fr) auto auto;
+  align-items: center;
+  gap: 16px 22px;
+  min-width: 0;
+  margin: 0 0 2px !important;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .planning-head > div:first-child { min-width: 0; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .planning-head .eyebrow {
+  color: #e9bd3c;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.9px;
+  margin-bottom: 7px;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .planning-title {
+  margin: 0 0 5px;
+  color: #f4f6fb;
+  font-size: clamp(25px, 2vw, 34px);
+  line-height: 1.12;
+  letter-spacing: -.8px;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .planning-head .muted {
+  margin: 0;
+  color: #99adbf;
+  font-size: 12px;
+  line-height: 1.45;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .month-selector {
+  position: relative;
+  align-self: center;
+  margin: 0;
+  min-width: 0;
+  gap: 6px;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .month-selector input {
+  width: 152px;
+  min-width: 126px;
+  flex: 0 1 152px;
+  min-height: 40px;
+  border: 1px solid #263b4c;
+  background: #09131d;
+  border-radius: 8px;
+  color: #eaf0f6;
+  font-size: 12px;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .month-btn,
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .menu-btn {
+  width: 39px;
+  min-width: 39px;
+  height: 40px;
+  min-height: 40px;
+  border-color: #263b4c;
+  background: #09131d;
+  border-radius: 8px;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #downloadGeneralReportPlanning {
+  align-self: center;
+  justify-self: end;
+  margin: 0;
+  min-height: 40px;
+  padding: 10px 16px;
+  border-radius: 9px;
+  white-space: nowrap;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .finance-tools {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  margin: -3px 0 0;
+  padding: 0;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .finance-tools a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 35px;
+  padding: 7px 13px;
+  border: 1px solid #39485a;
+  border-radius: 9px;
+  color: #d9e4ef;
+  background: #0c131b;
+  font-size: 12px;
+  text-decoration: none;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .finance-tools a:hover {
+  border-color: #a78227;
+  color: #f3cd59;
+}
+/* Coloca a meta e os três indicadores na mesma faixa, sem alterar os dados. */
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-today,
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-grid { display: contents !important; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-register { display: none !important; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-card.highlight,
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-grid > .summary-card {
+  position: relative;
+  grid-column: span 3;
+  min-width: 0;
+  min-height: 118px;
+  margin: 0 !important;
+  padding: 18px 16px 16px 66px !important;
+  border: 1px solid #233746 !important;
+  border-radius: 13px !important;
+  background: linear-gradient(145deg, #0b1620, #0a1118) !important;
+  box-shadow: inset 0 1px 0 #ffffff04;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-card::before {
+  position: absolute;
+  left: 15px;
+  top: 17px;
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  border: 1px solid #7b6128;
+  border-radius: 11px;
+  background: #d6a82a16;
+  color: #efc54b;
+  font-size: 22px;
+  line-height: 1;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-card.highlight::before { content: '◎'; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-grid > .summary-card:nth-child(1)::before { content: '▣'; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-grid > .summary-card:nth-child(2)::before { content: '▤'; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-grid > .summary-card:nth-child(3)::before { content: '↗'; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-card.highlight {
+  border-color: #67511f !important;
+  background: linear-gradient(120deg, #282315 0%, #151c21 82%) !important;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-card > span {
+  color: #c4cfdb;
+  font-size: 12px;
+  line-height: 1.35;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-card.highlight > span { color: #f0d98e; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-card strong {
+  color: #f3f6fa;
+  font-size: clamp(22px, 1.8vw, 28px);
+  line-height: 1.2;
+  letter-spacing: -.4px;
+  overflow-wrap: anywhere;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-card.highlight strong { color: #f3cc58; font-size: clamp(26px, 2.1vw, 34px); }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-card small { color: #9eafc0 !important; font-size: 11px !important; line-height: 1.4; }
+/* Cinco ações compactas e consistentes, em vez de cartões altos em várias linhas. */
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-grid {
+  grid-column: 1 / -1;
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 !important;
+  min-width: 0;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-card {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  gap: 11px;
+  min-width: 0;
+  min-height: 76px;
+  margin: 0;
+  padding: 12px 13px;
+  border: 1px solid #233747;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #0d1721, #0a1118);
+  box-shadow: none;
+  text-align: left;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-card:hover { border-color: #836626; background: #111b25; transform: translateY(-1px); }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-icon {
+  width: 37px;
+  height: 37px;
+  flex: 0 0 37px;
+  border-radius: 10px;
+  border-color: #655126;
+  background: #d7aa2913;
+  color: #efc443;
+  font-size: 20px;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-card > span:last-child { min-width: 0; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-card strong { display:block; color:#eaf0f5; font-size:12px; line-height:1.35; margin:0 0 4px; overflow-wrap:anywhere; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-card small { display:block !important; color:#99aabd !important; font-size:10px !important; line-height:1.35; }
+/* Pendências em colunas, com ações alinhadas à direita. */
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-panel[aria-labelledby="uxPendingTitle"] {
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 17px 18px 13px;
+  border: 1px solid #223442;
+  border-radius: 13px;
+  background: #10161d;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-panel[aria-labelledby="uxPendingTitle"] #uxPendingTitle { margin:0 0 3px; font-size:17px; letter-spacing:-.25px; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-panel[aria-labelledby="uxPendingTitle"] > p { margin:0 0 11px; color:#91a3b5; font-size:11px; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-table-head,
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-row {
+  display: grid;
+  grid-template-columns: 88px minmax(170px, 1fr) 125px 140px 185px;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-table-head { padding:8px 10px; color:#92a5b8; font-size:10px; border:1px solid #223442; border-radius:8px 8px 0 0; background:#0b1219; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-list { display:grid; min-width:0; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-row { padding:10px; border:1px solid #223442; border-top:0; background:#0d141b; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-row:last-child { border-radius:0 0 8px 8px; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-type { display:inline-flex; align-items:center; justify-content:center; width:max-content; max-width:100%; padding:5px 8px; border-radius:999px; border:1px solid #704442; background:#6a2a2a25; color:#ff9e9e; font-size:10px; font-weight:700; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-type.is-income { border-color:#27664e; background:#17623b25; color:#78dfae; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-description { min-width:0; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-description strong { display:block; color:#eaf0f6; font-size:12px; overflow-wrap:anywhere; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-description small { display:block; margin-top:3px; color:#8fa2b5 !important; font-size:10px !important; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-amount { color:#e4edf6; font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-date { color:#b8c6d4; font-size:11px; white-space:nowrap; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-actions { display:flex; align-items:center; justify-content:flex-end; gap:7px; flex-wrap:nowrap; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-actions button { min-height:32px; padding:6px 10px; font-size:10px; white-space:nowrap; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-actions .ux-pending-confirm { border:1px solid #e3b938; background:linear-gradient(135deg,#f4ce5c,#c8961f); color:#101317; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-actions .ux-pending-delete { border:1px solid #354451; background:transparent; color:#b9c7d4; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-see-all { min-height:32px; margin-top:10px; padding:6px 11px; font-size:10px; }
+/* Gráficos: movimento diário à esquerda e categorias à direita. */
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .chart-card {
+  grid-column: span 7;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 18px;
+  border: 1px solid #223442;
+  border-radius: 13px;
+  background: #10161d;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .chart-card .section-title { margin-bottom: 10px; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .chart-card .eyebrow { font-size:10px; letter-spacing:1.7px; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .chart-card h2 { font-size:18px; margin:3px 0 0; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .chart-wrap { height: 300px; min-width:0; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #expenseCategoriesPanel {
+  grid-column: span 5;
+  align-self: stretch;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 18px;
+  border: 1px solid #223442;
+  border-radius: 13px;
+  background: #10161d;
+  color: #e8eef5;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #expenseCategoriesPanel h2 { margin:0 0 4px; font-size:17px; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #expenseCategoriesPanel > p { margin:0 0 8px; color:#93a5b7; font-size:10px; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #expenseCategoriesPanel .expense-category-layout { display:grid; grid-template-columns:minmax(130px,.9fr) minmax(0,1.1fr); align-items:center; gap:14px; min-width:0; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #expenseCategoriesPanel .expense-category-chart { width:100% !important; max-width:260px !important; min-height:220px !important; margin:0 auto !important; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #expenseCategoriesPanel .expense-category-table { min-width:0; width:100%; font-size:10px; border-collapse:collapse; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #expenseCategoriesPanel .expense-category-table th,
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #expenseCategoriesPanel .expense-category-table td { padding:8px 5px; border-bottom:1px solid #2a3742; text-align:left; overflow-wrap:anywhere; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #entriesDisclosure { grid-column: 1 / -1; min-width:0; border:1px solid #223442; border-radius:11px; background:#10161d; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #entriesDisclosure > summary { padding:12px 16px; color:#edc345; font-size:12px; cursor:pointer; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #entriesDisclosure > .list-card { margin:0 !important; border:0; border-top:1px solid #263540; border-radius:0 0 11px 11px; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #feedback { grid-column:1/-1; margin:0; }
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #restSection.hidden { display:none !important; }
+@media (min-width: 1700px) {
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .planning-container { max-width: 1900px !important; }
+}
+@media (max-width: 1250px) {
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .planning-head { grid-template-columns:minmax(240px,1fr) auto; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) #downloadGeneralReportPlanning { grid-column:2; grid-row:2; justify-self:end; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-card.highlight,
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-grid > .summary-card { grid-column:span 6; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .chart-card,
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) #expenseCategoriesPanel { grid-column:1/-1; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) #expenseCategoriesPanel .expense-category-layout { grid-template-columns:minmax(200px,.8fr) minmax(0,1.2fr); }
+}
+@media (max-width: 850px) {
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) main.planning-page { padding:91px 16px 38px !important; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .planning-head { grid-template-columns:minmax(0,1fr); gap:12px; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .month-selector { width:max-content; max-width:100%; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) #downloadGeneralReportPlanning { grid-column:1; grid-row:auto; justify-self:start; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .finance-tools { margin-top:0; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-card.highlight,
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-grid > .summary-card { grid-column:span 6; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-table-head { display:none; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-row { grid-template-columns:80px minmax(0,1fr) auto; gap:8px 10px; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-date { grid-column:2; grid-row:2; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-amount { grid-column:3; grid-row:1; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-actions { grid-column:1/-1; justify-content:flex-start; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .chart-card { grid-column:1/-1; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) #expenseCategoriesPanel .expense-category-layout { grid-template-columns:minmax(140px,.8fr) minmax(0,1.2fr); }
+}
+@media (max-width: 580px) {
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) main.planning-page { padding:82px 12px 80px !important; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-card.highlight,
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .summary-grid > .summary-card { grid-column:1/-1; min-height:92px; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-card { padding:10px; min-height:72px; gap:8px; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-card .action-icon { width:31px; height:31px; flex-basis:31px; font-size:17px; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-card strong { font-size:11px; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-card small { display:none !important; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-panel[aria-labelledby="uxPendingTitle"],
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .chart-card,
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) #expenseCategoriesPanel { padding:13px; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-row { grid-template-columns:minmax(0,1fr) auto; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-type { grid-column:1; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-description { grid-column:1; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-amount { grid-column:2; grid-row:1/3; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-date { grid-column:1/-1; grid-row:auto; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-actions { grid-column:1/-1; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-pending-actions button { flex:1; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) #expenseCategoriesPanel .expense-category-layout { grid-template-columns:1fr; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) #expenseCategoriesPanel .expense-category-chart { max-width:240px !important; }
+  body.rf-app-shell.client-planning:not(.rf-finance-section-view) .chart-wrap { height:260px; }
+}
+
+/* A caixinha aparece somente quando a jornada termina; mantém-se compacta no painel. */
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #reserveBox {
+  grid-column: 1 / -1;
+  min-height: 82px;
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) #reserveBox a {
+  width: fit-content;
+  margin-top: 4px;
+  color: #f0c64d;
+  font-size: 11px;
+  font-weight: 700;
+}

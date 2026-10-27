@@ -328,6 +328,7 @@ async function initializeDatabase() {
   await require('./server-atividades').install(pool);
   await require('./server-recorrencias').install(pool);
   await require('./server-desafio').install(pool);
+  await require('./server-reserva-solicitacoes').install(pool);
   await require('./finance-audit').installFinanceAudit(pool);
   await require('./casa-produtos-api').install(pool);
 
@@ -6007,6 +6008,7 @@ const goals = require('./server-metas').createGoals({pool, requireUser, requireA
 const imports = require('./server-importacao').create({pool,requireUser,sendJson,readBody,getTodayLocal});
 const activities = require('./server-atividades').create({pool,requireUser,requireAdmin,sendJson,readBody,getTodayLocal});
 const challenge = require('./server-desafio').create({pool,requireUser,requireAdmin,sendJson,readBody,getTodayLocal});
+const challengeRequests = require('./server-reserva-solicitacoes').create({pool,requireUser,requireAdmin,sendJson,readBody,getTodayLocal});
 const categories = require('./server-recorrencias').create({pool,requireUser,requireAdmin,sendJson,getTodayLocal});
 const scheduling = require('./agendamentos-api').createScheduling({pool, requireUser, requireAdmin, readBody, sendJson});
 
@@ -6026,6 +6028,7 @@ async function handleApiInternal(
     return;
   }
 
+  if (await challengeRequests.handle(req,res,url) !== false) return;
   if (await products.handle(req,res,url) !== false) return;
   if (!await products.gate(req,res,url)) return;
   if (!await challenge.guard(req,res,url)) return;
@@ -6224,7 +6227,7 @@ function serveStatic(
         }
 
         const adminVisibilityScript = `
-<script defer src="/agendamentos-menu.js?v=modalidades2"></script>
+<script defer src="/agendamentos-menu.js?v=modalidades3-reserva"></script>
 <script data-rota-admin-visibility>
 (async function(){
   try {
