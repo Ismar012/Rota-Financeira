@@ -2,7 +2,7 @@
 const division=require('./casa-divisao');
 const iso=v=>v instanceof Date?v.toISOString().slice(0,10):String(v||'').slice(0,10);
 const today=()=>{const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const g=t=>p.find(x=>x.type===t).value;return `${g('year')}-${g('month')}-${g('day')}`;};
-function occurrences(first,now=today()) {const start=iso(first);let [y,m,day]=start.split('-').map(Number);const end=new Date(now+'T12:00:00Z');end.setUTCMonth(end.getUTCMonth()+3,1);const result=[];for(let n=y*12+m-1;n<=end.getUTCFullYear()*12+end.getUTCMonth();n++){const yy=Math.floor(n/12),mm=n%12;const last=new Date(Date.UTC(yy,mm+1,0)).getUTCDate();const due=`${yy}-${String(mm+1).padStart(2,'0')}-${String(Math.min(day,last)).padStart(2,'0')}`;if(due>=start)result.push(due);}return result;}
+function occurrences(first,now=today(),monthsAhead=3) {const start=iso(first);let [y,m,day]=start.split('-').map(Number);const end=new Date(now+'T12:00:00Z');end.setUTCMonth(end.getUTCMonth()+monthsAhead,1);const result=[];for(let n=y*12+m-1;n<=end.getUTCFullYear()*12+end.getUTCMonth();n++){const yy=Math.floor(n/12),mm=n%12;const last=new Date(Date.UTC(yy,mm+1,0)).getUTCDate();const due=`${yy}-${String(mm+1).padStart(2,'0')}-${String(Math.min(day,last)).padStart(2,'0')}`;if(due>=start)result.push(due);}return result;}
 async function install(pool){await pool.query(`
  CREATE TABLE IF NOT EXISTS house_people(user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,my_name VARCHAR(80) NOT NULL,other_name VARCHAR(80) NOT NULL);
  CREATE TABLE IF NOT EXISTS house_recurring(id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,description VARCHAR(160) NOT NULL,total_cents INTEGER NOT NULL CHECK(total_cents>=2),first_due DATE NOT NULL,active BOOLEAN NOT NULL DEFAULT TRUE);
@@ -37,6 +37,13 @@ function create({pool,readBody,sendJson,expense}){
  const validate=b=>{try{return expense(b);}catch(e){e.status=400;throw e;}};
  return async function handle(req,res,url,uid){const reply=(d,s=200)=>sendJson(res,s,d),fail=message=>{throw Object.assign(Error(message),{status:400});};
  try{return await transaction(pool,uid,async c=>{
+ if(url==='/api/house/entries'&&req.method==='DELETE'){
+ // Registros de casa e suas projeções são limpos em uma única transação.
+ const recurring=await c.query('UPDATE house_recurring SET active=FALSE WHERE user_id=$1 AND active=TRUE',[uid]);
+ const expenses=await c.query('UPDATE house_expenses SET deleted=TRUE WHERE user_id=$1 AND deleted=FALSE',[uid]);
+ const settlements=await c.query('DELETE FROM house_settlements WHERE user_id=$1',[uid]);
+ return {ok:true,expenses:expenses.rowCount,settlements:settlements.rowCount,recurring:recurring.rowCount};
+ }
  if(url==='/api/house/people'&&req.method==='POST'){
  await division.save(c,uid,await readBody(req),today());return {ok:true};
  }
@@ -48,7 +55,14 @@ function create({pool,readBody,sendJson,expense}){
  const balance=movements.filter(x=>x.date.slice(0,7)===month).reduce((n,x)=>n+x.delta,0);
  const previousBalance=movements.filter(x=>x.date.slice(0,7)<month).reduce((n,x)=>n+x.delta,0);
  const members=await division.members(c,uid),group=division.balances(e.rows,s.rows,members,month);const people={my_name:members.find(p=>p.id==='me')?.name||'Eu',other_name:members.find(p=>p.id!=='me')?.name||'Outra pessoa'};
- return {people,members:group.members,transfers:group.transfers,month,expenses:e.rows.filter(x=>x.due_date.slice(0,7)===month),settlements:s.rows.filter(x=>x.day.slice(0,7)===month),recurring:r.rows,balance,previousBalance,closingBalance:previousBalance+balance};
+ const pending=e.rows.filter(x=>!x.paid).sort((a,b)=>a.due_date.localeCompare(b.due_date)||Number(a.id)-Number(b.id));
+ const paidByPerson=new Map(); for(const item of e.rows.filter(x=>x.paid&&x.day.slice(0,7)===month)) for(const p of item.allocations||division.legacy(item)) paidByPerson.set(p.id,(paidByPerson.get(p.id)||0)+Number(p.paid_cents||0));
+ const months=[],current=today().slice(0,7); for(let i=0;i<12;i++){const date=new Date(Date.UTC(Number(current.slice(0,4)),Number(current.slice(5,7))-1+i,1));months.push({month:date.toISOString().slice(0,7),paid:0,pending:0});}
+ const series=new Map(months.map(x=>[x.month,x])); for(const x of e.rows){const bin=series.get(x.due_date.slice(0,7));if(bin)bin[x.paid?'paid':'pending']+=Number(x.total_cents);}
+ // Contas fixas ainda não geradas são projetadas só no gráfico; não criam lançamentos.
+ const known=await c.query('SELECT recurring_id,due_date::text AS due_date FROM house_expenses WHERE user_id=$1 AND recurring_id IS NOT NULL',[uid]); const seen=new Set(known.rows.map(x=>`${x.recurring_id}:${x.due_date}`));
+ for(const x of r.rows)for(const due of occurrences(x.first_due,today(),11)){const bin=series.get(due.slice(0,7));if(bin&&!seen.has(`${x.id}:${due}`))bin.pending+=Number(x.total_cents);}
+ return {people,members:group.members,transfers:group.transfers,month,expenses:e.rows.filter(x=>x.due_date.slice(0,7)===month),settlements:s.rows.filter(x=>x.day.slice(0,7)===month),recurring:r.rows,balance,previousBalance,closingBalance:previousBalance+balance,pending:pending.slice(0,3),monthlyExpenses:months,paidByPerson:[...paidByPerson].map(([id,amount])=>({id,amount}))};
  }
  if(url==='/api/house'&&req.method==='POST'){
  const b=await readBody(req),e=validate({...b,payer:b.payer||'both'}),paid=b.paid!==false;const ids=(await division.members(c,uid)).filter(p=>p.active!==false).map(p=>p.id);const equal=b.equal_paid===true||(!Array.isArray(b.payments)&&(!b.payer||b.payer==='both'));const allocation=await division.allocate(c,uid,e.total,ids,e.day,division.payments(b,ids,e.total,paid),paid,equal),mine=allocation.find(p=>p.id==='me');

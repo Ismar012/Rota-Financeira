@@ -135,7 +135,7 @@
     return `<section class="rf-view-list-card"><div class="rf-view-list-heading"><div><h2>${type === 'expense' ? 'Despesas do mês' : 'Ganhos do mês'}</h2><p>Consulte ou altere os lançamentos deste período.</p></div><div class="rf-view-list-filters"><input type="search" id="${searchId}" placeholder="Buscar lançamento" aria-label="Buscar lançamento"><select id="${filterId}" aria-label="Filtrar situação"><option value="all">Todas as situações</option><option value="paid">${type === 'expense' ? 'Pagas' : 'Recebidos'}</option><option value="pending">Pendentes</option></select></div></div><div class="rf-view-table-scroll"><table class="rf-view-table"><thead><tr><th>Data efetiva / prevista</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Situação</th><th>Ações</th></tr></thead><tbody id="rfEntriesRows-${type}">${entries.length ? entries.map(entry => {
       const paid = isPaid(entry);
       const action = paid ? `undo-${type==='income'?'receive':'pay'}` : (type==='income'?'receive':'pay');
-      return `<tr data-type="${type}" data-id="${Number(entry.id)}" data-paid="${paid?'paid':'pending'}" data-name="${esc(`${entry.name} ${entry.financial_category||''}`.toLowerCase())}"><td>${fmtDate(isPaid(entry) ? effectiveDate(entry) : entry.due_date)}</td><td>${esc(entry.name)}</td><td>${esc(entry.financial_category || 'Outros')}</td><td class="rf-view-money">${fmt(entry.amount)}</td><td><span class="rf-view-status ${paid?'is-paid':'is-pending'}">${paid?(type==='income'?'Recebido':'Paga'):'Pendente'}</span></td><td><div class="rf-view-row-actions"><button type="button" data-rf-entry-action="${action}" data-id="${Number(entry.id)}">${paid?'Desfazer confirmação':(type==='income'?'Confirmar recebimento':'Confirmar pagamento')}</button><button type="button" data-rf-entry-action="edit" data-id="${Number(entry.id)}">Editar</button></div></td></tr>`;
+      return `<tr data-type="${type}" data-id="${Number(entry.id)}" data-paid="${paid?'paid':'pending'}" data-name="${esc(`${entry.name} ${entry.financial_category||''}`.toLowerCase())}"><td>${fmtDate(isPaid(entry) ? effectiveDate(entry) : entry.due_date)}</td><td>${esc(entry.name)}</td><td>${esc(entry.financial_category || 'Outros')}</td><td class="rf-view-money">${fmt(entry.amount)}</td><td><span class="rf-view-status ${paid?'is-paid':'is-pending'}">${paid?(type==='income'?'Recebido':'Paga'):'Pendente'}</span></td><td><div class="rf-view-row-actions">${entry.house_expense_id ? '<a href="/resumo-casa.html">Gerenciar em Despesas da casa</a>' : entry.challenge_reserve ? '<a href="/desafio.html">Gerenciar na Reserva da Liberdade</a>' : `<button type="button" data-rf-entry-action="${action}" data-id="${Number(entry.id)}">${paid?'Desfazer confirmação':(type==='income'?'Confirmar recebimento':'Confirmar pagamento')}</button><button type="button" data-rf-entry-action="edit" data-id="${Number(entry.id)}">Editar</button>`}</div></td></tr>`;
     }).join('') : `<tr><td colspan="6">Não há lançamentos ${type==='income'?'de receita':'de despesa'} neste período.</td></tr>`}</tbody></table></div></section>`;
   }
   function renderExpense(summary) {
@@ -244,6 +244,7 @@
     if (entryButton) {
       const source = document.querySelector(`#entriesList [data-action="${CSS.escape(entryButton.dataset.rfEntryAction)}"][data-id="${Number(entryButton.dataset.id)}"]`);
       if (source) source.click();
+      else window.alert("Este lançamento foi atualizado. Recarregue a página e tente novamente.");
     }
   });
   root.addEventListener('input', event => {
@@ -264,7 +265,7 @@
       });
     }
   }
-  document.addEventListener('rota-summary-loaded', event => refresh(event.detail?.month));
+  document.addEventListener('rota-summary-loaded', event => { if (event.detail?.summary) { ++drawToken; currentMonth = event.detail.month; render(event.detail.summary); } else refresh(event.detail?.month); });
   document.addEventListener('rota-goal', () => window.setTimeout(attachMetaPanel, 0));
   document.addEventListener('rota-content-error', () => { body.innerHTML = '<p class="rf-view-error">Não foi possível carregar os dados. Verifique sua conexão e tente novamente.</p>'; });
   const sourceObserver = new MutationObserver(attachMetaPanel);

@@ -161,3 +161,23 @@
   .rf-bulk-card{max-height:calc(100dvh - 12px)}
 }
 @media(prefers-reduced-motion:reduce){.rf-household-page *, .rf-dialog *{transition:none!important}}
+
+/* Menu de opções da área da casa */
+.house-options{position:relative;align-self:end;z-index:20}
+.house-options summary{display:grid;place-items:center;width:42px;height:42px;border:1px solid rgba(255,255,255,.18);border-radius:7px;background:#08090b;color:#f6d675;font-size:24px;line-height:1;cursor:pointer;list-style:none}
+.house-options summary::-webkit-details-marker{display:none}
+.house-options summary:focus-visible{outline:2px solid #f6d675;outline-offset:2px}
+.house-options-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:235px;padding:6px;background:#171717;border:1px solid rgba(217,169,40,.4);border-radius:8px;box-shadow:0 8px 24px #0009}
+.house-options-menu button{width:100%;padding:11px;text-align:left;background:transparent;border:0;border-radius:5px;color:#fff;font:inherit;cursor:pointer}
+.house-options-menu button:hover{background:#302817}
+
+/* Resumo de casa: ações e gráficos no padrão do planejamento. */
+.rf-house-main .grid.house-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+.house-quick-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+.house-quick-actions button{display:flex;gap:13px;align-items:center;text-align:left;background:#101820;border:1px solid #273a4a;border-radius:11px;color:#edf3fa;padding:16px;font:inherit;cursor:pointer;min-width:0}
+.house-quick-actions button:hover{border-color:#d9a928}.house-quick-actions button>span{display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:9px;background:#25230f;border:1px solid #6b5823;color:#e5bd50;font-size:22px}
+.house-quick-actions strong,.house-quick-actions small{display:block}.house-quick-actions small{color:#a5b5c6;margin-top:4px}
+.rf-house-main .house-pending,.rf-house-main .house-graphs .card,.rf-house-main .house-disclosure{background:#101820;border:1px solid #293a4a;border-radius:11px}
+.house-pending{margin:0 0 16px}.house-pending>p,.house-graphs p{font-size:13px}.house-pending-row{display:grid;grid-template-columns:minmax(120px,2fr) minmax(80px,1fr) minmax(90px,1fr) auto;align-items:center;gap:14px;border-top:1px solid #293a4a;padding:14px 0}.house-pending-row strong{font-size:14px!important;margin:0!important}.house-pending-row small{margin-top:3px}.house-pending-actions{display:flex;gap:6px}.house-pending-actions button{padding:9px 11px;background:#111820;color:#ebeff4;border:1px solid #405062;border-radius:5px;cursor:pointer}.house-pending-actions button:first-child{background:#e1b548;color:#14100a;border-color:#e1b548}.house-pending>.house-secondary-button{margin-top:12px}
+.house-graphs{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px}.house-chart{height:280px;position:relative}.house-legend-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #293a4a}.house-legend-row strong{font-size:13px!important;margin:0!important}.house-disclosure{margin-bottom:16px;padding:18px}.house-disclosure>summary{cursor:pointer;color:#e9c259;font-weight:bold}.house-disclosure[open]>summary{margin-bottom:14px}.house-settlement-details .house-settlement{margin-top:12px}
+@media(max-width:700px){.house-quick-actions,.house-graphs{grid-template-columns:1fr}.house-pending-row{grid-template-columns:1fr 1fr}.house-pending-actions{grid-column:1/-1}.house-chart{height:240px}.rf-house-main .grid.house-metrics{grid-template-columns:1fr}}
