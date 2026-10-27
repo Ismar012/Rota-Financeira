@@ -139,3 +139,27 @@ body.rf-app-shell{background:#030405;color:#fff}
 /* O container da tela inicial usa o espaço útil; o respiro lateral vem do próprio main. */
 .rf-app-shell.client-home .dashboard-home-container{width:100%;max-width:1600px;margin-inline:auto}
 @media(max-width:600px){.rf-app-shell .dashboard-home.page{padding-left:14px!important;padding-right:14px!important}.rf-app-shell.client-home .dashboard-home-container{width:100%}}
+
+
+/* Navegação de retorno discreta para páginas secundárias. */
+.rf-app-shell .rf-back-link {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  margin: 0 0 8px;
+  padding: 0;
+  border: 1px solid #2a3a49;
+  border-radius: 10px;
+  color: #e8bd43;
+  background: #0b1118;
+  text-decoration: none;
+  font-size: 21px;
+  line-height: 1;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease;
+}
+.rf-app-shell .rf-back-link:hover { background: #171b20; border-color: #b18b2a; transform: translateX(-1px); }
+.rf-app-shell .rf-back-link:focus-visible { outline: 2px solid #f0c94d; outline-offset: 3px; }
+.rf-app-shell .rf-back-link span { display: block; margin-top: -1px; }
+@media (max-width: 600px) { .rf-app-shell .rf-back-link { width: 32px; height: 32px; min-height: 32px; } }

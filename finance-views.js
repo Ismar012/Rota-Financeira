@@ -51,13 +51,21 @@
     metas: 'Meta diária e acompanhamento de cada dia do mês.',
     relatorios: 'Resultados do período em gráficos e relatório financeiro consolidado.'
   })[view];
-  if (generalDownload) generalDownload.hidden = true;
+  if (generalDownload) {
+    generalDownload.hidden = true;
+    generalDownload.style.setProperty('display', 'none', 'important');
+  }
 
   function hidePlanningSiblings() {
+    // Os resumos e atalhos antigos do planejamento ficam somente na aba principal.
+    // Algumas regras de display dos cartões sobrepunham o atributo [hidden], então
+    // aplicamos display:none!important enquanto uma visão dedicada está ativa.
     [...container.children].forEach(node => {
       if (node !== head && node !== root) {
         node.hidden = true;
         node.setAttribute('data-hidden-for-finance-view', 'true');
+        node.setAttribute('aria-hidden', 'true');
+        node.style.setProperty('display', 'none', 'important');
       }
     });
   }
