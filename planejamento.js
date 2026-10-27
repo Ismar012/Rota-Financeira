@@ -281,6 +281,7 @@ const filteredEntries = state.entries.filter((entry) => {
     const status = isIncome ? (paid ? 'Recebido' : 'Pendente') : (paid ? 'Pago' : 'Pendente');
     const date = entry.due_date ? dateFormatter.format(new Date(`${entry.due_date}T00:00:00`)) : '—';
 
+    const linkedArea = entry.house_expense_id ? 'house' : (entry.challenge_reserve ? 'challenge' : (entry.rest_day_id ? 'rest' : ''));
     const action = paid
       ? `<button type="button" class="secondary-btn entry-status-btn" data-action="undo-${isIncome ? 'receive' : 'pay'}" data-id="${entry.id}">${isIncome ? 'Desfazer recebimento' : 'Desfazer pagamento'}</button>`
       : `<button type="button" class="secondary-btn entry-status-btn" data-action="${isIncome ? 'receive' : 'pay'}" data-id="${entry.id}">${isIncome ? 'Confirmar recebimento' : 'Confirmar pagamento'}</button>`;
@@ -301,10 +302,10 @@ const filteredEntries = state.entries.filter((entry) => {
         </span>
 
         <div class="entry-actions">
-          ${action}
-          <button type="button" class="secondary-btn" data-action="edit" data-id="${entry.id}">Editar</button>
+          ${linkedArea === 'house' ? '<a href="/resumo-casa.html">Gerenciar em Despesas da casa</a>' : linkedArea === 'challenge' ? '<a href="/desafio.html">Gerenciar na Reserva da Liberdade</a>' : action}
+          ${linkedArea === 'house' || linkedArea === 'challenge' ? '' : `<button type="button" class="secondary-btn" data-action="edit" data-id="${entry.id}">Editar</button>
           <button type="button" class="secondary-btn danger" data-action="delete" data-id="${entry.id}">Excluir</button>
-          ${!isIncome && ['fixed','installment','weekly','fortnightly'].includes(entry.recurrence_type) && entry.series_id ? `<button type="button" class="secondary-btn danger" data-action="delete-future" data-id="${entry.id}">Excluir próximas</button>` : ''}
+          ${!isIncome && ['fixed','installment','weekly','fortnightly'].includes(entry.recurrence_type) && entry.series_id ? `<button type="button" class="secondary-btn danger" data-action="delete-future" data-id="${entry.id}">Excluir próximas</button>` : ''}`}
         </div>
       </article>`;
   }).join('');
@@ -477,7 +478,7 @@ const filteredEntries = state.entries.filter((entry) => {
       openRequestedConfirmation();
       renderRestDays();
       renderChart(state.data);
-      document.dispatchEvent(new CustomEvent('rota-summary-loaded',{detail:{month:state.month}}));
+      document.dispatchEvent(new CustomEvent('rota-summary-loaded',{detail:{month:state.month, summary:data}}));
       feedback('');
     } catch (error) {
       if (error.status === 401 || error.status === 403) {
@@ -1274,12 +1275,14 @@ $('closeConfirmDateModal')?.addEventListener('click', () => {
   $('menuDeleteAll')?.addEventListener('click', async (event) => {
     event.stopPropagation();
     hideMenus();
-    if (!window.confirm('Excluir TODOS os seus lançamentos de todos os meses? Ganhos e despesas serão apagados e as despesas recorrentes serão interrompidas. Lançamentos vinculados a descanso, casa, metas ou desafio serão preservados e devem ser gerenciados nas respectivas áreas. Esta ação não pode ser desfeita.')) return;
+    if (!window.confirm('Excluir as despesas do planejamento de todos os meses? As despesas recorrentes serão interrompidas. Os ganhos serão mantidos. Lançamentos vinculados a descanso, casa ou desafio serão preservados e devem ser gerenciados nas respectivas áreas. Esta ação não pode ser desfeita.')) return;
     if (window.prompt('Para confirmar, digite EXCLUIR:') !== 'EXCLUIR') return;
     try {
       const result = await api('/api/finance/entries', { method: 'DELETE' });
       await loadSummary();
-      feedback(`${result.deletedCount} lançamento(s) excluído(s). ${result.protectedCount} vinculado(s) a outras áreas foram preservados.`, 'success');
+      const message = `${result.deletedCount} despesa(s) excluída(s). ${result.protectedCount} vinculado(s) a descanso, casa ou desafio foram preservados e devem ser gerenciados nas respectivas áreas.`;
+      feedback(message, 'success');
+      window.alert(message);
     } catch (error) {
       if (error.status === 401 || error.status === 403) { window.location.href = '/login.html'; return; }
       feedback(error.message, 'error');
@@ -1325,6 +1328,7 @@ $('closeConfirmDateModal')?.addEventListener('click', () => {
     const entry = state.entries.find((item) => Number(item.id) === id);
     if (!entry) return;
 
+    if (entry.rest_day_id && (action === 'delete' || action === 'edit')) { window.alert('Este lançamento está ligado a um dia de descanso. Para alterá-lo ou excluí-lo, use Gerenciar dias de descanso no menu.'); return; }
     if (action === 'edit') return editEntry(entry);
     if (action === 'delete') return deleteEntry(id);
     if (action === 'delete-future') return deleteFutureEntries(entry);

@@ -4,11 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Resumo de casa | Rota Financeira</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="/casa-produtos.css?v=20261026-house-v4">
   <link rel="stylesheet" href="/app-shell.css?v=20261027-toolbar-support3">
   <link rel="stylesheet" href="/transicoes.css?v=20261021-3">
   <link rel="stylesheet" href="/refinamento.css?v=20261021-3">
-  <link rel="stylesheet" href="/casa-layout.css?v=20261026-layout2">
+  <link rel="stylesheet" href="/casa-layout.css?v=20261027-graficos4">
   <link rel="stylesheet" href="/finance-views.css?v=20261027-views3">
 </head>
 <body class="rf-app-shell rf-household-page">
@@ -28,6 +29,10 @@
       </div>
       <div class="house-header-tools">
         <label class="house-month-field" for="houseMonth">Mês de referência<input id="houseMonth" type="month"></label>
+        <details class="house-options" id="houseOptions">
+          <summary aria-label="Mais opções da casa">⋮</summary>
+          <div class="house-options-menu"><button type="button" id="clearHouseEntries">Limpar lançamentos da casa</button></div>
+        </details>
         <button type="button" id="downloadHouseReport" class="rf-view-primary">Baixar resumo da casa</button>
       </div>
     </div>
@@ -40,7 +45,7 @@
         <strong id="total">—</strong>
         <small>Pagas e previstas com vencimento neste mês</small>
       </article>
-      <article class="card">
+      <article class="card" hidden style="display:none">
         <small>Minha parte no mês</small>
         <strong id="share">—</strong>
         <small>Incluída automaticamente no planejamento</small>
@@ -52,6 +57,26 @@
       </article>
     </section>
 
+    <section class="house-quick-actions" aria-label="Ações da casa">
+      <button type="button" id="openExpenseModal"><span>＋</span><div><strong>Cadastrar despesa</strong><small>Registre uma conta da casa</small></div></button>
+      <button type="button" id="openBulkHouseExpense"><span>＋</span><div><strong>Cadastrar em massa</strong><small>Registre várias contas</small></div></button>
+      <button type="button" id="openSettleModal"><span>↔</span><div><strong>Cadastrar acerto</strong><small>Registre uma devolução</small></div></button>
+    </section>
+    <section class="card house-pending" aria-labelledby="housePendingTitle">
+      <h2 id="housePendingTitle">Pendências para confirmar</h2>
+      <p>As três contas pendentes com vencimento mais antigo.</p>
+      <div id="housePendingList"></div>
+      <button type="button" id="houseSeeAll" class="house-secondary-button">Ver todos os lançamentos</button>
+    </section>
+    <section class="house-graphs" aria-label="Gráficos das despesas da casa">
+      <article class="card"><div class="eyebrow">EVOLUÇÃO</div><h2>Despesas mês a mês</h2><p>Do mês atual aos próximos 11 meses. Contas fixas futuras são projetadas.</p><div class="house-chart"><canvas id="houseMonthlyChart" aria-label="Despesas pagas e previstas mês a mês" role="img"></canvas></div><p id="houseChartError" hidden>Não foi possível carregar o gráfico.</p></article>
+      <article class="card"><h2>Despesas pagas por pessoa</h2><p>Valor efetivamente pago por cada pessoa no mês selecionado.</p><div class="house-chart"><canvas id="housePeopleChart" aria-label="Despesas pagas por pessoa" role="img"></canvas><p id="housePieEmpty" hidden>Nenhum pagamento confirmado neste mês.</p></div><div id="housePeopleLegend"></div></article>
+    </section>
+    <details id="houseAllEntries" class="card house-disclosure"><summary>Consultar todos os lançamentos</summary>
+      <p>Despesas pelo mês de vencimento e devoluções pela data de registro.</p><div id="entries" class="rf-house-list"></div>
+      <h2 class="house-month-list-title">Contas fixas ativas</h2><div id="recurringEntries" class="rf-house-list"></div>
+    </details>
+    <details class="house-disclosure house-settlement-details"><summary>Consultar acertos entre pessoas</summary>
     <section class="house-settlement card" aria-labelledby="settlementHeading">
       <div class="house-section-heading">
         <div>
@@ -67,44 +92,8 @@
       <div id="transfers" class="rf-transfers"></div>
     </section>
 
-    <div class="split house-workspace">
-      <section class="house-actions-column" aria-label="Ações da casa">
-        <article class="card house-action-card">
-          <div class="house-action-heading">
-            <span class="house-action-symbol" aria-hidden="true">＋</span>
-            <div>
-              <h2>Registrar despesa da casa</h2>
-              <p>Cadastre uma conta ou lance várias de uma vez.</p>
-            </div>
-          </div>
-          <div class="house-action-buttons">
-            <button type="button" id="openExpenseModal" class="primary">Lançar uma despesa</button>
-            <button type="button" id="openBulkHouseExpense" class="house-secondary-button">Lançar em massa</button>
-          </div>
-        </article>
+    </details>
 
-        <article class="card house-action-card">
-          <div class="house-action-heading">
-            <span class="house-action-symbol" aria-hidden="true">↔</span>
-            <div>
-              <h2>Registrar devolução</h2>
-              <p>Registre quando alguém devolver um valor para outra pessoa.</p>
-            </div>
-          </div>
-          <div class="house-action-buttons">
-            <button type="button" id="openSettleModal" class="primary">Registrar devolução</button>
-          </div>
-        </article>
-      </section>
-
-      <section class="card house-ledger-column" aria-label="Contas fixas e movimentações">
-        <h2>Contas fixas ativas</h2>
-        <div id="recurringEntries" class="rf-house-list"></div>
-        <h2 class="house-month-list-title">Despesas e devoluções do mês</h2>
-        <p>Despesas pelo mês de vencimento. Acertos e devoluções pela data efetiva do pagamento.</p>
-        <div id="entries" class="rf-house-list"></div>
-      </section>
-    </div>
   </main>
 
   <dialog id="expenseDialog" class="rf-dialog" aria-labelledby="expenseDialogTitle">
@@ -201,7 +190,7 @@
     </section>
   </dialog>
 
-  <script src="/resumo-casa.js?v=20261027-views3"></script>
+  <script src="/resumo-casa.js?v=20261027-graficos4"></script>
   <script src="/tutorial.js?v=20261027-views3"></script>
   <script src="/transicoes.js?v=20261021-3"></script>
   <script src="/refinamento.js?v=20261021-3"></script>

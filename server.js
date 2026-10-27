@@ -3298,17 +3298,16 @@ async function handleFinanceApi(
   const userId =
     Number(user.id);
 
-  // Limpeza integral da própria conta, incluindo séries recorrentes.
+  // Limpeza de despesas próprias do planejamento, incluindo séries recorrentes.
   if (req.method === 'DELETE' && url === '/api/finance/entries') {
     try {
       await db.exec('BEGIN');
       await db.prepare('UPDATE expense_schedules SET active=FALSE WHERE user_id=?').run(userId);
-      const removed = await db.prepare(`DELETE FROM finance_entries f WHERE f.user_id=?
+      const removed = await db.prepare(`DELETE FROM finance_entries f WHERE f.user_id=? AND f.type='expense'
         AND f.rest_day_id IS NULL AND f.house_expense_id IS NULL
         AND NOT EXISTS (SELECT 1 FROM challenge_deposits d WHERE d.entry_id=f.id)
-        AND NOT EXISTS (SELECT 1 FROM goal_regularizations g WHERE g.entry_id=f.id)
         RETURNING f.id`).all(userId);
-      const protectedEntries = await db.prepare('SELECT COUNT(*) AS total FROM finance_entries WHERE user_id=?').get(userId);
+      const protectedEntries = await db.prepare("SELECT COUNT(*) AS total FROM finance_entries WHERE user_id=? AND type='expense'").get(userId);
       await db.exec('COMMIT');
       return sendJson(res, 200, { deletedCount: removed.length, protectedCount: Number(protectedEntries.total) });
     } catch (error) {
@@ -5087,6 +5086,8 @@ if (
 
     await ensureAllFixedSeries(userId);
     await require('./server-recorrencias').ensure(pool,userId,getTodayLocal());
+    // Sincroniza a origem antes de montar a lista para não devolver IDs antigos.
+    await require('./casa-ledger').transaction(pool, userId);
 
     /*
       Lista exibida ao cliente:
@@ -5107,6 +5108,8 @@ if (
             paid_at,
             paid_date,
             rest_day_id,
+            house_expense_id,
+            challenge_reserve,
             recurrence_type,
             series_id,
             installment_number,
