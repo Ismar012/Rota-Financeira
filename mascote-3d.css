@@ -1,0 +1,40 @@
+
+/* V7: cenário panorâmico contínuo — sem moldura de vitrine, preserva a navegação. */
+body.rf-home, body.rf-login { background-color:#0b0b0e; }
+.rf-home .rf-hero, .rf-login .rf-login-main {
+  background-image: linear-gradient(90deg, rgba(3,4,7,.79) 0%,rgba(3,4,7,.51) 48%,rgba(3,4,7,.42) 100%), url('escritorio-panoramico.svg');
+  background-position: center center; background-size: cover; background-repeat: no-repeat;
+}
+.rf-home .rf-hero::before, .rf-login .rf-login-main::before { opacity:.07; }
+.rf-mascot-stage { isolation:auto; transform-style:flat; perspective:none; }
+.rf-mascot-stage::before, .rf-mascot-stage .rf-office-window,
+.rf-mascot-stage .rf-office-horizon,.rf-mascot-stage .rf-floor-grid,
+.rf-mascot-stage .rf-stage-orbit,.rf-mascot-stage .rf-stage-glint {display:none!important;}
+.rf-mascot-motion { z-index:2; transform:none!important; transition:none!important; pointer-events:none; }
+.rf-mascot-3d { display:block; width:100%; height:100%; background:transparent; filter:drop-shadow(0 14px 24px rgba(0,0,0,.36)); }
+.rf-mascot-static-fallback { position:absolute;display:block;object-fit:contain;object-position:center bottom;width:100%;height:100%;left:0;bottom:0;filter:drop-shadow(0 14px 25px #0008); }
+.rf-mascot-static-fallback[hidden] {display:none!important;}
+.rf-home-stage {min-height:555px;}
+.rf-login-stage { min-height:335px;}
+.rf-mascot-stage .rf-mascot-speech { right:0;top:8%;z-index:5; }
+.rf-login-stage .rf-mascot-speech {top:0;}
+.rf-mascot-stage .rf-stage-caption { z-index:5; }
+.rf-home .rf-hero-copy {background:linear-gradient(90deg,rgba(6,7,8,.22),transparent);}
+@media (max-width:900px){
+  .rf-home .rf-hero, .rf-login .rf-login-main {background-position: 52% center;}
+  .rf-home-stage {min-height:470px;}
+}
+@media (max-width:600px){
+  .rf-home .rf-hero, .rf-login .rf-login-main {background-position:58% center;}
+  .rf-home-stage{ min-height:375px;height:410px; }
+  .rf-login-stage{ min-height:320px;height:355px; }
+  .rf-mascot-stage .rf-mascot-speech { right:0;top:1%; }
+}
+/* Em telas estreitas, a fala fica perto dos pés, não em cima do rosto. */
+@media (max-width:600px) {
+  .rf-mascot-stage .rf-mascot-speech,
+  .rf-login-stage .rf-mascot-speech {
+    top:auto;bottom:16%;right:0;left:auto;width:min(218px,60%);
+  }
+  .rf-mascot-stage .rf-stage-caption {display:none;}
+}

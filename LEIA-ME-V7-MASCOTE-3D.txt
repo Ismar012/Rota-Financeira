@@ -1,0 +1,51 @@
+ROTA FINANCEIRA — V7 / MASCOTE WEBGL 3D — VERSÃO DE HOMOLOGAÇÃO
+==============================================================
+
+Base: arquivo Rota-Financeira-mascote-ajustado-v2(1).zip fornecido pelo usuário.
+
+O QUE MUDOU
+- index.html e login.html: carregam apenas um componente WebGL 3D no local do mascote.
+- mascote-3d.js: corpo 3D com cabeça, pescoço, tronco, braços e pernas articulados;
+  acompanha o cursor, respira suavemente, cumprimenta ao entrar e reage a CTA/campos do login.
+- mascotes/rosto-avatar-3d.png e terno-textura-3d.png: recortes do mascote original
+  aplicados como TEXTURAS sobre malhas volumétricas. Não são poses alternadas.
+- mascote-3d.css: integra o componente ao layout original, incluindo celular.
+- escritorio-panoramico.svg: ambiente panorâmico com janelas, cidade, piso e mesa.
+  É uma reconstrução gráfica inspirada no escritório da referência, NÃO a foto exata.
+
+LIMITAÇÕES IMPORTANTES
+- Este modelo é um avatar volumétrico WebGL 3D PROCEDURAL com texturas do mascote
+  original, não um escaneamento fotorrealista nem um modelo profissional de Blender
+  rigado. O aspecto de lado é aproximado; para fidelidade total seria necessário
+  modelar/rigar e texturizar um GLB especificamente para o personagem.
+- O navegador de validação disponível impediu o teste visual com WebGL ativado.
+  Validamos a sintaxe, a execução dos eventos com GPU simulado e a renderização
+  visual das páginas em modo seguro de contingência. A APARÊNCIA FINAL EM 3D E OS
+  GESTOS EM WEBGL PRECISAM SER HOMOLOGADOS EM CHROME/EDGE COM WEBGL ATIVO.
+- Quando WebGL2 estiver bloqueado pelo navegador, uma única foto original é
+  mostrada como fallback, sem trocar imagens. Isto evita personagem invisível.
+- Não testamos autenticação de produção nem funcionalidades financeiras contra
+  a API de Render; isso exige credenciais e um ambiente de testes autorizado.
+
+O QUE FOI PRESERVADO
+- Todos os arquivos do ZIP original, intactos exceto index.html e login.html.
+- server.js, package.json, banco, rotas, controles financeiros e administrativas.
+- A arquitetura das páginas de login e cadastro e endpoints originais.
+
+COMO TESTAR ANTES DE PUBLICAR
+1. Extraia todo o conteúdo em uma pasta, preservando os subdiretórios.
+2. Use o ambiente de desenvolvimento habitual da Rota Financeira.
+3. Abra a tela inicial e mova o cursor para ver a cabeça/corpo acompanhar.
+4. Passe o mouse no botão 'Começar minha rota' para ver o braço indicar a ação.
+5. Abra login.html, clique em e-mail e senha, e confira a resposta do personagem.
+6. Teste celular, navegação, login, logout, dados, metas e demais fluxos.
+7. Se aparecer foto estática, cheque suporte a WebGL2 no navegador e erros no console.
+8. Não publique na conta de produção sem confirmar o item 7 visualmente.
+
+ARQUIVOS ADICIONADOS
+- mascote-3d.js
+- mascote-3d.css
+- escritorio-panoramico.svg
+- mascotes/rosto-avatar-3d.png
+- mascotes/terno-textura-3d.png
+- LEIA-ME-V7-MASCOTE-3D.txt
