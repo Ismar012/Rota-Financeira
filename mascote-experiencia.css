@@ -774,3 +774,137 @@ body.rf-login {
     .rf-mascot-motion { transition: none !important; }
 }
 .rf-check-icon { display: inline-grid; width: 14px; height: 14px; place-items: center; border: 1px solid rgba(125, 220, 139, .45); border-radius: 50%; color: #8cda96; font-size: 9px; }
+
+
+/* Ajuste de legibilidade e presença do mascote — somente página inicial e login. */
+.rf-home .rf-nav-links > a:not(.btn) { font-size: 13px; }
+.rf-home .rf-nav .btn, .rf-login .rf-nav .btn { font-size: 13px; }
+.rf-brand-name { font-size: 18px; }
+.rf-brand-name strong { font-size: 14px; }
+.rf-eyebrow { font-size: 11px; }
+.rf-hero-lede { font-size: clamp(16px, 1.18vw, 18px); line-height: 1.75; }
+.rf-hero-actions .btn { font-size: 13px; }
+.rf-trial-note strong { font-size: 14px; }
+.rf-trial-note small { font-size: 12px; line-height: 1.5; }
+.rf-value-point strong { font-size: 13px; }
+.rf-value-point small { font-size: 12px; white-space: normal; line-height: 1.45; }
+.rf-speech-kicker { font-size: 10px; letter-spacing: 1px; }
+.rf-mascot-message { font-size: 14px; line-height: 1.55; }
+.rf-stage-caption strong { font-size: 12px; }
+.rf-stage-caption small { font-size: 11px; line-height: 1.45; }
+.rf-scroll-cue { font-size: 10px; }
+.rf-home-footerline { font-size: 11px; }
+
+/* A figura ocupa a altura útil do palco; a escala horizontal evita que pareça estreita. */
+.rf-home-stage .rf-mascot-figure {
+    height: 98%;
+    max-width: none;
+    transform: translate3d(-50%, 16px, 0) scale(1.16, 1.015);
+}
+.rf-home-stage .rf-mascot-figure[data-mascot-pose="pointing"] {
+    height: 91%;
+    max-width: none;
+}
+.rf-home-stage .rf-mascot-figure[data-mascot-pose="writing"] {
+    height: 86%;
+    bottom: 2%;
+}
+.rf-mascot-figure.is-active {
+    animation: rf-mascot-breathe-readable 5.2s ease-in-out infinite;
+}
+@keyframes rf-mascot-breathe-readable {
+    0%, 100% { transform: translate3d(-50%, 0, 0) rotateZ(-.25deg) scale(1.16, 1.015); }
+    50% { transform: translate3d(-50%, -8px, 0) rotateZ(.28deg) scale(1.17, 1.02); }
+}
+.rf-mascot-speech { width: min(290px, 51%); padding: 17px 19px 18px; }
+.rf-stage-caption { max-width: 310px; padding: 12px 15px; }
+.rf-caption-mark { width: 34px; height: 34px; font-size: 13px; }
+
+/* Login: textos e controles maiores e confortáveis para leitura em desktop. */
+.rf-login-overline { font-size: 11px; }
+.rf-login-showcase h1 { font-size: clamp(40px, 4.25vw, 62px); }
+.rf-login-intro { font-size: 16px; line-height: 1.7; }
+.rf-login-benefit strong { font-size: 13px; }
+.rf-login-benefit small { font-size: 12px; line-height: 1.45; }
+.rf-login-stage .rf-mascot-figure { height: 98%; max-width: none; }
+.rf-login-stage .rf-mascot-figure[data-mascot-pose="pointing"] { height: 91%; max-width: none; }
+.rf-login-stage .rf-mascot-figure[data-mascot-pose="writing"] { height: 84%; bottom: 2%; }
+.rf-login-stage .rf-mascot-speech { width: min(270px, 46%); padding: 14px 16px 15px; }
+.rf-login-stage .rf-mascot-message { font-size: 13px; }
+.rf-login-stage .rf-stage-caption strong { font-size: 12px; }
+.rf-login-stage .rf-stage-caption small { font-size: 11px; }
+.rf-login-reassurance { font-size: 12px; }
+.rf-auth-card { max-width: 490px; padding: clamp(27px, 3vw, 40px); }
+.rf-auth-card-top { font-size: 10px; letter-spacing: .9px; }
+.rf-auth-lock { width: 28px; height: 28px; }
+.rf-auth-status { font-size: 9px; letter-spacing: .5px; }
+.rf-auth-logo { width: 67px; height: 57px; }
+.rf-auth-card h2 { font-size: 29px; }
+.rf-auth-card .auth-sub { font-size: 14px; line-height: 1.5; }
+.rf-auth-card .rf-field > label { font-size: 12px; letter-spacing: .8px; }
+.rf-input-shell { min-height: 54px; }
+.rf-input-shell input { font-size: 16px; }
+.rf-remember { font-size: 12px; }
+.rf-auth-options > a { font-size: 12px; }
+.rf-auth-card .rf-submit-btn { min-height: 56px; font-size: 14px; }
+.rf-login-feedback { font-size: 12px; line-height: 1.45; }
+.rf-auth-divider { font-size: 9px; letter-spacing: 1px; }
+.rf-auth-card .rf-create-account { min-height: 48px; font-size: 13px; }
+.rf-auth-foot { font-size: 11px; line-height: 1.55; }
+.rf-auth-card .rf-back-home a { font-size: 12px; }
+
+@media (max-width: 1100px) {
+    .rf-mascot-speech { width: min(260px, 54%); }
+    .rf-login-stage .rf-mascot-speech { width: min(245px, 48%); }
+}
+@media (max-width: 900px) {
+    .rf-home .rf-nav-links > a:not(.btn) { font-size: 13px; }
+    .rf-home-stage .rf-mascot-figure { height: 96%; }
+    .rf-login-stage .rf-mascot-figure { height: 96%; }
+    .rf-auth-card { width: 100%; }
+}
+@media (max-width: 600px) {
+    .rf-brand-name { font-size: 15px; }
+    .rf-brand-name strong { font-size: 11px; }
+    .rf-home .rf-nav .btn, .rf-login .rf-nav .btn { font-size: 11px; }
+    .rf-eyebrow { font-size: 10px; letter-spacing: .7px; }
+    .rf-hero-lede { font-size: 16px; }
+    .rf-hero-actions .btn { font-size: 14px; }
+    .rf-trial-note strong { font-size: 13px; }
+    .rf-trial-note small { font-size: 12px; }
+    .rf-value-point strong { font-size: 12px; }
+    .rf-value-point small { font-size: 11px; }
+    .rf-home-stage .rf-mascot-figure { height: 92%; transform: translate3d(-50%, 16px, 0) scale(1.13, 1.01); }
+    .rf-home-stage .rf-mascot-figure.is-active { animation-name: rf-mascot-breathe-mobile; }
+    @keyframes rf-mascot-breathe-mobile {
+        0%, 100% { transform: translate3d(-50%, 0, 0) rotateZ(-.2deg) scale(1.13, 1.01); }
+        50% { transform: translate3d(-50%, -5px, 0) rotateZ(.2deg) scale(1.14, 1.015); }
+    }
+    .rf-speech-kicker { font-size: 9px; }
+    .rf-mascot-message { font-size: 12px; }
+    .rf-stage-caption strong { font-size: 11px; }
+    .rf-stage-caption small { font-size: 10px; }
+    .rf-home-footerline { font-size: 9px; letter-spacing: .8px; }
+    .rf-login-overline { font-size: 10px; }
+    .rf-login-showcase h1 { font-size: clamp(36px, 9.2vw, 46px); }
+    .rf-login-intro { font-size: 15px; }
+    .rf-login-benefit strong { font-size: 12px; }
+    .rf-login-benefit small { font-size: 11px; }
+    .rf-login-stage { height: 350px; min-height: 340px; }
+    .rf-login-stage .rf-mascot-figure { height: 91%; }
+    .rf-login-stage .rf-mascot-speech { width: 55%; padding: 10px 11px; }
+    .rf-login-stage .rf-mascot-message { font-size: 11px; }
+    .rf-login-reassurance { font-size: 11px; }
+    .rf-auth-card-top { font-size: 9px; }
+    .rf-auth-status { font-size: 8px; }
+    .rf-auth-card h2 { font-size: 25px; }
+    .rf-auth-card .auth-sub { font-size: 13px; }
+    .rf-auth-card .rf-field > label { font-size: 11px; }
+    .rf-input-shell input { font-size: 16px; }
+    .rf-remember { font-size: 11px; }
+    .rf-auth-options > a { font-size: 11px; }
+    .rf-auth-card .rf-submit-btn { font-size: 14px; }
+    .rf-auth-divider { font-size: 9px; }
+    .rf-auth-card .rf-create-account { font-size: 13px; }
+    .rf-auth-foot { font-size: 11px; }
+}
