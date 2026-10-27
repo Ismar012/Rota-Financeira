@@ -1,88 +1,80 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+    <meta name="theme-color" content="#050607">
+    <meta name="description" content="Organize sua vida financeira com a Rota Financeira. Clareza, planejamento e direção para construir seu amanhã.">
     <title>Rota Financeira | Dirija hoje, construa seu amanhã.</title>
-
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="mascote-experiencia.css">
+    <script src="mascote-interacoes.js" defer></script>
 </head>
-
-<body>
-
-<header class="header">
-    <nav class="nav">
-
-        <a class="logo-text" href="index.html">
-            ROTA <span>FINANCEIRA</span>
+<body class="rf-home">
+<header class="header rf-header">
+    <nav class="nav rf-nav" aria-label="Navegação principal">
+        <a class="rf-brand" href="index.html" aria-label="Rota Financeira — página inicial">
+            <img src="marca-rf.png" alt="" class="rf-brand-mark">
+            <span class="rf-brand-name">ROTA <strong>FINANCEIRA</strong></span>
         </a>
-
-        <div class="nav-links">
-
+        <div class="nav-links rf-nav-links">
             <a href="rota.html">Conheça a Rota</a>
-
             <a href="rota.html#servicos">Serviços</a>
-
             <a href="contato.html">Contato</a>
-
-            <a class="btn btn-gold" href="login.html">
-                Começar agora
-            </a>
-
+            <a class="btn btn-outline rf-nav-login" href="login.html">Já sou cliente</a>
+            <a class="btn btn-gold rf-nav-cta rf-pose-pointing" data-rf-pose="pointing" href="login.html">Começar agora <span aria-hidden="true">↗</span></a>
         </div>
-
     </nav>
 </header>
 
-<main class="hero">
-
-    <div class="container hero-grid">
-
-        <div class="hero-copy">
-
-            <div class="tag">
-                CONSULTORIA E MENTORIA FINANCEIRA
+<main class="rf-interactive-area rf-home-main">
+    <section class="rf-hero" aria-labelledby="rf-home-title">
+        <div class="rf-ambient rf-ambient-one" aria-hidden="true"></div>
+        <div class="rf-ambient rf-ambient-two" aria-hidden="true"></div>
+        <div class="rf-hero-grid">
+            <div class="rf-hero-copy">
+                <div class="rf-eyebrow"><span class="rf-live-dot"></span> CONSULTORIA E MENTORIA FINANCEIRA</div>
+                <h1 id="rf-home-title">Seu dinheiro precisa de <span>direção.</span></h1>
+                <p class="rf-hero-lede">Transforme seus números em clareza, organização e estratégia para construir um futuro financeiro mais próspero.</p>
+                <div class="rf-hero-actions">
+                    <a class="btn btn-gold rf-main-cta rf-pose-pointing" data-rf-pose="pointing" href="login.html">Começar minha rota <span aria-hidden="true">→</span></a>
+                    <a class="btn btn-outline rf-secondary-cta" data-rf-pose="writing" href="rota.html">Conhecer a metodologia</a>
+                </div>
+                <div class="rf-trial-note"><span class="rf-trial-icon" aria-hidden="true">✦</span><span><strong>30 dias para começar</strong><small>Conheça a plataforma e dê o primeiro passo no seu ritmo.</small></span></div>
+                <div class="rf-value-points" aria-label="Pilares da Rota Financeira">
+                    <div class="rf-value-point"><span class="rf-value-icon" aria-hidden="true">↗</span><span><strong>Planejamento</strong><small>Entenda seus números</small></span></div>
+                    <div class="rf-value-point"><span class="rf-value-icon" aria-hidden="true">◇</span><span><strong>Segurança</strong><small>Decida com clareza</small></span></div>
+                    <div class="rf-value-point"><span class="rf-value-icon" aria-hidden="true">✦</span><span><strong>Liberdade</strong><small>Construa seu futuro</small></span></div>
+                </div>
             </div>
 
-            <h1>
-                Seu dinheiro precisa de <span>direção.</span>
-            </h1>
-
-            <p>
-                Transforme seus números em clareza, organização e estratégia
-                para construir um futuro financeiro mais próspero.
-            </p>
-
-            <div class="actions">
-
-                <a class="btn btn-gold" href="login.html">
-                    COMEÇAR AGORA
-                </a>
-
-                <a class="btn btn-outline" href="rota.html">
-                    CONHECER A ROTA
-                </a>
-
+            <div class="rf-mascot-stage rf-home-stage" data-rf-mascot-stage aria-label="Mascote interativo da Rota Financeira">
+                <div class="rf-office-window" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+                <div class="rf-office-horizon" aria-hidden="true"></div>
+                <div class="rf-floor-grid" aria-hidden="true"></div>
+                <div class="rf-stage-orbit rf-stage-orbit-one" aria-hidden="true"></div>
+                <div class="rf-stage-orbit rf-stage-orbit-two" aria-hidden="true"></div>
+                <div class="rf-mascot-speech" aria-live="polite">
+                    <span class="rf-speech-kicker">SEU GUIA NA PLATAFORMA</span>
+                    <span class="rf-mascot-message" data-copy-presenting="Olá! Vamos colocar seus planos no caminho certo." data-copy-pointing="É por aqui! Dê o próximo passo na sua rota." data-copy-writing="Organização é o primeiro passo para avançar." data-copy-ok="Boa escolha. Vamos construir essa rota juntos.">Olá! Vamos colocar seus planos no caminho certo.</span>
+                    <span class="rf-speech-tail" aria-hidden="true"></span>
+                </div>
+                <div class="rf-mascot-motion" data-rf-mascot-motion>
+                    <img class="rf-mascot-figure is-active" data-mascot-pose="presenting" src="mascotes/mascote-apresentacao.png" alt="" aria-hidden="true" draggable="false">
+                    <img class="rf-mascot-figure" data-mascot-pose="pointing" src="mascotes/mascote-apontando.png" alt="" aria-hidden="true" draggable="false">
+                    <img class="rf-mascot-figure" data-mascot-pose="writing" src="mascotes/mascote-anotando.png" alt="" aria-hidden="true" draggable="false">
+                    <img class="rf-mascot-figure" data-mascot-pose="ok" src="mascotes/mascote-ok.png" alt="" aria-hidden="true" draggable="false">
+                </div>
+                <div class="rf-stage-caption" aria-hidden="true"><span class="rf-caption-mark">RF</span><span><strong>Seu próximo passo começa aqui</strong><small>Clareza para decidir. Direção para realizar.</small></span></div>
+                <span class="rf-stage-glint rf-stage-glint-one" aria-hidden="true"></span>
+                <span class="rf-stage-glint rf-stage-glint-two" aria-hidden="true"></span>
             </div>
-
-            <div class="free">
-                Primeiros <strong>30 dias gratuitos</strong>
-                para conhecer nossa metodologia.
-            </div>
-
         </div>
-
-        <div class="hero-logo">
-            <img src="logo-rota.png" alt="Rota Financeira">
-        </div>
-
-    </div>
-
+        <div class="rf-scroll-cue" aria-hidden="true"><span></span> SUA ROTA COMEÇA COM UMA DECISÃO</div>
+    </section>
+    <section class="rf-home-footerline" aria-label="Princípios da Rota Financeira">
+        <span>MAIS CLAREZA</span><i aria-hidden="true"></i><span>MELHORES DECISÕES</span><i aria-hidden="true"></i><span>UM FUTURO COM DIREÇÃO</span>
+    </section>
 </main>
-
 </body>
 </html>
-
