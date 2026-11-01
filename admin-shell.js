@@ -2,7 +2,7 @@
   'use strict';
   const adminPaths = new Set([
     '/admin.html', '/agendamentos-admin.html', '/desafio-admin.html',
-    '/produtos-admin.html', '/relatorios-admin.html'
+    '/produtos-admin.html', '/relatorios-admin.html', '/categorias-admin.html'
   ]);
   if (!adminPaths.has(location.pathname)) return;
 
@@ -72,7 +72,8 @@
     { label: 'Clientes', href: '/admin.html#clients', key: 'clients', svg: icons.users },
     { label: 'Solicitações do produto', href: '/produtos-admin.html', key: 'products', svg: icons.product, badge: 'productRequestsNavCount' },
     { label: 'Acompanhar agendamentos', href: '/agendamentos-admin.html', key: 'appointments', svg: icons.calendar, badge: 'appointmentsNavCount' },
-    { label: 'Relatórios', href: '/relatorios-admin.html', key: 'reports', svg: icons.report }
+    { label: 'Relatórios', href: '/relatorios-admin.html', key: 'reports', svg: icons.report },
+    { label: 'Gerenciar categorias', href: '/categorias-admin.html', key: 'categories', svg: icons.settings }
   ];
   const linkArea = document.createElement('nav'); linkArea.className = 'rf-admin-side-links';
   linkArea.setAttribute('aria-label', 'Seções administrativas');
@@ -83,7 +84,8 @@
       || item.key === 'clients' && path === '/admin.html' && location.hash === '#clients'
       || item.key === 'products' && path === '/produtos-admin.html'
       || item.key === 'appointments' && path === '/agendamentos-admin.html'
-      || item.key === 'reports' && path === '/relatorios-admin.html';
+      || item.key === 'reports' && path === '/relatorios-admin.html'
+      || item.key === 'categories' && path === '/categorias-admin.html';
     if (active) { a.classList.add('active'); a.setAttribute('aria-current', 'page'); }
     linkArea.append(a);
   });
@@ -91,7 +93,7 @@
   const bottom = document.createElement('div'); bottom.className = 'rf-admin-sidebar-bottom';
   const settings = document.createElement('a'); settings.className = 'rf-admin-side-link rf-admin-settings-link'; settings.href = '/admin.html#adminSettings';
   settings.innerHTML = `${icon(icons.settings)}<span>Configurações</span>`;
-  if ((path === '/admin.html' && location.hash === '#adminSettings') || path === '/desafio-admin.html') { settings.classList.add('active'); settings.setAttribute('aria-current','page'); }
+  if ((path === '/admin.html' && location.hash === '#adminSettings') || path === '/desafio-admin.html' || path === '/categorias-admin.html') { settings.classList.add('active'); settings.setAttribute('aria-current','page'); }
   bottom.append(settings);
   const foot = document.createElement('div'); foot.className = 'rf-admin-side-brand';
   foot.innerHTML = '<strong>Rota Financeira</strong><span>Gestão mais organizada.</span>';

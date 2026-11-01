@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gerenciar categorias | Rota Financeira</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/admin.css?v=20261027-admin-premium2">
+  <link rel="stylesheet" href="/admin-shell.css?v=20261027-adminnav2">
+  <link rel="stylesheet" href="/categorias-admin.css?v=20261101-catalog1">
+</head>
+<body class="consultant-page" style="visibility:hidden">
+  <header class="header"><nav class="nav"><a class="logo-text" href="/admin.html">ROTA <span>FINANCEIRA</span></a><span id="adminName" class="admin-badge">Administrador</span><button id="logout" type="button">Sair</button></nav></header>
+  <main class="admin-page">
+    <div class="admin-container rf-category-admin-container">
+      <div class="rf-category-admin-heading"><div><div class="eyebrow small">Configurações</div><h1>Gerenciar categorias</h1><p class="muted">Adicione novas categorias para os cadastros de ganhos e despesas. As categorias são compartilhadas com todos os clientes.</p></div><a class="btn btn-outline" href="/admin.html#adminSettings">Voltar às configurações</a></div>
+      <section class="rf-category-editor" aria-labelledby="categoryEditorTitle">
+        <div class="eyebrow small">Exclusivo do administrador</div>
+        <h2 id="categoryEditorTitle">Adicionar categoria</h2>
+        <form id="categoryForm" class="rf-category-form">
+          <label for="categoryKind">Tipo de lançamento<select id="categoryKind" required><option value="expense">Despesa</option><option value="income">Ganho</option></select></label>
+          <label for="categoryName">Nome da categoria<input id="categoryName" type="text" maxlength="60" required placeholder="Ex.: Estudos" autocomplete="off"></label>
+          <button id="categorySubmit" class="btn btn-gold" type="submit">Adicionar categoria</button>
+        </form>
+        <p id="categoryStatus" class="rf-category-status" role="status" aria-live="polite"></p>
+      </section>
+      <div class="rf-category-lists">
+        <section class="rf-category-list"><h2>Categorias de ganhos</h2><p>Disponíveis no cadastro individual e em massa.</p><ul id="incomeCategoryList"></ul></section>
+        <section class="rf-category-list"><h2>Categorias de despesas</h2><p>Disponíveis também no Resumo da Casa.</p><ul id="expenseCategoryList"></ul></section>
+      </div>
+    </div>
+  </main>
+  <script src="/admin-shell.js?v=20261101-catalog1"></script>
+  <script src="/categorias-admin.js?v=20261101-catalog1"></script>
+</body>
+</html>
