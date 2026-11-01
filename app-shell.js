@@ -67,7 +67,7 @@
   const titleMap = {inicio:'Início',planejamento:'Planejamento financeiro',despesas:'Despesas',receitas:'Receitas',casa:'Resumo de casa',metas:'Metas',desafio:'Reserva da Liberdade',relatorios:'Relatórios',configuracoes:'Configurações',servicos:'Serviços'};
   const pageTitle = path === '/atividades.html' ? 'Atividades e fluxo de caixa'
     : path === '/importacao.html' ? 'Lançar por planilha'
-    : path === '/agendamento.html' ? 'Agendar consultoria'
+    : path === '/agendamento.html' ? (new URLSearchParams(location.search).get('service')==='acompanhamento'?'Agendar mentoria':'Agendar consultoria')
     : (titleMap[activeKey] || 'Área financeira');
 
   const headerNav = document.querySelector('.header .nav');

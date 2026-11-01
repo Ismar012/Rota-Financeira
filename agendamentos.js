@@ -1,6 +1,8 @@
 'use strict';
 (() => {
   const $ = id => document.getElementById(id);
+  const service=new URLSearchParams(location.search).get('service')==='acompanhamento'?'acompanhamento':'consultoria';
+  const serviceName=code=>code==='acompanhamento'?'Mentoria':'Consultoria';
   const admin = location.pathname === '/agendamentos-admin.html';
   const nowMonth = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'2-digit'}).format(new Date());
   const today = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -71,7 +73,7 @@
     appointments.forEach(booking=>{
       const cancelled=Boolean(booking.cancelled_at);const card=document.createElement('article');card.className='agenda-event-card'+(cancelled?' is-cancelled':'');
       const time=document.createElement('span');time.className='agenda-event-time';time.textContent=`${booking.start}–${booking.end}`;
-      const name=document.createElement('strong');name.className='agenda-event-name';name.textContent=booking.name||'Cliente';
+      const name=document.createElement('strong');name.className='agenda-event-name';name.textContent=(booking.name||'Cliente')+' · '+serviceName(booking.service_slug);
       const email=document.createElement('span');email.className='agenda-event-meta';email.textContent=booking.email||'E-mail não informado';
       const status=document.createElement('span');status.className='agenda-event-status'+(cancelled?' cancelled':'');status.textContent=cancelled?'Cancelado':booking.seen_at?'Confirmado':'Novo agendamento';
       card.append(time,name,email,status);
@@ -93,7 +95,7 @@
     const sorted=[...state.bookings].sort((a,b)=>String(b.day+' '+b.start).localeCompare(String(a.day+' '+a.start)));
     sorted.forEach(booking=>{
       const status=booking.cancelled_at?'Cancelado':!booking.seen_at?'Novo agendamento':'Visualizado';
-      const r=row(bookingsEl,`${date(booking.day)} · ${booking.start} às ${booking.end} · ${booking.name||'Cliente'} · ${booking.email||''}${booking.phone?' · '+booking.phone:''}`,status);
+      const r=row(bookingsEl,`${date(booking.day)} · ${booking.start} às ${booking.end} · ${booking.name||'Cliente'} · ${serviceName(booking.service_slug)} · ${booking.email||''}${booking.phone?' · '+booking.phone:''}`,status);
       if(!booking.cancelled_at&&isFuture(booking))action(r,'Cancelar',()=>mutate(`/api/admin/consultations/${booking.id}/cancel`,{},`Cancelar esta consultoria de ${booking.name||'cliente'}? O horário poderá ser reservado novamente.`));
     });
     const slotsEl=$('slots');clear(slotsEl);const enabled=state.slots.filter(s=>s.enabled).sort((a,b)=>String(a.day+' '+a.start).localeCompare(String(b.day+' '+b.start)));
@@ -107,6 +109,7 @@
   }
   function addText(container,text){if(!container)return;const p=document.createElement('p');p.className='agenda-empty';p.textContent=text;container.append(p);}
   function renderClientBooking() {
+    const mine=$('bookings');clear(mine);if(!state.bookings.length)addText(mine,'Nenhum atendimento agendado.');state.bookings.forEach(b=>{const line=row(mine,`${serviceName(b.service_slug)} · ${date(b.day)} · ${b.start} às ${b.end}`,b.cancelled_at?'Cancelado':'Agendado');if(!b.cancelled_at&&isFuture(b))action(line,'Cancelar',()=>mutate('/api/consultations/'+b.id+'/cancel',{},'Cancelar este atendimento?'));});
     const previous=$('day').value;clear($('day'));option($('day'),'','Selecione um dia');[...new Set(state.slots.map(s=>s.day))].forEach(d=>option($('day'),d,date(d)));$('day').disabled=!state.slots.length;if(state.slots.some(s=>s.day===previous))$('day').value=previous;renderTimes();if(!state.slots.length)$('feedback').textContent='Não há horários disponíveis no momento. Aguarde a equipe disponibilizar novos horários.';
   }
   function renderTimes(){clear($('slot'));option($('slot'),'','Selecione um horário');state.slots.filter(s=>s.day===$('day').value).forEach(s=>option($('slot'),s.id,`${s.start} às ${s.end}`));$('slot').disabled=!$('day').value;$('confirm').disabled=true;}
@@ -115,6 +118,7 @@
 
   async function init(){
     try{
+      if(!admin){document.title='Agendar '+serviceName(service)+' | Rota Financeira';document.querySelector('h1').textContent='Agendar '+serviceName(service);document.querySelector('main > .muted').textContent='Escolha um horário para '+serviceName(service).toLowerCase()+'. Cada atendimento dura uma hora e deve ser agendado a partir de depois de amanhã. Horários da Bahia.';}
       const me=await api('/api/auth/me');if(!me.authenticated){location.replace('/login.html');return;}
       if(admin&&me.user?.role!=='admin'){$('accessFeedback').textContent='Acesso restrito ao administrador.';return;}
       if(admin){
@@ -131,7 +135,7 @@
         $('markSeen').addEventListener('click',async()=>{const ids=state.bookings.filter(b=>!b.seen_at&&!b.cancelled_at).map(b=>b.id);$('markSeen').disabled=true;try{for(let i=0;i<ids.length;i+=1000)await post('/api/admin/consultations/seen',{ids:ids.slice(i,i+1000)});await load();$('feedback').textContent='Novidades marcadas como vistas.';window.dispatchEvent(new Event('rota-consultations-changed'));}catch(error){$('feedback').textContent=error.message;$('markSeen').disabled=false;}});
       }else{
         $('day').addEventListener('change',renderTimes);$('slot').addEventListener('change',()=>$('confirm').disabled=!$('slot').value);
-        $('bookingForm').addEventListener('submit',async event=>{event.preventDefault();$('confirm').disabled=true;$('feedback').textContent='Confirmando…';try{await post('/api/consultations',{slotId:Number($('slot').value)});$('feedback').textContent='Agendamento confirmado.';$('confirmation').showModal();await load();}catch(error){$('feedback').textContent=error.message;if(error.status===409)await load().catch(()=>{});}finally{$('confirm').disabled=!$('slot').value;}});
+        $('bookingForm').addEventListener('submit',async event=>{event.preventDefault();$('confirm').disabled=true;$('feedback').textContent='Confirmando…';try{await post('/api/consultations',{slotId:Number($('slot').value),service});$('feedback').textContent='Agendamento confirmado.';$('confirmation').showModal();await load();}catch(error){$('feedback').textContent=error.message;if(error.status===409)await load().catch(()=>{});}finally{$('confirm').disabled=!$('slot').value;}});
       }
       await load();
     }catch(error){if(error.status===401)location.replace('/login.html');else (admin?$('accessFeedback'):$('feedback')).textContent=error.message;}
