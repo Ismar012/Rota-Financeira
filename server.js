@@ -331,6 +331,7 @@ async function initializeDatabase() {
   await require('./server-reserva-solicitacoes').install(pool);
   await require('./finance-audit').installFinanceAudit(pool);
   await require('./casa-produtos-api').install(pool);
+  await require('./server-pagamentos').install(pool);
 
 }
 
@@ -1607,6 +1608,15 @@ async function requireUser(
     return null;
   }
 
+  if (user.role === 'client') {
+    const billing = await pool.query(`SELECT COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE expires_at > NOW())::int AS active
+      FROM billing_entitlements WHERE user_id=$1 AND plan_code IN ('plataforma','premium','parceiros')`,[user.id]);
+    if (billing.rows[0]?.total > 0 && billing.rows[0]?.active === 0) {
+      sendJson(res,403,{error:'Sua mensalidade venceu. Acesse Planos e pagamentos para renovar.',renewal_required:true});
+      return null;
+    }
+  }
   if (user.role === 'client' && isClientCancelled(user)) {
     const token = parseCookies(req)[COOKIE_NAME];
     if (token) await db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(hashToken(token));
@@ -1962,7 +1972,7 @@ async function handleAuthApi(
       }
 
       const accountStatus = calculateClientStatus(user);
-      if (user.role === 'client' && isClientCancelled(user)) {
+      if (user.role === 'client' && isClientCancelled(user) && !process.env.INFINITEPAY_API_KEY) {
         return sendJson(res, 403, {
           authenticated: false,
           cancelled: true,
@@ -6020,6 +6030,7 @@ const challenge = require('./server-desafio').create({pool,requireUser,requireAd
 const challengeRequests = require('./server-reserva-solicitacoes').create({pool,requireUser,requireAdmin,sendJson,readBody,getTodayLocal});
 const categories = require('./server-recorrencias').create({pool,requireUser,requireAdmin,sendJson,getTodayLocal});
 const scheduling = require('./agendamentos-api').createScheduling({pool, requireUser, requireAdmin, readBody, sendJson});
+const billing = require('./server-pagamentos').create({pool,getCurrentUser,readBody,sendJson});
 
 async function handleApi(req,res,parsedUrl) {
  return transactionStore.run({},async()=>{try{return await handleApiInternal(req,res,parsedUrl);}finally{const c=transactionStore.getStore()?.client;if(c){try{await c.query('ROLLBACK');}finally{c.release();transactionStore.getStore().client=null;}}}});
@@ -6033,10 +6044,11 @@ async function handleApiInternal(
   const url =
     parsedUrl.pathname;
 
-  if (isStateChangingMethod(req.method) && !requireSameOrigin(req, res)) {
+  if (isStateChangingMethod(req.method) && parsedUrl.pathname !== '/api/webhooks/infinitepay' && !requireSameOrigin(req, res)) {
     return;
   }
 
+  if (await billing.handle(req,res,url,parsedUrl) !== false) return;
   if (await challengeRequests.handle(req,res,url) !== false) return;
   if (await products.handle(req,res,url) !== false) return;
   if (!await products.gate(req,res,url)) return;
