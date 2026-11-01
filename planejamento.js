@@ -1218,6 +1218,8 @@ async function confirmEntryDate(event) {
         return false;
       }
 
+      if(data.user?.role==='client' && data.user.status?.core_blocked){ window.location.replace(data.user.status.blocked?'/renovar.html':'/servicos.html'); return false; }
+
       // A opção administrativa só existe visualmente para quem tem role=admin.
       // A proteção real da área administrativa continua no servidor.
       const adminMenu = $('menuAdmin');

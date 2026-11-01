@@ -2,7 +2,7 @@ const $=id=>document.getElementById(id);
 async function api(url,options={}){const r=await fetch(url,{credentials:'same-origin',...options});const d=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(d.error||'Não foi possível concluir a operação.'),{status:r.status});return d}
 const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
-async function load(){try{const me=await api('/api/auth/me');if(!me.authenticated){location.href='/login.html';return}const data=await api('/api/services');render(data.services||[])}catch(e){if(e.status===401||e.status===403)location.href='/login.html';else {$('feedback').textContent=e.message;document.dispatchEvent(new CustomEvent('rota-content-error'));}}}
+async function load(){try{const me=await api('/api/auth/me');if(!me.authenticated){location.href='/login.html';return}const data=await api('/api/services');render(data.services||[])}catch(e){if(e.status===401)location.href='/login.html';else if(e.status===403)location.href='/renovar.html';else {$('feedback').textContent=e.message;document.dispatchEvent(new CustomEvent('rota-content-error'));}}}
 function render(items){
  const paths={plataforma:'/planejamento.html',planejamento:'/planejamento.html','divisao-casa':'/resumo-casa.html'};
  const descriptions={plataforma:'Registre ganhos e despesas e acompanhe sua meta.',planejamento:'Organize compromissos e os próximos passos do mês.','divisao-casa':'Divida as contas da casa e acompanhe os acertos.',acompanhamento:'Acompanhe sua organização financeira com apoio da equipe.',consultoria:'Receba orientação para suas decisões financeiras.'};

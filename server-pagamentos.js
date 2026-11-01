@@ -5,7 +5,7 @@ const API = 'https://api.checkout.infinitepay.io';
 const CATALOG = Object.freeze({
   plataforma: {name:'Plataforma Rota Financeira', cents:2990, monthly:true, grants:['plataforma','planejamento','divisao-casa']},
   consultoria_diagnostica: {name:'Consultoria diagnóstica', cents:17990, monthly:false, grants:['consultoria']},
-  sessao_mentoria: {name:'Sessão de mentoria avulsa/extra', cents:11990, monthly:false, grants:[]},
+  sessao_mentoria: {name:'Sessão de mentoria avulsa/extra', cents:11990, monthly:false, grants:['acompanhamento']},
   mentoria_mensal: {name:'Mentoria mensal', cents:39990, monthly:true, grants:['acompanhamento']},
   premium: {name:'Premium', cents:49999, monthly:true, grants:['plataforma','planejamento','divisao-casa','consultoria','acompanhamento']},
   parceiros: {name:'Programa Parceiros', cents:14999, monthly:true, grants:['plataforma','planejamento','divisao-casa','consultoria','acompanhamento']}
@@ -39,13 +39,26 @@ async function install(pool){
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),PRIMARY KEY(user_id,plan_code)
   );`);
   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS billing_transaction_uniq ON billing_orders(transaction_nsu) WHERE transaction_nsu IS NOT NULL');
+  await pool.query(`CREATE TABLE IF NOT EXISTS billing_one_time_credits (
+    order_id UUID PRIMARY KEY REFERENCES billing_orders(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    plan_code TEXT NOT NULL,
+    remaining SMALLINT NOT NULL DEFAULT 1 CHECK(remaining IN (0,1)),
+    appointment_id BIGINT,
+    used_at TIMESTAMPTZ
+  );
+  CREATE INDEX IF NOT EXISTS billing_credits_user ON billing_one_time_credits(user_id,plan_code,remaining);
+  INSERT INTO billing_one_time_credits(order_id,user_id,plan_code)
+    SELECT id,user_id,plan_code FROM billing_orders
+    WHERE status='paid' AND plan_code IN ('consultoria_diagnostica','sessao_mentoria')
+    ON CONFLICT(order_id) DO NOTHING;`);
 }
-function create({pool,getCurrentUser,readBody,sendJson}){
+function create({pool,getCurrentUser,requireAdmin,readBody,sendJson}){
   const reply=(res,code,body)=>sendJson(res,code,body);
   const base=String(process.env.PUBLIC_BASE_URL||'').replace(/\/$/,'');
   function configured(){return /^https:\/\/[^/?#]+$/i.test(base)&&!!process.env.INFINITEPAY_API_KEY&&!!process.env.INFINITEPAY_HANDLE;}
   async function confirm(id,slug,tx){
-    if(!/^[0-9a-f-]{36}$/i.test(id)||!slug||!tx)return {error:'Identificadores da transação incompletos.',code:400};
+    if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)||!/^[A-Za-z0-9_.-]{1,180}$/.test(slug)||!/^[A-Za-z0-9_.-]{1,180}$/.test(tx))return {error:'Identificadores da transação incompletos.',code:400};
     const o=await pool.query('SELECT * FROM billing_orders WHERE id=$1',[id]);const order=o.rows[0];
     if(!order)return {error:'Pedido não encontrado.',code:404};
     if(order.status==='paid')return {paid:true};
@@ -55,6 +68,7 @@ function create({pool,getCurrentUser,readBody,sendJson}){
     if(check.success!==true||check.paid!==true||Number(check.amount)!==Number(order.amount_cents))return {paid:false};
     const client=await pool.connect();
     try {await client.query('BEGIN');const current=(await client.query('SELECT * FROM billing_orders WHERE id=$1 FOR UPDATE',[id])).rows[0];
+      await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE',[current.user_id]);
       if(current.status==='paid'){await client.query('COMMIT');return {paid:true};}
       const plan=CATALOG[current.plan_code];if(!plan)throw Error('Plano desconhecido');
       await client.query('UPDATE billing_orders SET status=$2,paid_at=NOW(),invoice_slug=$3,transaction_nsu=$4 WHERE id=$1',[id,'paid',slug,tx]);
@@ -66,29 +80,55 @@ function create({pool,getCurrentUser,readBody,sendJson}){
         await client.query(`INSERT INTO billing_entitlements(user_id,plan_code,expires_at,anchor_day)
           VALUES($1,$2,$3,$4) ON CONFLICT(user_id,plan_code) DO UPDATE SET expires_at=EXCLUDED.expires_at,updated_at=NOW()`,[current.user_id,current.plan_code,end,anchor]);
       }
-      // Sessões avulsas não concedem automaticamente um mês adicional.
-      for(const slugToGrant of plan.grants){
-        await client.query(`INSERT INTO user_services(user_id,service_id) SELECT $1,id FROM services WHERE slug=$2 ON CONFLICT DO NOTHING`,[current.user_id,slugToGrant]);
-        await client.query(`INSERT INTO product_permissions(user_id,service_id,allowed) SELECT $1,id,TRUE FROM services WHERE slug=$2 ON CONFLICT(user_id,service_id) DO UPDATE SET allowed=TRUE`,[current.user_id,slugToGrant]);
+      if(!plan.monthly){
+        await client.query(`INSERT INTO billing_one_time_credits(order_id,user_id,plan_code)
+          VALUES($1,$2,$3) ON CONFLICT(order_id) DO NOTHING`,[id,current.user_id,current.plan_code]);
       }
-      if(plan.monthly && ['plataforma','premium','parceiros'].includes(current.plan_code)){
-        await client.query("UPDATE users SET billing_status='pagante' WHERE id=$1",[current.user_id]);
-      }
+      // Nunca perpetuar permissões pagas em user_services/product_permissions.
+      // A consulta de acesso resolve os direitos pela data da mensalidade.
       await client.query('COMMIT');return {paid:true};
     }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
   }
   async function handle(req,res,url,parsed){
-    if(!url.startsWith('/api/billing/')&&!url.startsWith('/api/webhooks/infinitepay'))return false;
+    if(!url.startsWith('/api/billing/')&&!url.startsWith('/api/webhooks/infinitepay')&&!url.startsWith('/api/admin/billing/'))return false;
     try{
       if(url==='/api/webhooks/infinitepay' && req.method==='POST'){
         const b=await readBody(req);
         const id=String(b.order_nsu||'');const tx=String(b.transaction_nsu||'');const slug=String(b.invoice_slug||b.slug||'');
         const result=await confirm(id,slug,tx);return reply(res,result.code||200,result);
       }
+      if(url.startsWith('/api/admin/billing/')){
+        const admin=await requireAdmin(req,res);if(!admin)return true;
+        if(url==='/api/admin/billing/orders'&&req.method==='GET'){
+          const rows=await pool.query(`SELECT o.id,o.user_id,u.name,u.email,o.plan_code,o.amount_cents,o.status,o.created_at,o.paid_at,
+            c.remaining,c.used_at,c.appointment_id
+            FROM billing_orders o JOIN users u ON u.id=o.user_id
+            LEFT JOIN billing_one_time_credits c ON c.order_id=o.id
+            ORDER BY o.created_at DESC LIMIT 100`);
+          return reply(res,200,{orders:rows.rows});
+        }
+        if(url==='/api/admin/billing/credits/use'&&req.method==='POST'){
+          const b=await readBody(req);const id=String(b.order_nsu||'');
+          if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))return reply(res,400,{error:'Pedido inválido.'});
+          const result=await pool.query(`UPDATE billing_one_time_credits SET remaining=0,used_at=NOW()
+            WHERE order_id=$1 AND plan_code='sessao_mentoria' AND remaining=1 AND appointment_id IS NULL
+            RETURNING order_id,user_id`,[id]);
+          if(!result.rowCount)return reply(res,409,{error:'Crédito não encontrado ou já utilizado.'});
+          await pool.query(`INSERT INTO client_change_log(user_id,actor_user_id,action,field_name,details)
+            VALUES($1,$2,'Crédito de mentoria avulsa consumido','billing_one_time_credits',$3)`,[result.rows[0].user_id,admin.id,`Pedido ${id}`]);
+          return reply(res,200,{ok:true,message:'Sessão marcada como realizada.'});
+        }
+        return reply(res,404,{error:'Rota de cobrança administrativa não encontrada.'});
+      }
       const user=await getCurrentUser(req);if(!user)return reply(res,401,{error:'Entre na sua conta para continuar.'});
       if(url==='/api/billing/catalog'&&req.method==='GET')return reply(res,200,{plans:Object.entries(CATALOG).map(([code,p])=>({code,name:p.name,price_cents:p.cents,monthly:p.monthly}))});
       if(url==='/api/billing/status'&&req.method==='GET'){
-        const r=await pool.query('SELECT plan_code,expires_at FROM billing_entitlements WHERE user_id=$1 ORDER BY expires_at DESC NULLS LAST',[user.id]);return reply(res,200,{subscriptions:r.rows});
+        const {getStatus}=require('./server-acesso');const state=await getStatus(pool,user);return reply(res,200,{...state});
+      }
+      if(url==='/api/billing/orders'&&req.method==='GET'){
+        const rows=await pool.query(`SELECT id,plan_code,amount_cents,status,checkout_url,created_at,paid_at
+          FROM billing_orders WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20`,[user.id]);
+        return reply(res,200,{orders:rows.rows});
       }
       if(url==='/api/billing/checkout'&&req.method==='POST'){
         if(!configured())return reply(res,503,{error:'Checkout não configurado. Informe PUBLIC_BASE_URL, INFINITEPAY_API_KEY e INFINITEPAY_HANDLE no Render.'});
@@ -101,7 +141,7 @@ function create({pool,getCurrentUser,readBody,sendJson}){
         await pool.query('UPDATE billing_orders SET checkout_url=$2 WHERE id=$1',[id,link]);return reply(res,200,{checkout_url:link,order_nsu:id});
       }
       if(url==='/api/billing/verify'&&req.method==='POST'){
-        const b=await readBody(req);const id=String(b.order_nsu||'');const o=await pool.query('SELECT user_id,status FROM billing_orders WHERE id=$1',[id]);
+        const b=await readBody(req);const id=String(b.order_nsu||'');if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))return reply(res,400,{error:'Identificador de pedido inválido.'});const o=await pool.query('SELECT user_id,status FROM billing_orders WHERE id=$1',[id]);
         if(!o.rows.length||Number(o.rows[0].user_id)!==Number(user.id))return reply(res,404,{error:'Pedido não encontrado.'});
         if(o.rows[0].status==='paid')return reply(res,200,{paid:true});
         const result=await confirm(id,String(b.slug||''),String(b.transaction_nsu||''));return reply(res,result.code||200,result);

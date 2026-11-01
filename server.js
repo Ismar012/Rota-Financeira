@@ -332,6 +332,7 @@ async function initializeDatabase() {
   await require('./finance-audit').installFinanceAudit(pool);
   await require('./casa-produtos-api').install(pool);
   await require('./server-pagamentos').install(pool);
+  await require('./server-acesso').install(pool);
 
 }
 
@@ -630,7 +631,7 @@ function buildClientReportPdf(report) {
   const esc = (value) => pdfSafe(pdfAscii(value));
   const money = (value) => pdfMoney(value);
   const statusMap = { free: 'Free', trial: 'Trial', pagante: 'Pagante', inadimplente: 'Inadimplente', cancelado: 'Cancelado', admin: 'Administrador' };
-  const status = statusMap[publicClientStatus(client).status] || publicClientStatus(client).status;
+  const status = statusMap[client.status?.status || publicClientStatus(client).status] || client.status?.status || publicClientStatus(client).status;
 
   function newPage() {
     const commands = [];
@@ -1608,25 +1609,8 @@ async function requireUser(
     return null;
   }
 
-  if (user.role === 'client') {
-    const billing = await pool.query(`SELECT COUNT(*)::int AS total,
-      COUNT(*) FILTER (WHERE expires_at > NOW())::int AS active
-      FROM billing_entitlements WHERE user_id=$1 AND plan_code IN ('plataforma','premium','parceiros')`,[user.id]);
-    if (billing.rows[0]?.total > 0 && billing.rows[0]?.active === 0) {
-      sendJson(res,403,{error:'Sua mensalidade venceu. Acesse Planos e pagamentos para renovar.',renewal_required:true});
-      return null;
-    }
-  }
-  if (user.role === 'client' && isClientCancelled(user)) {
-    const token = parseCookies(req)[COOKIE_NAME];
-    if (token) await db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(hashToken(token));
-    sendJson(res, 403, {
-      authenticated: false,
-      cancelled: true,
-      error: 'Seu período de acesso gratuito terminou. Atualize seu pagamento para continuar utilizando a plataforma.'
-    }, { 'Set-Cookie': cookieHeader('', 0) });
-    return null;
-  }
+  // A sessão permanece válida para que o cliente bloqueado possa renovar.
+  // A autorização de funcionalidades é feita no início de handleApiInternal.
 
   return user;
 }
@@ -1971,15 +1955,8 @@ async function handleAuthApi(
         );
       }
 
-      const accountStatus = calculateClientStatus(user);
-      if (user.role === 'client' && isClientCancelled(user) && !process.env.INFINITEPAY_API_KEY) {
-        return sendJson(res, 403, {
-          authenticated: false,
-          cancelled: true,
-          status: 'cancelado',
-          error: 'Seu período de acesso gratuito terminou. Atualize seu pagamento para continuar utilizando a plataforma.'
-        });
-      }
+      // Login permanece disponível inclusive após vencimento.
+      // O servidor restringe as APIs pagas, e o navegador oferece a renovação.
 
       await db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').run(new Date().toISOString(), user.id);
 
@@ -2088,7 +2065,7 @@ async function handleAuthApi(
           email: user.email,
           phone: user.phone,
           role: user.role,
-          status: user.role === 'client' ? publicClientStatus(user) : { status: 'admin', manual: true }
+          status: user.role === 'client' ? await require('./server-acesso').getStatus(pool,user) : { status: 'admin', manual: true, blocked:false }
         }
       }
     );
@@ -2956,7 +2933,7 @@ async function handleAdminApi(req, res, url, parsedUrl) {
 
     const result = await Promise.all(clients.map(async (client) => {
       const summary = await buildAdminClientSummary(client.id, month);
-      const status = publicClientStatus(client);
+      const status = await require('./server-acesso').getStatus(pool,client);
       const active = hasRecentClientLogin(client.last_login_at);
       return {
         id: client.id,
@@ -3076,7 +3053,7 @@ async function handleAdminApi(req, res, url, parsedUrl) {
 
     const report = {
       generated_at: new Date().toISOString(),
-      client: { ...client, status: publicClientStatus(client) },
+      client: { ...client, status: await require('./server-acesso').getStatus(pool,client) },
       period: {
         start: createdDate,
         end: today,
@@ -3162,7 +3139,7 @@ async function handleAdminApi(req, res, url, parsedUrl) {
           email: updated.email,
           created_at: updated.created_at,
           last_login_at: updated.last_login_at,
-          status: publicClientStatus(updated)
+          status: await require('./server-acesso').getStatus(pool,updated)
         }
       });
     } catch (err) {
@@ -3190,7 +3167,7 @@ async function handleAdminApi(req, res, url, parsedUrl) {
     return sendJson(res, 200, {
       client: {
         ...client,
-        status: publicClientStatus(client)
+        status: await require('./server-acesso').getStatus(pool,client)
       },
       summary: await buildAdminClientSummary(clientId, month)
     });
@@ -3374,7 +3351,7 @@ async function handleFinanceApi(
       };
       const report = {
         generated_at: new Date().toISOString(),
-        client: { ...client, status: publicClientStatus(client) },
+        client: { ...client, status: await require('./server-acesso').getStatus(pool,client) },
         period: { start: createdDate, end: today, startMonth: createdMonth, endMonth: today.slice(0, 7) },
         totals: reportTotals, summary, monthly, houseSummary
       };
@@ -6030,7 +6007,7 @@ const challenge = require('./server-desafio').create({pool,requireUser,requireAd
 const challengeRequests = require('./server-reserva-solicitacoes').create({pool,requireUser,requireAdmin,sendJson,readBody,getTodayLocal});
 const categories = require('./server-recorrencias').create({pool,requireUser,requireAdmin,sendJson,getTodayLocal});
 const scheduling = require('./agendamentos-api').createScheduling({pool, requireUser, requireAdmin, readBody, sendJson});
-const billing = require('./server-pagamentos').create({pool,getCurrentUser,readBody,sendJson});
+const billing = require('./server-pagamentos').create({pool,getCurrentUser,requireAdmin,readBody,sendJson});
 
 async function handleApi(req,res,parsedUrl) {
  return transactionStore.run({},async()=>{try{return await handleApiInternal(req,res,parsedUrl);}finally{const c=transactionStore.getStore()?.client;if(c){try{await c.query('ROLLBACK');}finally{c.release();transactionStore.getStore().client=null;}}}});
@@ -6049,6 +6026,22 @@ async function handleApiInternal(
   }
 
   if (await billing.handle(req,res,url,parsedUrl) !== false) return;
+  // O servidor decide o acesso em TODAS as APIs de trabalho, inclusive endpoints
+  // legados que não chamam o gate de produtos. URLs de renovação continuam acessíveis.
+  if (!url.startsWith('/api/auth/') && !url.startsWith('/api/admin/') &&
+      url !== '/api/services' && !/^\/api\/services\/\d+\/purchase$/.test(url)) {
+    const actor=await getCurrentUser(req);
+    if (actor?.role==='client') {
+      const acesso=require('./server-acesso');
+      const state=await acesso.getStatus(pool,actor);
+      const consultation=url.startsWith('/api/consultations');
+      const existingBooking=consultation&&(req.method==='GET'||/^\/api\/consultations\/\d+\/cancel$/.test(url));
+      if (!existingBooking && (consultation ? !await acesso.hasService(pool,actor,'consultoria',state) : (state.core_blocked??state.blocked))) {
+        return sendJson(res,403,{error:consultation?'Este atendimento não está incluído no seu acesso atual.':'Seu acesso venceu. Renove seu plano para continuar.',renewal_required:!consultation,renewal_url:'/renovar.html',status:state.status});
+      }
+    }
+  }
+
   if (await challengeRequests.handle(req,res,url) !== false) return;
   if (await products.handle(req,res,url) !== false) return;
   if (!await products.gate(req,res,url)) return;
@@ -6358,6 +6351,9 @@ function serveStatic(
 </script>`;
 
 let scriptToInject = adminVisibilityScript;
+if (!['/index.html','/login.html','/cadastro.html','/recuperar-senha.html','/planos.html','/renovar.html','/pagamento-retorno.html','/contato.html','/servicos.html','/agendamento.html'].includes(pathname)) {
+  scriptToInject += '<script defer src="/acesso-cliente.js?v=20261101-billing2"></script>';
+}
 if (['/planejamento.html', '/admin.html'].includes(pathname)) {
   scriptToInject += '<link rel="stylesheet" href="/meta-mensal.css?v=20261014-fix2"><script src="/meta-mensal.js?v=20261101-layout2"></script>';
 }

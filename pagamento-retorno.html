@@ -1,3 +1,17 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confirmação de pagamento | Rota Financeira</title><style>body{font:17px system-ui,sans-serif;background:#111820;color:#eee;max-width:620px;margin:12vh auto;padding:22px}a{color:#e9c489}</style></head><body><h1>Confirmação de pagamento</h1><p id="status">Verificando o pagamento com a InfinitePay…</p><p><a href="/planos.html">Voltar aos planos</a> · <a href="/servicos.html">Meus serviços</a></p><script>
-(async()=>{const s=document.getElementById('status'),q=new URLSearchParams(location.search);const order_nsu=q.get('order_nsu'),slug=q.get('slug'),transaction_nsu=q.get('transaction_nsu');if(!order_nsu||!slug||!transaction_nsu){s.textContent='Não recebemos todos os identificadores da transação. Confira seus serviços ou fale com o suporte.';return}try{const r=await fetch('/api/billing/verify',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_nsu,slug,transaction_nsu})});const d=await r.json();if(r.status===401){s.textContent='Faça login e volte a esta página para confirmar seu pagamento.';return}s.textContent=d.paid?'Pagamento confirmado! Seu acesso foi atualizado.':'Pagamento ainda não confirmado. Se você acabou de pagar, aguarde a confirmação e consulte seus serviços.'}catch(e){s.textContent='Não foi possível verificar agora. Confira seus serviços ou entre em contato com o suporte.'}})();
+(async()=>{
+ const s=document.getElementById('status'),q=new URLSearchParams(location.search);
+ const order_nsu=q.get('order_nsu'),slug=q.get('slug'),transaction_nsu=q.get('transaction_nsu');
+ if(!order_nsu||!slug||!transaction_nsu){s.textContent='Pagamento não confirmado por esta página. Se você concluiu a compra, confira a situação em Planos e serviços ou entre em contato com o suporte.';return;}
+ const verify=async()=>{
+  const r=await fetch('/api/billing/verify',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_nsu,slug,transaction_nsu})});
+  if(r.status===401){s.textContent='Entre na sua conta para consultar a situação do pedido.';return true;}
+  const d=await r.json().catch(()=>({}));
+  if(d.paid){s.textContent='Pagamento confirmado pela InfinitePay! Seu acesso está atualizado.';return true;}
+  if(!r.ok){s.textContent=d.error||'Falha na consulta. Entre em contato com o suporte se o pagamento foi concluído.';return true;}
+  s.textContent='Pagamento ainda não confirmado. Estamos verificando, sem liberar acesso antes da confirmação.';
+  return false;
+ };
+ try{for(let i=0;i<8;i++){if(await verify())return;await new Promise(resolve=>setTimeout(resolve,4000));}s.textContent='Ainda não recebemos a confirmação. A atualização poderá acontecer automaticamente pelo webhook; você pode consultar seu acesso em Planos e serviços.';}catch(e){s.textContent='Não foi possível verificar o pagamento agora. Confira seus serviços ou fale com o suporte.';}
+})();
 </script></body></html>
