@@ -11,7 +11,7 @@
 
 <!-- Estilos principais da Rota Financeira -->
 <link rel="stylesheet" href="/styles.css">
-<link rel="stylesheet" href="/planejamento.css?v=20261101-modal">
+<link rel="stylesheet" href="/planejamento.css?v=20261101-native-dialog">
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -607,7 +607,7 @@
     <!-- =====================================================
      MODAL — CADASTRO DE DESPESAS EM MASSA
 ===================================================== -->
-<div id="bulkExpenseModal" class="modal hidden bulk-expense-modal" aria-labelledby="bulkExpenseTitle" role="dialog" aria-modal="true">
+<dialog id="bulkExpenseModal" class="modal hidden bulk-expense-modal" aria-labelledby="bulkExpenseTitle" role="dialog" aria-modal="true">
     <section class="modal-box bulk-expense-box">
         <button id="closeBulkExpenseModal" class="modal-close" type="button" aria-label="Fechar cadastro em massa">×</button>
 
@@ -648,7 +648,7 @@
             <button id="bulkSubmitExpenses" class="primary-btn" type="button">Cadastrar despesas preenchidas</button>
         </div>
     </section>
-</div>
+</dialog>
 
     <!-- =====================================================
      MODAL - CONFIRMAR PAGAMENTO / RECEBIMENTO
@@ -797,7 +797,7 @@
      IMPORTANTE: carregar por último
 ========================== -->
 
-<script src="/planejamento.js?v=20261101-layout2"></script>
+<script src="/planejamento.js?v=20261101-native-dialog"></script>
 <script src="/finance-views.js?v=20261101-audit"></script>
 <script>
 document.getElementById('backLogo')?.addEventListener('click', function (event) {

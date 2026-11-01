@@ -53,7 +53,9 @@ async function install(pool){
     SELECT id,user_id,plan_code FROM billing_orders
     WHERE status='paid' AND plan_code IN ('consultoria_diagnostica','sessao_mentoria')
     ON CONFLICT(order_id) DO NOTHING;`);
+  await require('./server-plano-personalizado').install(pool);
 }
+
 function nextUrl(code){return code==='consultoria_diagnostica'?'/agendamento.html?service=consultoria':code==='sessao_mentoria'?'/agendamento.html?service=acompanhamento':'/servicos.html';}
 function create({pool,getCurrentUser,requireAdmin,readBody,sendJson}){
   const reply=(res,code,body)=>sendJson(res,code,body);
@@ -72,9 +74,10 @@ function create({pool,getCurrentUser,requireAdmin,readBody,sendJson}){
     try {await client.query('BEGIN');const current=(await client.query('SELECT * FROM billing_orders WHERE id=$1 FOR UPDATE',[id])).rows[0];
       await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE',[current.user_id]);
       if(current.status==='paid'){await client.query('COMMIT');return {paid:true,plan_code:current.plan_code,next_url:nextUrl(current.plan_code)};}
-      const plan=CATALOG[current.plan_code];if(!plan)throw Error('Plano desconhecido');
+      const plan=CATALOG[current.plan_code];if(!plan&&current.plan_code!=='personalizado')throw Error('Plano desconhecido');
       await client.query('UPDATE billing_orders SET status=$2,paid_at=NOW(),invoice_slug=$3,transaction_nsu=$4 WHERE id=$1',[id,'paid',slug,tx]);
-      if(plan.monthly){
+      if(current.plan_code==='personalizado'){await require('./server-plano-personalizado').fulfill(client,current);}
+      if(plan?.monthly){
         const prior=(await client.query('SELECT expires_at,anchor_day FROM billing_entitlements WHERE user_id=$1 AND plan_code=$2 FOR UPDATE',[current.user_id,current.plan_code])).rows[0];
         const now=new Date(); const start=prior?.expires_at && new Date(prior.expires_at)>now ? new Date(prior.expires_at) : now;
         const created=(await client.query('SELECT created_at FROM users WHERE id=$1',[current.user_id])).rows[0]?.created_at;
@@ -82,7 +85,7 @@ function create({pool,getCurrentUser,requireAdmin,readBody,sendJson}){
         await client.query(`INSERT INTO billing_entitlements(user_id,plan_code,expires_at,anchor_day)
           VALUES($1,$2,$3,$4) ON CONFLICT(user_id,plan_code) DO UPDATE SET expires_at=EXCLUDED.expires_at,updated_at=NOW()`,[current.user_id,current.plan_code,end,anchor]);
       }
-      if(!plan.monthly){
+      if(plan&&!plan.monthly){
         await client.query(`INSERT INTO billing_one_time_credits(order_id,user_id,plan_code)
           VALUES($1,$2,$3) ON CONFLICT(order_id) DO NOTHING`,[id,current.user_id,current.plan_code]);
       }
@@ -101,8 +104,10 @@ function create({pool,getCurrentUser,requireAdmin,readBody,sendJson}){
       }
       if(url.startsWith('/api/admin/billing/')){
         const admin=await requireAdmin(req,res);if(!admin)return true;
+        if(url==='/api/admin/billing/partners'&&req.method==='GET'){const r=await pool.query('SELECT a.*,u.name,u.email FROM billing_partner_applications a JOIN users u ON u.id=a.user_id ORDER BY a.created_at DESC');return reply(res,200,{applications:r.rows});}
+        if(url==='/api/admin/billing/partners'&&req.method==='POST'){const b=await readBody(req);if(!Number.isSafeInteger(Number(b.user_id))||!['approved','rejected'].includes(b.status))return reply(res,400,{error:'Análise inválida.'});await pool.query('UPDATE billing_partner_applications SET status=$2,reviewed_at=NOW(),reviewed_by=$3 WHERE user_id=$1',[b.user_id,b.status,admin.id]);return reply(res,200,{ok:true});}
         if(url==='/api/admin/billing/orders'&&req.method==='GET'){
-          const rows=await pool.query(`SELECT o.id,o.user_id,u.name,u.email,o.plan_code,o.amount_cents,o.status,o.created_at,o.paid_at,
+          const rows=await pool.query(`SELECT o.id,o.user_id,u.name,u.email,o.plan_code,o.amount_cents,o.status,o.created_at,o.paid_at,o.custom_config,
             c.remaining,c.used_at,c.appointment_id
             FROM billing_orders o JOIN users u ON u.id=o.user_id
             LEFT JOIN billing_one_time_credits c ON c.order_id=o.id
@@ -123,6 +128,9 @@ function create({pool,getCurrentUser,requireAdmin,readBody,sendJson}){
         return reply(res,404,{error:'Rota de cobrança administrativa não encontrada.'});
       }
       const user=await getCurrentUser(req);if(!user)return reply(res,401,{error:'Entre na sua conta para continuar.'});
+      if(url==='/api/billing/partner-application'&&req.method==='GET'){const r=await pool.query('SELECT status FROM billing_partner_applications WHERE user_id=$1',[user.id]);return reply(res,200,{status:r.rows[0]?.status||'none'});}
+      if(url==='/api/billing/partner-application'&&req.method==='POST'){await pool.query(`INSERT INTO billing_partner_applications(user_id) VALUES($1) ON CONFLICT(user_id) DO UPDATE SET status=CASE WHEN billing_partner_applications.status='approved' THEN 'approved' ELSE 'pending' END`,[user.id]);return reply(res,200,{ok:true});}
+      if(url==='/api/billing/custom-quote'&&req.method==='POST'){try{return reply(res,200,require('./server-plano-personalizado').quote(await readBody(req)));}catch(e){return reply(res,400,{error:e.message});}}
       if(url==='/api/billing/catalog'&&req.method==='GET')return reply(res,200,{plans:Object.entries(CATALOG).map(([code,p])=>({code,name:p.name,price_cents:p.cents,monthly:p.monthly,services:p.grants}))});
       if(url==='/api/billing/status'&&req.method==='GET'){
         const {getStatus}=require('./server-acesso');const state=await getStatus(pool,user);return reply(res,200,{...state});
@@ -134,9 +142,10 @@ function create({pool,getCurrentUser,requireAdmin,readBody,sendJson}){
       }
       if(url==='/api/billing/checkout'&&req.method==='POST'){
         if(!configured())return reply(res,503,{error:'Checkout não configurado. Informe PUBLIC_BASE_URL, INFINITEPAY_API_KEY e INFINITEPAY_HANDLE no Render.'});
-        const b=await readBody(req);const p=CATALOG[String(b.plan||'')];if(!p)return reply(res,400,{error:'Plano inválido.'});
-        const id=crypto.randomUUID();await pool.query('INSERT INTO billing_orders(id,user_id,plan_code,amount_cents) VALUES($1,$2,$3,$4)',[id,user.id,b.plan,p.cents]);
-        const payload={order_nsu:id,items:[{description:p.name,quantity:1,price:p.cents}],redirect_url:base+'/pagamento-retorno.html',webhook_url:base+'/api/webhooks/infinitepay',options:{single_payment:true,valid_until:new Date(Date.now()+24*60*60*1000).toISOString()}};
+        const b=await readBody(req);let custom=null;try{if(b.plan==='personalizado')custom=require('./server-plano-personalizado').quote(b.config);}catch(e){return reply(res,400,{error:e.message});}const p=custom||CATALOG[String(b.plan||'')];if(!p)return reply(res,400,{error:'Plano inválido.'});
+        if(b.plan==='parceiros'){const a=await pool.query("SELECT 1 FROM billing_partner_applications WHERE user_id=$1 AND status='approved'",[user.id]);if(!a.rowCount)return reply(res,403,{error:'Programa Parceiros sujeito à análise. Solicite a avaliação do marketing compartilhado antes de contratar.'});}
+        const id=crypto.randomUUID();await pool.query('INSERT INTO billing_orders(id,user_id,plan_code,amount_cents,custom_config) VALUES($1,$2,$3,$4,$5)',[id,user.id,b.plan,p.cents,custom?JSON.stringify(custom.config):null]);
+        const payload={order_nsu:id,items:custom?custom.items:[{description:p.name,quantity:1,price:p.cents}],redirect_url:base+'/pagamento-retorno.html',webhook_url:base+'/api/webhooks/infinitepay',options:{single_payment:true,valid_until:new Date(Date.now()+24*60*60*1000).toISOString()}};
         payload.handle=process.env.INFINITEPAY_HANDLE;
         const created=await request('/links',payload);const link=created.url||created.link||created.checkout_url;
         if(typeof link!=='string'||!/^https:\/\//i.test(link))return reply(res,502,{error:'InfinitePay não retornou um link válido.'});

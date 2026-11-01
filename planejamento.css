@@ -134,3 +134,8 @@
 .modal.bulk-expense-modal{z-index:2100}
 .bulk-expense-box{box-sizing:border-box;max-height:94dvh;overflow-y:auto}
 @media(max-width:650px){.bulk-expense-box{max-height:96dvh}}
+
+/* Native top layer: no sidebar, transformed ancestor or stacking context can cover it. */
+dialog.bulk-expense-modal{margin:0;border:0;width:100vw;height:100dvh;max-width:none;max-height:none;box-sizing:border-box}
+dialog.bulk-expense-modal::backdrop{background:rgba(0,0,0,.55)}
+dialog.bulk-expense-modal:not([open]){display:none}

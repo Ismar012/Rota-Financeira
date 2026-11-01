@@ -94,11 +94,11 @@
   }
 
   function showModal(id) {
-    $(id)?.classList.remove('hidden');
+    const modal=$(id);modal?.classList.remove('hidden');if(modal?.tagName==='DIALOG'&&!modal.open&&typeof modal.showModal==='function')modal.showModal();
   }
 
   function hideModal(id) {
-    $(id)?.classList.add('hidden');
+    const modal=$(id);if(modal?.tagName==='DIALOG'&&modal.open)modal.close();modal?.classList.add('hidden');
   }
 
   function setMonth(month) {
@@ -871,7 +871,7 @@ function setBulkExpenseBusy(busy) {
   const submit = $('bulkSubmitExpenses');
   if (submit) {
     submit.disabled = busy;
-    submit.textContent = busy ? 'Cadastrando...' : 'Cadastrar despesas preenchidas';
+    submit.textContent = busy ? 'Cadastrando...' : (bulkKind==='income'?'Cadastrar ganhos preenchidos':'Cadastrar despesas preenchidas');
   }
   $('bulkBackToIndividual') && ($('bulkBackToIndividual').disabled = busy);
   $('closeBulkExpenseModal') && ($('closeBulkExpenseModal').disabled = busy);

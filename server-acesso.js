@@ -53,8 +53,9 @@ async function getStatus(pool,user) {
   const r=await pool.query('SELECT plan_code,expires_at FROM billing_entitlements WHERE user_id=$1 ORDER BY expires_at DESC NULLS LAST',[user.id]);
   const result=decide(user,r.rows);
   if(user.role==='admin')return result;
-  const purchased=await pool.query(`SELECT DISTINCT plan_code FROM billing_one_time_credits WHERE user_id=$1 AND remaining>0`,[user.id]);
+  const purchased=await pool.query(`SELECT DISTINCT plan_code FROM billing_one_time_credits WHERE user_id=$1 AND remaining>0 UNION SELECT DISTINCT plan_code FROM billing_session_credits WHERE user_id=$1 AND remaining>0 AND available_at<=NOW()`,[user.id]);
   result.one_time_products=purchased.rows.map(x=>x.plan_code);
+  const schedule=await pool.query('SELECT plan_code,available_at,COUNT(*)::int AS quantity FROM billing_session_credits WHERE user_id=$1 AND remaining=1 GROUP BY plan_code,available_at ORDER BY available_at',[user.id]);result.scheduled_credits=schedule.rows;
   result.core_active=result.active;
   result.core_blocked=!result.core_active;
   const supplementary=r.rows.some(e=>e.plan_code==='mentoria_mensal'&&active(e.expires_at,Date.now()))||purchased.rows.length>0;
@@ -65,12 +66,12 @@ async function getStatus(pool,user) {
   return result;
 }
 function grantByPlan(plan_code,slug) { return !!CATALOG[plan_code]?.grants.includes(slug); }
-async function hasService(pool,user,slug,access=null) {
-  if(user.role==='admin') return true;
+async function serviceAccess(pool,user,slug,access=null) {
+  if(user.role==='admin') return {allowed:true,source:'administrador'};
   const s=access||await getStatus(pool,user);
   // Uma conta bloqueada não pode usar ferramentas digitais, nem com permissão antiga persistida.
-  if(s.source==='admin' && s.blocked) return false;
-  if(['plataforma','planejamento','divisao-casa'].includes(slug) && (s.core_blocked ?? s.blocked)) return false;
+  if(s.source==='admin' && s.blocked) return {allowed:false,source:'indisponivel'};
+  if(['plataforma','planejamento','divisao-casa'].includes(slug) && (s.core_blocked ?? s.blocked)) return {allowed:false,source:'indisponivel'};
   const r=await pool.query(`SELECT s.id,s.default_acquired,us.user_id IS NOT NULL AS legacy_acquired,
     p.allowed AS legacy_override,m.allowed AS manual_override
     FROM services s
@@ -78,23 +79,24 @@ async function hasService(pool,user,slug,access=null) {
     LEFT JOIN product_permissions p ON p.user_id=$1 AND p.service_id=s.id
     LEFT JOIN billing_manual_service_grants m ON m.user_id=$1 AND m.service_id=s.id
     WHERE s.slug=$2 AND s.active=TRUE LIMIT 1`,[user.id,slug]);
-  const item=r.rows[0];if(!item)return false;
-  if(item.manual_override!==null&&item.manual_override!==undefined) return item.manual_override===true;
-  if(item.legacy_override===false) return false; // Negação manual antiga permanece válida.
-  const current=s.subscriptions.some(e=>e.active&&grantByPlan(e.plan_code,slug));
-  if(current)return true;
+  const item=r.rows[0];if(!item)return {allowed:false,source:'indisponivel'};
+  if(item.manual_override!==null&&item.manual_override!==undefined) return {allowed:item.manual_override===true,source:'liberacao_manual'};
+  if(item.legacy_override===false) return {allowed:false,source:'indisponivel'}; // Negação manual antiga permanece válida.
+  const current=s.subscriptions.find(e=>e.active&&grantByPlan(e.plan_code,slug));
+  if(current)return {allowed:true,source:'plano',plan_code:current.plan_code,expires_at:current.expires_at};
   if(slug==='consultoria'||slug==='acompanhamento') {
     const purchase=await pool.query(`SELECT 1 FROM billing_one_time_credits WHERE user_id=$1 AND remaining>0
-      AND plan_code = ANY($2::text[]) LIMIT 1`,[user.id,slug==='consultoria'?['consultoria_diagnostica']:['sessao_mentoria']]);
-    if(purchase.rowCount)return true; // Crédito avulso válido e ainda não utilizado.
+      AND plan_code = ANY($2::text[]) UNION SELECT 1 FROM billing_session_credits WHERE user_id=$1 AND remaining>0 AND available_at<=NOW() AND plan_code=ANY($2::text[]) LIMIT 1`,[user.id,slug==='consultoria'?['consultoria_diagnostica']:['sessao_mentoria']]);
+    if(purchase.rowCount)return {allowed:true,source:'credito_avulso'}; // Crédito avulso válido e ainda não utilizado.
     const history=await pool.query(`SELECT 1 FROM billing_orders WHERE user_id=$1 AND status='paid'
-      AND plan_code=ANY($2::text[]) LIMIT 1`,[user.id,slug==='consultoria'?['consultoria_diagnostica']:['sessao_mentoria']]);
-    if(history.rowCount)return false; // Crédito foi consumido: não usar permissões legadas permanentes.
+      AND plan_code=ANY($2::text[]) UNION SELECT 1 FROM billing_orders WHERE user_id=$1 AND status='paid' AND plan_code='personalizado' AND (custom_config->>($3::text))::integer>0 LIMIT 1`,[user.id,slug==='consultoria'?['consultoria_diagnostica']:['sessao_mentoria'],slug==='consultoria'?'consultations':'mentoring']);
+    if(history.rowCount)return {allowed:false,source:'indisponivel'}; // Crédito foi consumido: não usar permissões legadas permanentes.
   }
   // Se um pagamento concedia o produto, um registro antigo de permissões não pode reativá-lo.
   const hadPaid=s.subscriptions.some(e=>grantByPlan(e.plan_code,slug));
-  if(hadPaid&&s.source!=='liberacao_manual')return false;
-  if(item.legacy_override!==null&&item.legacy_override!==undefined)return item.legacy_override===true;
-  return item.default_acquired===true||item.legacy_acquired===true;
+  if(hadPaid&&s.source!=='liberacao_manual')return {allowed:false,source:'indisponivel'};
+  if(item.legacy_override!==null&&item.legacy_override!==undefined)return {allowed:item.legacy_override===true,source:'liberacao_anterior'};
+  return {allowed:item.default_acquired===true||item.legacy_acquired===true,source:s.source==='teste_gratuito'?'teste_gratuito':'liberacao_anterior'};
 }
-module.exports={CORE,decide,getStatus,hasService,install,grantByPlan};
+async function hasService(pool,user,slug,access=null){return (await serviceAccess(pool,user,slug,access)).allowed;}
+module.exports={CORE,decide,getStatus,hasService,serviceAccess,install,grantByPlan};
