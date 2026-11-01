@@ -6036,7 +6036,7 @@ async function handleApiInternal(
       const state=await acesso.getStatus(pool,actor);
       const consultation=url.startsWith('/api/consultations');
       const existingBooking=consultation&&(req.method==='GET'||/^\/api\/consultations\/\d+\/cancel$/.test(url));
-      if (!existingBooking && (consultation ? !await acesso.hasService(pool,actor,'consultoria',state) : (state.core_blocked??state.blocked))) {
+      if (!existingBooking && (consultation ? !(await acesso.hasService(pool,actor,'consultoria',state)||await acesso.hasService(pool,actor,'acompanhamento',state)) : (state.core_blocked??state.blocked))) {
         return sendJson(res,403,{error:consultation?'Este atendimento não está incluído no seu acesso atual.':'Seu acesso venceu. Renove seu plano para continuar.',renewal_required:!consultation,renewal_url:'/renovar.html',status:state.status});
       }
     }

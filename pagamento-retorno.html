@@ -1,4 +1,4 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confirmação de pagamento | Rota Financeira</title><style>body{font:17px system-ui,sans-serif;background:#111820;color:#eee;max-width:620px;margin:12vh auto;padding:22px}a{color:#e9c489}</style></head><body><h1>Confirmação de pagamento</h1><p id="status">Verificando o pagamento com a InfinitePay…</p><p><a href="/planos.html">Voltar aos planos</a> · <a href="/servicos.html">Meus serviços</a></p><script>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Confirmação de pagamento | Rota Financeira</title><style>body{font:17px system-ui,sans-serif;background:#111820;color:#eee;max-width:620px;margin:12vh auto;padding:22px}a{color:#e9c489}</style></head><body><h1>Confirmação de pagamento</h1><p id="status">Verificando o pagamento com a InfinitePay…</p><p id="nextAction"></p><p><a href="/planos.html">Voltar aos planos</a> · <a href="/servicos.html">Meus serviços</a></p><script>
 (async()=>{
  const s=document.getElementById('status'),q=new URLSearchParams(location.search);
  const order_nsu=q.get('order_nsu'),slug=q.get('slug'),transaction_nsu=q.get('transaction_nsu');
@@ -7,7 +7,7 @@
   const r=await fetch('/api/billing/verify',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_nsu,slug,transaction_nsu})});
   if(r.status===401){s.textContent='Entre na sua conta para consultar a situação do pedido.';return true;}
   const d=await r.json().catch(()=>({}));
-  if(d.paid){s.textContent='Pagamento confirmado pela InfinitePay! Seu acesso está atualizado.';return true;}
+  if(d.paid){s.textContent='Pagamento confirmado pela InfinitePay! Seu acesso está atualizado.';const a=document.createElement('a');a.href=d.next_url||'/servicos.html';a.textContent=d.plan_code==='consultoria_diagnostica'?'Escolher horário da consultoria':d.plan_code==='sessao_mentoria'?'Escolher horário da mentoria':'Acessar meus serviços';document.getElementById('nextAction').replaceChildren(a);if(['consultoria_diagnostica','sessao_mentoria'].includes(d.plan_code))location.replace(a.href);return true;}
   if(!r.ok){s.textContent=d.error||'Falha na consulta. Entre em contato com o suporte se o pagamento foi concluído.';return true;}
   s.textContent='Pagamento ainda não confirmado. Estamos verificando, sem liberar acesso antes da confirmação.';
   return false;

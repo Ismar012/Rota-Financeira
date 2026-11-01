@@ -10,6 +10,7 @@ const CATALOG = Object.freeze({
   premium: {name:'Premium', cents:49999, monthly:true, grants:['plataforma','planejamento','divisao-casa','consultoria','acompanhamento']},
   parceiros: {name:'Programa Parceiros', cents:14999, monthly:true, grants:['plataforma','planejamento','divisao-casa','consultoria','acompanhamento']}
 });
+function addDays30(date) { return new Date(new Date(date).getTime()+30*86400000); }
 function addMonth(date, originalDay) {
   const d = new Date(date);
   const nextYear = d.getUTCFullYear() + (d.getUTCMonth()===11?1:0);
@@ -53,6 +54,7 @@ async function install(pool){
     WHERE status='paid' AND plan_code IN ('consultoria_diagnostica','sessao_mentoria')
     ON CONFLICT(order_id) DO NOTHING;`);
 }
+function nextUrl(code){return code==='consultoria_diagnostica'?'/agendamento.html?service=consultoria':code==='sessao_mentoria'?'/agendamento.html?service=acompanhamento':'/servicos.html';}
 function create({pool,getCurrentUser,requireAdmin,readBody,sendJson}){
   const reply=(res,code,body)=>sendJson(res,code,body);
   const base=String(process.env.PUBLIC_BASE_URL||'').replace(/\/$/,'');
@@ -61,7 +63,7 @@ function create({pool,getCurrentUser,requireAdmin,readBody,sendJson}){
     if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)||!/^[A-Za-z0-9_.-]{1,180}$/.test(slug)||!/^[A-Za-z0-9_.-]{1,180}$/.test(tx))return {error:'Identificadores da transação incompletos.',code:400};
     const o=await pool.query('SELECT * FROM billing_orders WHERE id=$1',[id]);const order=o.rows[0];
     if(!order)return {error:'Pedido não encontrado.',code:404};
-    if(order.status==='paid')return {paid:true};
+    if(order.status==='paid')return {paid:true,plan_code:order.plan_code,next_url:nextUrl(order.plan_code)};
     const payload={order_nsu:id,slug,transaction_nsu:tx};
     payload.handle=process.env.INFINITEPAY_HANDLE;
     const check=await request('/payment_check',payload);
@@ -69,14 +71,14 @@ function create({pool,getCurrentUser,requireAdmin,readBody,sendJson}){
     const client=await pool.connect();
     try {await client.query('BEGIN');const current=(await client.query('SELECT * FROM billing_orders WHERE id=$1 FOR UPDATE',[id])).rows[0];
       await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE',[current.user_id]);
-      if(current.status==='paid'){await client.query('COMMIT');return {paid:true};}
+      if(current.status==='paid'){await client.query('COMMIT');return {paid:true,plan_code:current.plan_code,next_url:nextUrl(current.plan_code)};}
       const plan=CATALOG[current.plan_code];if(!plan)throw Error('Plano desconhecido');
       await client.query('UPDATE billing_orders SET status=$2,paid_at=NOW(),invoice_slug=$3,transaction_nsu=$4 WHERE id=$1',[id,'paid',slug,tx]);
       if(plan.monthly){
         const prior=(await client.query('SELECT expires_at,anchor_day FROM billing_entitlements WHERE user_id=$1 AND plan_code=$2 FOR UPDATE',[current.user_id,current.plan_code])).rows[0];
         const now=new Date(); const start=prior?.expires_at && new Date(prior.expires_at)>now ? new Date(prior.expires_at) : now;
         const created=(await client.query('SELECT created_at FROM users WHERE id=$1',[current.user_id])).rows[0]?.created_at;
-        const anchor=prior?.anchor_day || new Date(created||now).getUTCDate();const end=addMonth(start,anchor);
+        const anchor=prior?.anchor_day || new Date(created||now).getUTCDate();const end=addDays30(start);
         await client.query(`INSERT INTO billing_entitlements(user_id,plan_code,expires_at,anchor_day)
           VALUES($1,$2,$3,$4) ON CONFLICT(user_id,plan_code) DO UPDATE SET expires_at=EXCLUDED.expires_at,updated_at=NOW()`,[current.user_id,current.plan_code,end,anchor]);
       }
@@ -86,7 +88,7 @@ function create({pool,getCurrentUser,requireAdmin,readBody,sendJson}){
       }
       // Nunca perpetuar permissões pagas em user_services/product_permissions.
       // A consulta de acesso resolve os direitos pela data da mensalidade.
-      await client.query('COMMIT');return {paid:true};
+      await client.query('COMMIT');return {paid:true,plan_code:current.plan_code,next_url:nextUrl(current.plan_code)};
     }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
   }
   async function handle(req,res,url,parsed){
@@ -121,7 +123,7 @@ function create({pool,getCurrentUser,requireAdmin,readBody,sendJson}){
         return reply(res,404,{error:'Rota de cobrança administrativa não encontrada.'});
       }
       const user=await getCurrentUser(req);if(!user)return reply(res,401,{error:'Entre na sua conta para continuar.'});
-      if(url==='/api/billing/catalog'&&req.method==='GET')return reply(res,200,{plans:Object.entries(CATALOG).map(([code,p])=>({code,name:p.name,price_cents:p.cents,monthly:p.monthly}))});
+      if(url==='/api/billing/catalog'&&req.method==='GET')return reply(res,200,{plans:Object.entries(CATALOG).map(([code,p])=>({code,name:p.name,price_cents:p.cents,monthly:p.monthly,services:p.grants}))});
       if(url==='/api/billing/status'&&req.method==='GET'){
         const {getStatus}=require('./server-acesso');const state=await getStatus(pool,user);return reply(res,200,{...state});
       }
@@ -141,9 +143,9 @@ function create({pool,getCurrentUser,requireAdmin,readBody,sendJson}){
         await pool.query('UPDATE billing_orders SET checkout_url=$2 WHERE id=$1',[id,link]);return reply(res,200,{checkout_url:link,order_nsu:id});
       }
       if(url==='/api/billing/verify'&&req.method==='POST'){
-        const b=await readBody(req);const id=String(b.order_nsu||'');if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))return reply(res,400,{error:'Identificador de pedido inválido.'});const o=await pool.query('SELECT user_id,status FROM billing_orders WHERE id=$1',[id]);
+        const b=await readBody(req);const id=String(b.order_nsu||'');if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))return reply(res,400,{error:'Identificador de pedido inválido.'});const o=await pool.query('SELECT user_id,status,plan_code FROM billing_orders WHERE id=$1',[id]);
         if(!o.rows.length||Number(o.rows[0].user_id)!==Number(user.id))return reply(res,404,{error:'Pedido não encontrado.'});
-        if(o.rows[0].status==='paid')return reply(res,200,{paid:true});
+        if(o.rows[0].status==='paid')return reply(res,200,{paid:true,plan_code:o.rows[0].plan_code,next_url:nextUrl(o.rows[0].plan_code)});
         const result=await confirm(id,String(b.slug||''),String(b.transaction_nsu||''));return reply(res,result.code||200,result);
       }
       return reply(res,404,{error:'Rota de cobrança não encontrada.'});
@@ -151,4 +153,4 @@ function create({pool,getCurrentUser,requireAdmin,readBody,sendJson}){
   }
   return {handle};
 }
-module.exports={CATALOG,addMonth,install,create};
+module.exports={CATALOG,addMonth,addDays30,install,create};

@@ -128,3 +128,9 @@
 .bulk-expense-actions .primary-btn{font-size:12px}
 @media(max-width:1000px){.bulk-expense-box{padding:24px 18px 18px}.bulk-table-scroll{max-height:45vh}.bulk-expense-intro{max-width:calc(100% - 20px)}}
 @media(max-width:650px){.bulk-expense-modal{padding:8px}.bulk-expense-box{width:calc(100vw - 16px);max-height:96vh;padding:22px 12px 14px}.bulk-expense-box h2{font-size:22px;margin-right:26px}.bulk-expense-intro{font-size:12px}.bulk-table-scroll{max-height:48vh}.bulk-expense-actions{grid-template-columns:1fr}.bulk-table-toolbar{align-items:flex-start;flex-direction:column}.bulk-expense-table{min-width:1160px}}
+
+/* Formulários acima da navegação fixa (sidebar 1400 / ajuda móvel 1501). */
+.modal{z-index:2000}
+.modal.bulk-expense-modal{z-index:2100}
+.bulk-expense-box{box-sizing:border-box;max-height:94dvh;overflow-y:auto}
+@media(max-width:650px){.bulk-expense-box{max-height:96dvh}}
