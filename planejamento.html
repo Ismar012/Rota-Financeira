@@ -24,7 +24,7 @@
 <link rel="stylesheet" href="/transicoes.css?v=20261101-mascot-context"><link rel="stylesheet" href="/refinamento.css?v=20261021-3"><link rel="stylesheet" href="/app-shell.css?v=20261101-agenda-sidebar1">
 <link rel="stylesheet" href="/finance-views.css?v=20261027-viewfix4"><link rel="stylesheet" href="/planejamento-dashboard.css?v=20261101-layout2"><link rel="stylesheet" href="/audit-fixes.css?v=20261101"><script src="/cleanup-ui.js?v=20261101" defer></script></head>
 
-<body class="client-planning"><datalist id="incomeCategories"><option value="Outros"><option value="Salário"><option value="Corridas"><option value="Serviços"><option value="Vendas"><option value="Renda extra"></datalist>
+<body class="client-planning">
 
 <!-- =========================
      CABEÇALHO
@@ -524,9 +524,14 @@
         </label>
 
 
-        <label id="categoryLabel">Categoria da despesa
-          <input id="entryCategory" list="expenseCategories" maxlength="60" value="Outros">
-          <datalist id="expenseCategories"><option value="Outros"><option value="Alimentação"><option value="Moradia"><option value="Transporte"><option value="Saúde"><option value="Educação"><option value="Lazer"><option value="Contas e serviços"><option value="Dívidas e empréstimos"></datalist>
+        <label id="categoryLabel" for="entryCategory">Categoria do lançamento
+          <select id="entryCategory" required aria-label="Categoria do lançamento">
+            <option value="Casa">Casa</option>
+            <option value="Veículo">Veículo</option>
+            <option value="Lazer">Lazer</option>
+            <option value="Alimentação">Alimentação</option>
+            <option value="Outros" selected>Outros</option>
+          </select>
         </label>
         <label id="secondDayLabel" class="hidden">Segundo dia fixo do mês
           <input id="secondDay" type="number" min="1" max="31" step="1">
@@ -612,7 +617,6 @@
         <button id="closeBulkExpenseModal" class="modal-close" type="button" aria-label="Fechar cadastro em massa">×</button>
 
         <div class="eyebrow">Nova despesa</div>
-        <datalist id="bulkExpenseCategories"><option value="Outros"><option value="Alimentação"><option value="Moradia"><option value="Transporte"><option value="Saúde"><option value="Educação"><option value="Lazer"><option value="Contas e serviços"><option value="Dívidas e empréstimos"></datalist>
         <h2 id="bulkExpenseTitle">Cadastrar despesas em massa</h2>
         <p class="bulk-expense-intro">Preencha uma despesa por linha. Só serão cadastradas as linhas completas; linhas incompletas ficam aqui para você terminar depois.</p>
 

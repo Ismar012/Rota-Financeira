@@ -123,6 +123,25 @@
     label.insertBefore(document.createTextNode(`${text} `), label.firstChild);
   }
 
+  // Categorias predefinidas por tipo. Categorias antigas continuam selecionáveis
+  // exclusivamente ao editar um lançamento que já as possui.
+  const categoryChoices = {
+    income: ['Salário', 'Benefício', 'Diária', 'Extra', 'Outros'],
+    expense: ['Casa', 'Veículo', 'Lazer', 'Alimentação', 'Outros']
+  };
+  function setEntryCategorySelection(type, selected = 'Outros') {
+    const select = $('entryCategory');
+    if (!select) return;
+    const choices = categoryChoices[type] || categoryChoices.expense;
+    const value = String(selected || 'Outros').trim() || 'Outros';
+    select.replaceChildren(...choices.map(category => new Option(category, category)));
+    if (!choices.includes(value)) {
+      select.add(new Option(`${value} (categoria anterior)`, value));
+    }
+    select.value = value;
+    select.dataset.kind = type;
+  }
+
   function syncExpenseRecurrenceUI(type, editing = false) {
     const modeLabel = $('expenseModeLabel');
     const mode = $('expenseRecurrence');
@@ -134,7 +153,7 @@
     const isExpense = type === 'expense';
     $('openBulkExpenses')?.classList.toggle('hidden', editing);
     $('categoryLabel')?.classList.remove('hidden');
-    $('entryCategory').setAttribute('list',type==='income'?'incomeCategories':'expenseCategories');
+    if ($('entryCategory')?.dataset.kind !== type) setEntryCategorySelection(type);
     setLabelText($('categoryLabel'),'Categoria do lançamento');
     $('entryName').placeholder=type==='income'?'Ex.: Salário, corridas':'Ex.: Combustível';
     $('openBulkExpenses').textContent=type==='income'?'Cadastrar ganhos em massa':'Cadastrar despesas em massa';
@@ -212,7 +231,7 @@
     $('entryId').value = entry.id;
     $('entryType').value = entry.type;
     $('entryName').value = entry.name || '';
-    $('entryCategory').value = entry.financial_category || 'Outros';
+    setEntryCategorySelection(entry.type, entry.financial_category || 'Outros');
     $('entryAmount').value = Number(entry.amount || 0).toFixed(2);
     syncExpenseRecurrenceFromEntry(entry);
     $('createdDate').value = entry.created_date || todayLocal();
@@ -668,10 +687,13 @@ function addBulkExpenseRow() {
   ]) recurrence.append(makeBulkControl('option', '', {value, textContent: label}));
   appendBulkCell(row, 'bulk-type-cell', recurrence);
 
-  const category = makeBulkControl('input', 'bulk-category', {
-    type: 'text', maxlength: '60', value: 'Outros', list: bulkKind==='income'?'incomeCategories':'bulkExpenseCategories',
-    'aria-label': `Categoria da despesa — linha ${body.children.length + 1}`
+  const category = makeBulkControl('select', 'bulk-category', {
+    'aria-label': `Categoria do lançamento — linha ${body.children.length + 1}`
   });
+  for (const value of categoryChoices[bulkKind]) {
+    category.append(makeBulkControl('option', '', { value, textContent: value }));
+  }
+  category.value = 'Outros';
   appendBulkCell(row, 'bulk-category-cell', category);
 
   const createdDate = makeBulkControl('input', 'bulk-created-date', {
