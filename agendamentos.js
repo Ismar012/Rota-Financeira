@@ -90,18 +90,21 @@
     $('agendaFreeCount').textContent=String(state.slots.filter(s=>String(s.day||'').slice(0,7)===state.month&&s.enabled&&!s.booking_id).length);
   }
   function renderAdminLists() {
+    const filterDay=$('adminDayFilter')?.value||'';const visibleBookings=state.bookings.filter(b=>!filterDay||b.day===filterDay);
+    if($('adminDayFilterStatus'))$('adminDayFilterStatus').textContent=filterDay?'Exibindo '+date(filterDay):'Exibindo todos os dias';
     const bookingsEl=$('bookings');clear(bookingsEl);
-    if(!state.bookings.length)addText(bookingsEl,'Nenhuma consultoria agendada.');
-    const sorted=[...state.bookings].sort((a,b)=>String(b.day+' '+b.start).localeCompare(String(a.day+' '+a.start)));
+    if(!visibleBookings.length)addText(bookingsEl,filterDay?'Nenhum agendamento neste dia.':'Nenhuma consultoria agendada.');
+    const sorted=[...visibleBookings].sort((a,b)=>String(b.day+' '+b.start).localeCompare(String(a.day+' '+a.start)));
     sorted.forEach(booking=>{
       const status=booking.cancelled_at?'Cancelado':!booking.seen_at?'Novo agendamento':'Visualizado';
       const r=row(bookingsEl,`${date(booking.day)} · ${booking.start} às ${booking.end} · ${booking.name||'Cliente'} · ${serviceName(booking.service_slug)} · ${booking.email||''}${booking.phone?' · '+booking.phone:''}`,status);
+      const label=r.querySelector('span');const day=document.createElement('strong');day.textContent=date(booking.day);label.replaceChildren(day,document.createTextNode(label.textContent.slice(date(booking.day).length)));
       if(!booking.cancelled_at&&isFuture(booking))action(r,'Cancelar',()=>mutate(`/api/admin/consultations/${booking.id}/cancel`,{},`Cancelar esta consultoria de ${booking.name||'cliente'}? O horário poderá ser reservado novamente.`));
     });
-    const slotsEl=$('slots');clear(slotsEl);const enabled=state.slots.filter(s=>s.enabled).sort((a,b)=>String(a.day+' '+a.start).localeCompare(String(b.day+' '+b.start)));
-    if(!enabled.length)addText(slotsEl,'Nenhum horário futuro disponível cadastrado.');
+    const slotsEl=$('slots');clear(slotsEl);const enabled=state.slots.filter(s=>s.enabled&&(!filterDay||s.day===filterDay)).sort((a,b)=>String(a.day+' '+a.start).localeCompare(String(b.day+' '+b.start)));
+    if(!enabled.length)addText(slotsEl,filterDay?'Nenhum horário disponibilizado neste dia.':'Nenhum horário futuro disponível cadastrado.');
     let lastDay='';enabled.forEach(slot=>{
-      if(slot.day!==lastDay){lastDay=slot.day;const heading=row(slotsEl,date(slot.day));if(isFuture({day:slot.day,start:'23:59'}))action(heading,'Excluir dia',()=>mutate('/api/admin/consultations/availability/remove',{day:slot.day},'Excluir todos os horários futuros deste dia? Os agendamentos existentes também serão cancelados.'));}
+      if(slot.day!==lastDay){lastDay=slot.day;const heading=row(slotsEl,date(slot.day));heading.classList.add('agenda-date-heading');const label=heading.querySelector('span');const strong=document.createElement('strong');strong.textContent=label.textContent;label.replaceChildren(strong);if(isFuture({day:slot.day,start:'23:59'}))action(heading,'Excluir dia',()=>mutate('/api/admin/consultations/availability/remove',{day:slot.day},'Excluir todos os horários futuros deste dia? Os agendamentos existentes também serão cancelados.'));}
       const line=row(slotsEl,`${slot.start} às ${slot.end}`,slot.booking_id?'Reservado':'Disponível');if(isFuture(slot))action(line,'Excluir horário',()=>mutate('/api/admin/consultations/availability/remove',{slotId:Number(slot.id)},slot.booking_id?'Excluir esta disponibilidade e cancelar o agendamento do cliente?':'Excluir este horário disponível?'));
     });
     $('markSeen').disabled=!state.bookings.some(b=>!b.seen_at&&!b.cancelled_at);
@@ -123,6 +126,7 @@
       if(admin&&me.user?.role!=='admin'){$('accessFeedback').textContent='Acesso restrito ao administrador.';return;}
       if(admin){
         $('adminContent').classList.remove('hidden');
+        $('adminDayFilter')?.addEventListener('change',renderAdminLists);$('clearAdminDayFilter')?.addEventListener('click',()=>{$('adminDayFilter').value='';renderAdminLists();});
         $('calendarMonth').value=state.month;
         if(!state.selectedDay.startsWith(state.month))state.selectedDay=`${state.month}-01`;
         const names=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];names.forEach((name,index)=>{const label=document.createElement('label');const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.value=index;checkbox.checked=index>0&&index<6;label.append(checkbox,document.createTextNode(' '+name));$('weekdays').append(label);});

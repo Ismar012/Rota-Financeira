@@ -5,8 +5,8 @@
   <title>Acompanhar agendamentos | Rota Financeira</title>
   <link rel="stylesheet" href="/agendamentos.css?v=20261027-agenda2">
   <link rel="stylesheet" href="/admin.css?v=20261027-admin-premium2">
-  <link rel="stylesheet" href="/agendamentos-admin.css?v=20261027-agenda2">
-  <link rel="stylesheet" href="/transicoes.css?v=20261027-admin-premium2">
+  <link rel="stylesheet" href="/agendamentos-admin.css?v=20261101-day-filter">
+  <link rel="stylesheet" href="/transicoes.css?v=20261101-mascot-context">
   <link rel="stylesheet" href="/refinamento.css?v=20261027-admin-premium2">
   <link rel="stylesheet" href="/admin-shell.css?v=20261027-adminnav2">
 </head>
@@ -29,6 +29,7 @@
 
       <section class="agenda-metrics-grid" aria-label="Resumo dos agendamentos"><article><span>Agendamentos no mês</span><strong id="agendaMonthCount">0</strong><small>Reservas ativas no período</small></article><article><span>Novos agendamentos</span><strong id="agendaUnreadCount">0</strong><small>Aguardando visualização</small></article><article><span>Horários disponíveis</span><strong id="agendaFreeCount">0</strong><small>No calendário do mês</small></article></section>
 
+      <div class="agenda-day-filter"><label for="adminDayFilter">Filtrar por dia<input id="adminDayFilter" type="date"></label><button id="clearAdminDayFilter" class="outline" type="button">Mostrar todos os dias</button><span id="adminDayFilterStatus" role="status" aria-live="polite"></span></div>
       <section class="agenda-ops-grid">
         <section class="box agenda-box"><div class="eyebrow small">Disponibilidade</div><h2>Disponibilizar horários</h2><form id="availabilityForm"><div class="grid">
           <label>Modo<select id="mode"><option value="single">Cadastrar um dia</option><option value="repeat">Cadastrar e replicar até uma data</option><option value="range">Cadastrar sequência de dias</option></select></label>
@@ -42,6 +43,6 @@
     <p id="accessFeedback" role="status" aria-live="polite"></p>
   </div>
 </main>
-<script src="/agendamentos.js?v=20261027-agenda2"></script>
+<script src="/agendamentos.js?v=20261101-day-filter"></script>
 <script src="/admin-shell.js?v=20261027-adminnav2"></script>
 </body></html>
