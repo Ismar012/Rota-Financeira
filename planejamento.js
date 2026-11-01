@@ -674,7 +674,20 @@ function addBulkExpenseRow() {
     type: 'text', maxlength: '120', placeholder: 'Ex.: Aluguel',
     'aria-label': `Nome da despesa — linha ${body.children.length + 1}`
   });
-  appendBulkCell(row, 'bulk-name-cell', name);
+  const nameCell = appendBulkCell(row, 'bulk-name-cell', name);
+  // A recorrência de cada ganho é escolhida na própria linha do cadastro em massa.
+  // O select de recorrência continua sendo a fonte do valor enviado à API.
+  if (bulkKind === 'income') {
+    const fixedLabel = makeBulkControl('label', 'bulk-income-fixed-choice');
+    const fixedToggle = makeBulkControl('input', 'bulk-income-fixed-toggle', {
+      type: 'checkbox',
+      'aria-label': `Ganho fixo mensal — linha ${body.children.length + 1}`
+    });
+    fixedLabel.append(fixedToggle, makeBulkControl('span', '', {
+      textContent: 'Ganho fixo mensal'
+    }));
+    nameCell.append(fixedLabel);
+  }
 
   const amount = makeBulkControl('input', 'bulk-amount', {
     type: 'number', min: '0.01', step: '0.01', placeholder: '0,00', inputmode: 'decimal',
@@ -691,6 +704,13 @@ function addBulkExpenseRow() {
       ['daily', 'Diária'], ['weekly', 'Semanal'], ['fortnightly', 'Quinzenal (2 dias)']];
   for (const [value, label] of recurrenceOptions) recurrence.append(makeBulkControl('option', '', {value, textContent: label}));
   appendBulkCell(row, 'bulk-type-cell', recurrence);
+  const incomeFixedToggle = row.querySelector('.bulk-income-fixed-toggle');
+  if (incomeFixedToggle) {
+    incomeFixedToggle.addEventListener('change', () => {
+      recurrence.value = incomeFixedToggle.checked ? 'fixed' : 'single';
+      recurrence.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  }
 
   const category = makeBulkControl('select', 'bulk-category', {
     'aria-label': `Categoria do lançamento — linha ${body.children.length + 1}`
@@ -786,6 +806,7 @@ function renumberBulkExpenseRows() {
     row.querySelector('.bulk-name')?.setAttribute('aria-label', `Nome do ${bulkKind==='income'?'ganho':'lançamento'} — linha ${position}`);
     row.querySelector('.bulk-amount')?.setAttribute('aria-label', `Valor do lançamento — linha ${position}`);
     row.querySelector('.bulk-recurrence')?.setAttribute('aria-label', `Tipo de ${bulkKind==='income'?'ganho':'despesa'} — linha ${position}`);
+    row.querySelector('.bulk-income-fixed-toggle')?.setAttribute('aria-label', `Ganho fixo mensal — linha ${position}`);
     row.querySelector('.bulk-category')?.setAttribute('aria-label', `Categoria do lançamento — linha ${position}`);
     row.querySelector('.bulk-created-date')?.setAttribute('aria-label', `Data do cadastro — linha ${position}`);
     row.querySelector('.bulk-due-date')?.setAttribute('aria-label', `Data de ${bulkKind==='income'?'recebimento':'pagamento'} — linha ${position}`);
@@ -974,11 +995,14 @@ function openBulkExpenseModal() {
   const noun=kind==='income'?'ganhos':'despesas';
   $('bulkExpenseModal').dataset.kind=kind;
   $('bulkExpenseModal').querySelector('.eyebrow').textContent=kind==='income'?'Novos ganhos':'Novas despesas';
-  $('bulkExpenseModal').querySelector('.bulk-expense-intro').textContent='Preencha um lançamento por linha. As linhas completas serão salvas; as incompletas ficarão para correção.';
+  $('bulkExpenseModal').querySelector('.bulk-expense-intro').textContent=kind==='income'
+    ? 'Preencha um ganho por linha. Para repetir o recebimento todos os meses, marque “Ganho fixo mensal” abaixo do nome. Cada recebimento deverá ser confirmado quando acontecer.'
+    : 'Preencha um lançamento por linha. As linhas completas serão salvas; as incompletas ficarão para correção.';
   $('bulkExpenseModal').querySelector('[role=region]').setAttribute('aria-label','Tabela de '+noun+' para cadastro em massa');
   $('bulkExpenseTitle').textContent='Cadastrar '+noun+' em massa';
   $('bulkSubmitExpenses').textContent='Cadastrar '+noun+(kind==='income'?' preenchidos':' preenchidas');
-  $('bulkExpenseModal').querySelectorAll('th')[1].textContent='Nome do lançamento';
+  $('bulkExpenseModal').querySelectorAll('th')[1].textContent=kind==='income'?'Nome do ganho':'Nome da despesa';
+  $('bulkExpenseModal').querySelector('.bulk-type-heading').textContent=kind==='income'?'Tipo de ganho':'Tipo de despesa';
   $('bulkExpenseModal').querySelectorAll('th')[6].textContent=kind==='income'?'Data de recebimento':'Data de pagamento';
   hideModal('modal');
   const body = $('bulkExpenseRows');

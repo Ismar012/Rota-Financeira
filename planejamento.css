@@ -139,3 +139,12 @@
 dialog.bulk-expense-modal{margin:0;border:0;width:100vw;height:100dvh;max-width:none;max-height:none;box-sizing:border-box}
 dialog.bulk-expense-modal::backdrop{background:rgba(0,0,0,.55)}
 dialog.bulk-expense-modal:not([open]){display:none}
+
+/* Ganhos em massa: opção de recorrência clara em cada linha.
+   A tabela de despesas conserva seu formato original. */
+.bulk-expense-table .bulk-income-fixed-choice { display:flex; align-items:center; gap:7px; margin-top:9px; cursor:pointer; color:#ddd; font-size:11px; white-space:nowrap; }
+.bulk-expense-table .bulk-income-fixed-toggle { width:16px; height:16px; min-height:0; min-width:16px; padding:0; margin:0; accent-color:var(--gold); cursor:pointer; }
+.bulk-expense-table .bulk-income-fixed-choice span { line-height:1.35; }
+.bulk-expense-modal[data-kind="income"] .bulk-type-heading,
+.bulk-expense-modal[data-kind="income"] .bulk-type-cell { display:none; }
+.bulk-expense-modal[data-kind="income"] .bulk-expense-table { min-width:980px; }
