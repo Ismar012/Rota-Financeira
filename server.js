@@ -2294,7 +2294,7 @@ async function ensureFixedSeriesHorizon(userId, seriesId, fromDate = getTodayLoc
   if (!seriesId) return 0;
 
   const series = await db.prepare(`
-    SELECT id, user_id, name, amount, financial_category, recurrence_type, series_id, recurrence_day, paid, paid_at, due_date, recurrence_active
+    SELECT id, user_id, type, name, amount, financial_category, recurrence_type, series_id, recurrence_day, paid, paid_at, due_date, recurrence_active
     FROM finance_entries
     WHERE user_id = ? AND series_id = ? AND recurrence_type = 'fixed'
       AND COALESCE(recurrence_active, 1) = 1
@@ -2323,12 +2323,13 @@ async function ensureFixedSeriesHorizon(userId, seriesId, fromDate = getTodayLoc
       await db.prepare(`
         INSERT INTO finance_entries
         (user_id, type, name, amount, created_date, due_date, paid, paid_at, rest_day_id, recurrence_type, series_id, installment_number, installment_total, recurrence_day, financial_category)
-        VALUES (?, 'expense', ?, ?, ?, ?, 0, NULL, NULL, 'fixed', ?, NULL, NULL, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, 0, NULL, NULL, 'fixed', ?, NULL, NULL, ?, ?)
       `).run(
         userId,
+        anchor.type,
         anchor.name,
         anchor.amount,
-        fromDate,
+        anchor.type === 'income' ? addDays(latest, 1) : fromDate,
         next,
         seriesId,
         recurrenceDay,
@@ -3518,10 +3519,7 @@ async function handleFinanceApi(
           10
         );
 
-      const recurrenceType =
-        type === 'expense'
-          ? clean(body.recurrence_type, 20).toLowerCase() || 'single'
-          : 'single';
+      const recurrenceType = clean(body.recurrence_type, 20).toLowerCase() || 'single';
 
       const installmentTotal =
         recurrenceType === 'installment'
@@ -3580,6 +3578,9 @@ async function handleFinanceApi(
       if (type === 'expense' && !['single', 'fixed', 'installment', 'daily', 'weekly', 'fortnightly'].includes(recurrenceType)) {
         return sendJson(res, 400, { error: 'Tipo de despesa recorrente inválido.' });
       }
+      if (type === 'income' && !['single', 'fixed'].includes(recurrenceType)) {
+        return sendJson(res, 400, { error: 'Tipo de ganho inválido. Escolha ganho avulso ou ganho fixo.' });
+      }
 
       if (type === 'expense' && recurrenceType === 'installment' && (!Number.isInteger(installmentTotal) || installmentTotal < 2 || installmentTotal > 120)) {
         return sendJson(res, 400, { error: 'Informe um número de parcelas entre 2 e 120.' });
@@ -3624,9 +3625,15 @@ async function handleFinanceApi(
 
       if (type === 'expense' && ['weekly','fortnightly'].includes(recurrenceType)) {
         require('./server-recorrencias').dates(dueDate,recurrenceType,parseDate(dueDate).getDate(),secondDay,require('./server-recorrencias').horizon(dueDate)).forEach(date=>rowsToCreate.push({date,installmentNumber:null,installmentTotal:null}));
-      } else if (type === 'expense' && recurrenceType === 'fixed') {
+      } else if (recurrenceType === 'fixed') {
         const dates = buildFixedDates(dueDate, 4, recurrenceDay);
-        dates.forEach((date) => rowsToCreate.push({ date, installmentNumber: null, installmentTotal: null }));
+        dates.forEach((date, index) => rowsToCreate.push({
+          date,
+          // Ganhos fixos são distribuídos por ciclo mensal sem sobreposição
+          // dos intervalos de previsão dos meses anteriores.
+          createdDate: type === 'income' && index > 0 ? addDays(dates[index - 1], 1) : createdDate,
+          installmentNumber: null, installmentTotal: null
+        }));
       } else if (type === 'expense' && recurrenceType === 'installment') {
         for (let i = 0; i < installmentTotal; i++) {
           rowsToCreate.push({
@@ -3687,7 +3694,7 @@ for (let i = 0; i < rowsToCreate.length; i++) {
     type,
     name,
     amount,
-    recurrenceType === 'daily'
+    recurrenceType === 'daily' || (type === 'income' && recurrenceType === 'fixed')
       ? row.createdDate
       : createdDate,
     row.date,
@@ -3735,7 +3742,7 @@ await db.exec('COMMIT');
         {
           message:
             type === 'income'
-              ? 'Ganho cadastrado com sucesso.'
+              ? (recurrenceType === 'fixed' ? 'Ganho fixo cadastrado: previsão inicial e mais 3 meses, sem recebimento automático.' : 'Ganho cadastrado com sucesso.')
               : recurrenceType === 'fixed'
                 ? 'Despesa fixa cadastrada: ocorrência inicial e mais 3 meses.'
                 : recurrenceType === 'installment'
@@ -4892,8 +4899,10 @@ if (
       `).get(id, userId);
 
       if (!existing) return sendJson(res, 404, { error: 'Lançamento não encontrado.' });
-      if (existing.type !== 'expense' || !['fixed', 'installment', 'weekly', 'fortnightly'].includes(existing.recurrence_type) || !existing.series_id) {
-        return sendJson(res, 400, { error: 'A exclusão das despesas futuras está disponível somente para despesas fixas ou parceladas.' });
+      const isFixedIncome = existing.type === 'income' && existing.recurrence_type === 'fixed';
+      const isRecurringExpense = existing.type === 'expense' && ['fixed', 'installment', 'weekly', 'fortnightly'].includes(existing.recurrence_type);
+      if ((!isFixedIncome && !isRecurringExpense) || !existing.series_id) {
+        return sendJson(res, 400, { error: 'Este lançamento não permite encerrar ocorrências futuras.' });
       }
       if (existing.rest_day_id !== null && existing.rest_day_id !== undefined) {
         return sendJson(res, 400, { error: 'A despesa automática de dia de descanso deve ser removida pelo cadastro do descanso.' });
@@ -4906,16 +4915,17 @@ if (
         const result = await db.prepare(`
           DELETE FROM finance_entries
           WHERE user_id = ? AND series_id = ? AND due_date >= ? AND rest_day_id IS NULL
-        `).run(userId, existing.series_id, existing.due_date);
+            AND (? = 0 OR paid = 0)
+        `).run(userId, existing.series_id, existing.due_date, isFixedIncome ? 1 : 0);
         await db.exec('COMMIT');
-        return sendJson(res, 200, { message: 'Esta despesa e todas as ocorrências futuras foram excluídas.', deleted: Number(result.changes || 0) });
+        return sendJson(res, 200, { message: isFixedIncome ? 'Ganho fixo encerrado; recebimentos confirmados preservados.' : 'Esta despesa e todas as ocorrências futuras foram excluídas.', deleted: Number(result.changes || 0) });
       } catch (err) {
         await db.exec('ROLLBACK');
         throw err;
       }
     } catch (err) {
       console.error('Erro ao excluir ocorrências futuras:', err);
-      return sendJson(res, 500, { error: 'Não foi possível excluir as despesas futuras.' });
+      return sendJson(res, 500, { error: 'Não foi possível encerrar os lançamentos futuros.' });
     }
   }
 

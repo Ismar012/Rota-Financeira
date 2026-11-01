@@ -524,6 +524,15 @@
         </label>
 
 
+        <label id="incomeModeLabel" for="incomeRecurrence" class="hidden">
+            Tipo de ganho
+            <select id="incomeRecurrence" aria-label="Tipo de ganho">
+                <option value="single">Ganho avulso</option>
+                <option value="fixed">Ganho fixo (mensal)</option>
+            </select>
+            <small>O ganho fixo cria previsões mensais. Confirme cada recebimento somente quando receber.</small>
+        </label>
+
         <label id="categoryLabel" for="entryCategory">Categoria do lançamento
           <select id="entryCategory" required aria-label="Categoria do lançamento">
             <option value="Casa">Casa</option>
@@ -801,7 +810,7 @@
      IMPORTANTE: carregar por último
 ========================== -->
 
-<script src="/planejamento.js?v=20261101-native-dialog"></script>
+<script src="/planejamento.js?v=20261101-ganho-fixo1"></script>
 <script src="/finance-views.js?v=20261101-audit"></script>
 <script>
 document.getElementById('backLogo')?.addEventListener('click', function (event) {
@@ -815,6 +824,6 @@ document.getElementById('backLogo')?.addEventListener('click', function (event) 
 <script src="/perfil-financeiro-ui.js?v=1"></script>
 <script src="/ferramentas-financeiras.js?v=2"></script>
 <script src="/categorias.js?v=20261027-premium2"></script>
-<script src="/tutorial.js?v=20261101-mascot-context"></script><script src="/reserva-caixinha.js?v=1"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script><script src="/app-shell.js?v=20261101-agenda-sidebar1"></script></body>
+<script src="/tutorial.js?v=20261101-fixed-income1"></script><script src="/reserva-caixinha.js?v=1"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script><script src="/app-shell.js?v=20261101-agenda-sidebar1"></script></body>
 
 </html>

@@ -165,6 +165,8 @@
     setLabelText($('entryAmount')?.closest('label'), amountLabel);
     modeLabel.classList.toggle('hidden', !isExpense);
     mode.disabled = editing || !isExpense;
+    $('incomeModeLabel')?.classList.toggle('hidden', isExpense);
+    if ($('incomeRecurrence')) $('incomeRecurrence').disabled = editing || isExpense;
 
     if (!isExpense) {
       installmentLabel?.classList.add('hidden');
@@ -197,7 +199,8 @@
 
   function syncExpenseRecurrenceFromEntry(entry) {
     if (!$('expenseRecurrence')) return;
-    $('expenseRecurrence').value = entry.recurrence_type || 'single';
+    $('expenseRecurrence').value = entry.type === 'expense' ? (entry.recurrence_type || 'single') : 'single';
+    if ($('incomeRecurrence')) $('incomeRecurrence').value = entry.type === 'income' && entry.recurrence_type === 'fixed' ? 'fixed' : 'single';
     $('installmentTotal').value = entry.installment_total || '';
     syncExpenseRecurrenceUI(entry.type, true);
   }
@@ -212,6 +215,7 @@
     $('secondDay').value = '';
     $('entryAmount').value = '';
     if ($('expenseRecurrence')) $('expenseRecurrence').value = 'single';
+    if ($('incomeRecurrence')) $('incomeRecurrence').value = 'single';
     if ($('installmentTotal')) $('installmentTotal').value = '';
     syncExpenseRecurrenceUI(type, false);
     $('createdDate').value = todayLocal();
@@ -316,7 +320,7 @@ const filteredEntries = state.entries.filter((entry) => {
       <article class="entry-row">
         <div class="entry-main">
           <strong>${esc(entry.name)}</strong>
-          <small>${isIncome ? 'Ganho' : 'Despesa'} · ${esc(date)}</small>
+          <small>${isIncome ? (entry.recurrence_type === 'fixed' ? 'Ganho fixo' : 'Ganho') : 'Despesa'} · ${esc(date)}</small>
         </div>
 
         <div class="entry-value ${isIncome ? 'positive' : 'negative'}">
@@ -331,7 +335,7 @@ const filteredEntries = state.entries.filter((entry) => {
           ${linkedArea === 'house' ? '<a href="/resumo-casa.html">Gerenciar em Despesas da casa</a>' : linkedArea === 'challenge' ? '<a href="/desafio.html">Gerenciar na Reserva da Liberdade</a>' : action}
           ${linkedArea === 'house' || linkedArea === 'challenge' ? '' : `<button type="button" class="secondary-btn" data-action="edit" data-id="${entry.id}">Editar</button>
           <button type="button" class="secondary-btn danger" data-action="delete" data-id="${entry.id}">Excluir</button>
-          ${!isIncome && ['fixed','installment','weekly','fortnightly'].includes(entry.recurrence_type) && entry.series_id ? `<button type="button" class="secondary-btn danger" data-action="delete-future" data-id="${entry.id}">Excluir próximas</button>` : ''}`}
+          ${((isIncome && entry.recurrence_type === 'fixed') || (!isIncome && ['fixed','installment','weekly','fortnightly'].includes(entry.recurrence_type))) && entry.series_id ? `<button type="button" class="secondary-btn danger" data-action="delete-future" data-id="${entry.id}">${isIncome ? 'Encerrar repetição' : 'Excluir próximas'}</button>` : ''}`}
         </div>
       </article>`;
   }).join('');
@@ -540,7 +544,7 @@ async function saveEntry(event) {
     recurrence_type:
       $('entryType').value === 'expense'
         ? $('expenseRecurrence').value
-        : 'single',
+        : $('incomeRecurrence').value,
     installment_total:
       $('entryType').value === 'expense'
         ? Number($('installmentTotal').value || 0)
@@ -679,12 +683,13 @@ function addBulkExpenseRow() {
   appendBulkCell(row, 'bulk-amount-cell', amount);
 
   const recurrence = makeBulkControl('select', 'bulk-recurrence', {
-    'aria-label': `Tipo de despesa — linha ${body.children.length + 1}`
+    'aria-label': `Tipo de ${bulkKind==='income'?'ganho':'despesa'} — linha ${body.children.length + 1}`
   });
-  for (const [value, label] of [
-    ['single', 'Única'], ['fixed', 'Despesa fixa'], ['installment', 'Parcelada'],
-    ['daily', 'Diária'], ['weekly', 'Semanal'], ['fortnightly', 'Quinzenal (2 dias)']
-  ]) recurrence.append(makeBulkControl('option', '', {value, textContent: label}));
+  const recurrenceOptions = bulkKind === 'income'
+    ? [['single', 'Ganho avulso'], ['fixed', 'Ganho fixo (mensal)']]
+    : [['single', 'Única'], ['fixed', 'Despesa fixa'], ['installment', 'Parcelada'],
+      ['daily', 'Diária'], ['weekly', 'Semanal'], ['fortnightly', 'Quinzenal (2 dias)']];
+  for (const [value, label] of recurrenceOptions) recurrence.append(makeBulkControl('option', '', {value, textContent: label}));
   appendBulkCell(row, 'bulk-type-cell', recurrence);
 
   const category = makeBulkControl('select', 'bulk-category', {
@@ -780,7 +785,7 @@ function renumberBulkExpenseRows() {
     row.querySelector('.bulk-row-number').textContent = String(position);
     row.querySelector('.bulk-name')?.setAttribute('aria-label', `Nome do ${bulkKind==='income'?'ganho':'lançamento'} — linha ${position}`);
     row.querySelector('.bulk-amount')?.setAttribute('aria-label', `Valor do lançamento — linha ${position}`);
-    row.querySelector('.bulk-recurrence')?.setAttribute('aria-label', `Tipo de despesa — linha ${position}`);
+    row.querySelector('.bulk-recurrence')?.setAttribute('aria-label', `Tipo de ${bulkKind==='income'?'ganho':'despesa'} — linha ${position}`);
     row.querySelector('.bulk-category')?.setAttribute('aria-label', `Categoria do lançamento — linha ${position}`);
     row.querySelector('.bulk-created-date')?.setAttribute('aria-label', `Data do cadastro — linha ${position}`);
     row.querySelector('.bulk-due-date')?.setAttribute('aria-label', `Data de ${bulkKind==='income'?'recebimento':'pagamento'} — linha ${position}`);
@@ -841,7 +846,7 @@ function validateBulkExpenseRow(row) {
   const dueDate = controls.dueDate.value;
   if (!bulkDateIsValid(createdDate)) markInvalid(controls.createdDate, 'informe uma data de cadastro válida');
   if (!bulkDateIsValid(dueDate)) markInvalid(controls.dueDate, 'informe uma data de pagamento válida');
-  const recurrenceType = bulkKind==='income'?'single':controls.recurrence.value;
+  const recurrenceType = controls.recurrence.value;
 
   if (recurrenceType === 'daily' && createdDate && dueDate && createdDate > dueDate) {
     markInvalid(controls.dueDate, 'a data final da despesa diária deve ser igual ou posterior à data inicial');
@@ -917,7 +922,7 @@ async function submitBulkExpenses() {
   }
 
   setBulkExpenseBusy(true);
-  showBulkExpenseFeedback(`Cadastrando ${ready.length} ${ready.length === 1 ? 'despesa' : 'despesas'}...`);
+  showBulkExpenseFeedback(`Cadastrando ${ready.length} ${ready.length === 1 ? (bulkKind==='income'?'ganho':'despesa') : (bulkKind==='income'?'ganhos':'despesas')}...`);
   const succeeded = [];
   const failed = [];
 
@@ -1166,12 +1171,16 @@ async function confirmEntryDate(event) {
   }
 
   async function deleteFutureEntries(entry) {
+    const isIncome = entry.type === 'income';
     const isFixed = entry.recurrence_type === 'fixed';
-    const label = isFixed ? 'despesa fixa' : 'parcelas';
-    if (!window.confirm(`Deseja excluir esta ${label} e todas as ocorrências futuras desta série? As ocorrências anteriores serão mantidas.`)) return;
+    const label = isIncome ? 'ganho fixo' : isFixed ? 'despesa fixa' : 'parcelas';
+    const instruction = isIncome
+      ? 'As previsões ainda não recebidas desta data em diante serão removidas. Recebimentos já confirmados serão preservados.'
+      : 'As ocorrências anteriores serão mantidas.';
+    if (!window.confirm(`Deseja encerrar este ${label} e as ocorrências futuras desta série? ${instruction}`)) return;
     try {
       await api(`/api/finance/entries/${entry.id}?scope=future`, { method: 'DELETE' });
-      feedback(isFixed ? 'A despesa fixa e as próximas ocorrências foram excluídas.' : 'Esta parcela e as próximas parcelas foram excluídas.', 'success');
+      feedback(isIncome ? 'Repetição do ganho encerrada; recebimentos confirmados preservados.' : isFixed ? 'A despesa fixa e as próximas ocorrências foram excluídas.' : 'Esta parcela e as próximas parcelas foram excluídas.', 'success');
       await loadSummary();
     } catch (error) {
       if (error.status === 401 || error.status === 403) { window.location.href = '/login.html'; return; }
