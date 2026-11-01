@@ -123,23 +123,27 @@
     label.insertBefore(document.createTextNode(`${text} `), label.firstChild);
   }
 
-  // Categorias predefinidas por tipo. Categorias antigas continuam selecionáveis
-  // exclusivamente ao editar um lançamento que já as possui.
+  // Catálogo atualizado pelo administrador no banco. Categorias antigas
+  // continuam selecionáveis ao editar lançamentos históricos.
   const categoryChoices = {
     income: ['Salário', 'Benefício', 'Diária', 'Extra', 'Outros'],
-    expense: ['Casa', 'Veículo', 'Lazer', 'Alimentação', 'Outros']
+    expense: ['Casa', 'Veículo', 'Lazer', 'Alimentação', 'Outros', 'Estudos']
   };
+  function getCategoryChoices(type) {
+    return window.RotaFinanceCategories?.get(type) || categoryChoices[type] || categoryChoices.expense;
+  }
   function setEntryCategorySelection(type, selected = 'Outros') {
     const select = $('entryCategory');
     if (!select) return;
-    const choices = categoryChoices[type] || categoryChoices.expense;
     const value = String(selected || 'Outros').trim() || 'Outros';
-    select.replaceChildren(...choices.map(category => new Option(category, category)));
-    if (!choices.includes(value)) {
-      select.add(new Option(`${value} (categoria anterior)`, value));
+    if (window.RotaFinanceCategories) window.RotaFinanceCategories.fill(select,type,value);
+    else {
+      const names = getCategoryChoices(type);
+      select.replaceChildren(...names.map(category=>new Option(category,category)));
+      if (!names.includes(value)) select.add(new Option(`${value} (categoria anterior)`,value));
+      select.value=value;
     }
-    select.value = value;
-    select.dataset.kind = type;
+    select.dataset.kind=type;
   }
 
   function syncExpenseRecurrenceUI(type, editing = false) {
@@ -715,7 +719,7 @@ function addBulkExpenseRow() {
   const category = makeBulkControl('select', 'bulk-category', {
     'aria-label': `Categoria do lançamento — linha ${body.children.length + 1}`
   });
-  for (const value of categoryChoices[bulkKind]) {
+  for (const value of getCategoryChoices(bulkKind)) {
     category.append(makeBulkControl('option', '', { value, textContent: value }));
   }
   category.value = 'Outros';
@@ -1430,6 +1434,8 @@ $('closeConfirmDateModal')?.addEventListener('click', () => {
       $('entriesSection')?.classList.remove('hidden');
     }
     let remembered;try{remembered=sessionStorage.getItem('rf-month:'+location.pathname+location.search);}catch{}
+    try {await window.RotaFinanceCategories?.load();}
+    catch (error) {feedback(error.message + ' Recarregue a página para atualizar as categorias.','error');}
     setMonth(/^\d{4}-(0[1-9]|1[0-2])$/.test(remembered||'')?remembered:isoMonth());
   })();
 })();

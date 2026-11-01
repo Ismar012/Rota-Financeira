@@ -1,6 +1,7 @@
 'use strict';
 const JSZip=require('jszip');const {XMLParser,XMLValidator}=require('fast-xml-parser');const crypto=require('node:crypto');
 const {TYPES}=require('./perfis-financeiros');
+const financeCategories=require('./server-catalogo-categorias');
 const HEADERS=['Tipo','Descricao','Valor','Data inicial','Vencimento','Quitado','Data quitacao','Ambito','Atividade','Categoria'];
 const arr=x=>x==null?[]:Array.isArray(x)?x:[x];
 const folded=x=>String(x??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
@@ -86,6 +87,11 @@ function create({pool,requireUser,sendJson,readBody,getTodayLocal}){
       try{
         const config=await pool.query('SELECT financial_profile FROM users WHERE id=$1',[user.id]);const activities=config.rows[0]?.financial_profile?.activities;
         const result=await parse(await readFile(req),{today:getTodayLocal(),activities});
+        for(const row of result.rows){
+          const canonical=await financeCategories.resolveName(pool,row.type,row.category||'Outros');
+          if(!canonical)result.errors.push({line:row.line,field:'Categoria',message:'Categoria não cadastrada. Solicite ao administrador.'});
+          else row.category=canonical;
+        }
         if(!result.errors.length)result.errors.push(...await duplicates(pool,user.id,result.rows));
         if(result.errors.length)return sendJson(res,422,{errors:result.errors,error:'Corrija as linhas indicadas. Nenhum lançamento foi salvo.'});
         await pool.query("DELETE FROM finance_imports WHERE committed_at IS NULL AND created_at < now()-interval '15 minutes'");
@@ -101,7 +107,9 @@ function create({pool,requireUser,sendJson,readBody,getTodayLocal}){
         if(!batch){await client.query('ROLLBACK');return sendJson(res,404,{error:'Importação não encontrada.'});}
         if(batch.committed_at){await client.query('ROLLBACK');return sendJson(res,200,{message:'Este lote já foi importado.',count:batch.rows.length});}
         if(batch.expired){await client.query('ROLLBACK');return sendJson(res,409,{error:'A conferência expirou. Selecione e valide o arquivo novamente.'});}
-        const errors=await duplicates(client,user.id,batch.rows);if(errors.length){await client.query('ROLLBACK');return sendJson(res,409,{error:'Há lançamentos já cadastrados. Nenhuma linha foi importada.',errors});}
+        const errors=await duplicates(client,user.id,batch.rows);
+        for(const row of batch.rows)if(!(await financeCategories.isAllowed(client,row.type,row.category||'Outros'))) errors.push({line:row.line,field:'Categoria',message:'Categoria não cadastrada.'});
+        if(errors.length){await client.query('ROLLBACK');return sendJson(res,409,{error:'Há lançamentos duplicados ou categorias não cadastradas. Nenhuma linha foi importada.',errors});}
         for(const r of batch.rows)await client.query(`INSERT INTO finance_entries(user_id,type,name,amount,created_date,due_date,paid,paid_date,paid_at,recurrence_type,request_id,financial_scope,financial_activity,financial_category) VALUES($1,$2,$3,$4,$5,$6,$7,$8,CASE WHEN $7::smallint=1 THEN ($8::date::timestamp AT TIME ZONE 'America/Bahia') ELSE NULL END,'single',$9,$10,$11,$12)`,[user.id,r.type,r.name,r.amount,r.created_date,r.due_date,r.paid,r.paid_date,'xlsx:'+crypto.createHash('sha256').update(key(r)).digest('hex'),r.scope,r.activity||null,r.category||null]);
         await client.query('UPDATE finance_imports SET committed_at=now() WHERE id=$1',[body.id]);await client.query('COMMIT');return sendJson(res,201,{count:batch.rows.length,message:'Todos os lançamentos foram importados.'});
       }catch(e){try{await client.query('ROLLBACK');}catch{}console.error('Importação:',e.code||'falha de transação');return sendJson(res,500,{error:'Não foi possível confirmar o resultado. Tente novamente com a mesma confirmação para evitar duplicação.'});}finally{client.release();}

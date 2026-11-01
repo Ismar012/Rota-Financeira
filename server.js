@@ -333,6 +333,7 @@ async function initializeDatabase() {
   await require('./casa-produtos-api').install(pool);
   await require('./server-pagamentos').install(pool);
   await require('./server-acesso').install(pool);
+  await require('./server-catalogo-categorias').install(pool);
 
 }
 
@@ -3615,7 +3616,8 @@ async function handleFinanceApi(
         );
       }
 
-      const category = clean(body.financial_category,60) || 'Outros';
+      const category = await financeCategoryCatalog.resolveName(pool,type,clean(body.financial_category,60) || 'Outros');
+      if (!category) return sendJson(res,400,{error:'Categoria não cadastrada. Peça ao administrador para adicioná-la.'});
       const secondDay = recurrenceType === 'fortnightly' ? Number(body.recurrence_day_second) : null;
       if (recurrenceType === 'fortnightly' && (!Number.isInteger(secondDay) || secondDay < 1 || secondDay > 31 || secondDay === parseDate(dueDate).getDate())) return sendJson(res,400,{error:'Escolha dois dias diferentes entre 1 e 31.'});
       const seriesId = recurrenceType === 'single' ? null : createSeriesId();
@@ -4731,7 +4733,9 @@ if (
             paid,
             paid_at,
             paid_date,
-            rest_day_id
+            rest_day_id,
+            type,
+            financial_category
 
             FROM finance_entries
 
@@ -4775,6 +4779,11 @@ if (
         );
       }
 
+      const proposedCategory = clean(body.financial_category,60) || 'Outros';
+      const canonicalCategory = await financeCategoryCatalog.resolveName(pool,type,proposedCategory);
+      if (!canonicalCategory && !(existing.type === type && financeCategoryCatalog.makeKey(existing.financial_category || 'Outros') === financeCategoryCatalog.makeKey(proposedCategory)))
+        return sendJson(res,400,{error:'Categoria não cadastrada. Peça ao administrador para adicioná-la.'});
+
       const result =
         await db
           .prepare(`
@@ -4798,7 +4807,7 @@ if (
             amount,
             createdDate,
             dueDate,
-            clean(body.financial_category,60) || 'Outros',
+            canonicalCategory || proposedCategory,
             id,
             userId
           );
@@ -6018,6 +6027,8 @@ const challengeRequests = require('./server-reserva-solicitacoes').create({pool,
 const categories = require('./server-recorrencias').create({pool,requireUser,requireAdmin,sendJson,getTodayLocal});
 const scheduling = require('./agendamentos-api').createScheduling({pool, requireUser, requireAdmin, readBody, sendJson});
 const billing = require('./server-pagamentos').create({pool,getCurrentUser,requireAdmin,readBody,sendJson});
+const financeCategoryCatalog = require('./server-catalogo-categorias');
+const categoryCatalogApi = financeCategoryCatalog.create({pool,requireUser,requireAdmin,readBody,sendJson});
 
 async function handleApi(req,res,parsedUrl) {
  return transactionStore.run({},async()=>{try{return await handleApiInternal(req,res,parsedUrl);}finally{const c=transactionStore.getStore()?.client;if(c){try{await c.query('ROLLBACK');}finally{c.release();transactionStore.getStore().client=null;}}}});
@@ -6036,6 +6047,7 @@ async function handleApiInternal(
   }
 
   if (await billing.handle(req,res,url,parsedUrl) !== false) return;
+  if (await categoryCatalogApi(req,res,url) !== false) return;
   // O servidor decide o acesso em TODAS as APIs de trabalho, inclusive endpoints
   // legados que não chamam o gate de produtos. URLs de renovação continuam acessíveis.
   if (!url.startsWith('/api/auth/') && !url.startsWith('/api/admin/') &&
