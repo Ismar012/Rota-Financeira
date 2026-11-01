@@ -41,7 +41,30 @@ function createScheduling({pool,requireUser,requireAdmin,readBody,sendJson}) {
  const body=await readBody(req);const id=Number(body.slotId);if(!Number.isSafeInteger(id)||id<1)throw Object.assign(new Error('Selecione um horário válido.'),{status:400});
  const c=await pool.connect();try{await c.query('BEGIN');await c.query('SELECT pg_advisory_xact_lock(74261001)');const r=await c.query('SELECT * FROM consultation_slots WHERE id=$1 FOR UPDATE',[id]);const s=r.rows[0];const min=addDays(today(),2);
  if(!s||!s.enabled||String(s.day).slice(0,10)<min)throw Object.assign(new Error('Escolha um horário disponível a partir de depois de amanhã.'),{status:400});
- const b=await c.query('INSERT INTO consultation_bookings(slot_id,user_id) VALUES($1,$2) RETURNING id',[id,user.id]);await c.query('COMMIT');console.info(JSON.stringify({event:'consultation_booked',bookingId:b.rows[0].id,userId:user.id}));sendJson(res,201,{id:b.rows[0].id,message:'Seu agendamento foi confirmado. Nossa equipe entrará em contato com você.'});
+ // Uma consultoria avulsa representa um crédito por agendamento, não acesso ilimitado.
+ // Planos Premium/Parceiros vigentes e liberação expressa do administrador não gastam crédito.
+ const monthly=await c.query(`SELECT 1 FROM billing_entitlements WHERE user_id=$1
+   AND plan_code IN ('premium','parceiros') AND expires_at > NOW() LIMIT 1`,[user.id]);
+ const manual=await c.query(`SELECT 1 FROM billing_manual_service_grants p JOIN services s ON s.id=p.service_id
+   WHERE p.user_id=$1 AND s.slug='consultoria' AND p.allowed=TRUE LIMIT 1`,[user.id]);
+ const legacyManual=await c.query(`SELECT 1 FROM product_permissions p JOIN services s ON s.id=p.service_id
+   WHERE p.user_id=$1 AND s.slug='consultoria' AND p.allowed=TRUE AND NOT EXISTS
+   (SELECT 1 FROM billing_entitlements e WHERE e.user_id=$1 AND e.plan_code IN ('premium','parceiros'))
+   AND NOT EXISTS (SELECT 1 FROM billing_manual_service_grants m WHERE m.user_id=$1 AND m.service_id=s.id)
+   AND NOT EXISTS (SELECT 1 FROM billing_orders o WHERE o.user_id=$1 AND o.status='paid' AND o.plan_code='consultoria_diagnostica')
+   LIMIT 1`,[user.id]);
+ let credit=null;
+ if(!monthly.rowCount&&!manual.rowCount&&!legacyManual.rowCount){
+   const available=await c.query(`SELECT order_id FROM billing_one_time_credits
+     WHERE user_id=$1 AND plan_code='consultoria_diagnostica' AND remaining=1
+     ORDER BY order_id FOR UPDATE SKIP LOCKED LIMIT 1`,[user.id]);
+   credit=available.rows[0]?.order_id;
+   if(!credit)throw Object.assign(new Error('Não há crédito de consultoria disponível. Contrate uma sessão ou fale com o suporte.'),{status:403});
+ }
+ const b=await c.query('INSERT INTO consultation_bookings(slot_id,user_id) VALUES($1,$2) RETURNING id',[id,user.id]);
+ if(credit)await c.query(`UPDATE billing_one_time_credits SET remaining=0,used_at=NOW(),appointment_id=$2
+     WHERE order_id=$1 AND remaining=1`,[credit,b.rows[0].id]);
+ await c.query('COMMIT');console.info(JSON.stringify({event:'consultation_booked',bookingId:b.rows[0].id,userId:user.id}));sendJson(res,201,{id:b.rows[0].id,message:'Seu agendamento foi confirmado. Nossa equipe entrará em contato com você.'});
  }catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}return;}
  const cancelRoute=url.match(/^\/api\/(?:admin\/)?consultations\/(\d+)\/cancel$/);
  if(cancelRoute&&req.method==='POST'){
@@ -51,6 +74,7 @@ function createScheduling({pool,requireUser,requireAdmin,readBody,sendJson}) {
  const b=r.rows[0];if(!b)throw Object.assign(new Error('Agendamento não encontrado.'),{status:404});
  if(!b.cancelled_at&&b.started)throw Object.assign(new Error('Só é possível cancelar uma consultoria antes do início.'),{status:409});
  if(!b.cancelled_at)await c.query('UPDATE consultation_bookings SET cancelled_at=NOW(),cancelled_by=$2 WHERE id=$1',[id,user.id]);
+ if(!b.cancelled_at)await c.query('UPDATE billing_one_time_credits SET remaining=1,appointment_id=NULL,used_at=NULL WHERE appointment_id=$1 AND remaining=0',[id]);
  await c.query('COMMIT');console.info(JSON.stringify({event:'consultation_cancelled',bookingId:id,userId:user.id}));sendJson(res,200,{ok:true,message:'Agendamento cancelado. O horário volta a ficar disponível se continuar habilitado.'});
  }catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}return;}
  if(admin&&url==='/api/admin/consultations/availability/remove'&&req.method==='POST'){

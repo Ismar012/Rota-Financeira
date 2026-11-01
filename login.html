@@ -82,7 +82,8 @@
             if (!response.ok) throw new Error(data.error || 'Falha no login.');
             sessionStorage.setItem('rotaShowFinanceReminder', '1');
             if (false && window.RotaMascote) window.RotaMascote.setPose('ok', 'Tudo certo! Vamos para sua área.');
-            window.location.href = 'dashboard.html';
+            const me = await fetch('/api/auth/me',{credentials:'same-origin'}).then(r=>r.ok?r.json():null).catch(()=>null);
+            window.location.href = me?.user?.status?.blocked ? 'renovar.html' : me?.user?.status?.core_blocked ? 'servicos.html' : 'dashboard.html';
         } catch (error) {
             feedback.textContent = error.message || 'Não foi possível entrar. Tente novamente.';
             feedback.classList.add('is-error');

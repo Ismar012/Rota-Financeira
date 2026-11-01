@@ -46,6 +46,7 @@
               <a href="/agendamentos-admin.html" role="menuitem">Acompanhar agendamentos</a>
               <a href="/admin.html#adminSettings" role="menuitem">Configurações</a>
               <a href="/relatorios-admin.html" role="menuitem">Relatórios</a>
+              <a href="/pagamentos-admin.html" role="menuitem">Pagamentos e assinaturas</a>
               <a href="/produtos-admin.html" role="menuitem">Solicitações do produto</a>
             </div>
           </div>
@@ -55,7 +56,7 @@
       <section class="admin-summary-grid admin-status-grid" aria-label="Resumo da carteira de clientes">
         <article class="admin-summary-card"><span>Total de clientes</span><strong id="clientCount">0</strong><small>clientes cadastrados</small></article>
         <article class="admin-summary-card"><span>Ativos</span><strong id="activeCount">0</strong><small>login nos últimos 30 dias</small></article>
-        <article class="admin-summary-card"><span>Pagantes</span><strong id="payingCount">0</strong><small>status manual Pagante</small></article>
+        <article class="admin-summary-card"><span>Pagantes</span><strong id="payingCount">0</strong><small>assinaturas e liberações manuais</small></article>
         <article class="admin-summary-card highlight"><span>Free / Trial</span><strong id="freeTrialCount">0</strong><small>status automático</small></article>
       </section>
 
@@ -68,7 +69,7 @@
           </div>
           <input id="clientSearch" class="search-input" type="search" placeholder="Buscar por nome ou e-mail…" autocomplete="off">
         </div>
-        <div class="status-help"><strong>Automático:</strong> Free nos primeiros 25 dias, Trial nos últimos 5 dias e Cancelado ao completar 30 dias, quando não houver status manual. <strong>Pagante</strong> e <strong>Inadimplente</strong> são definidos pelo administrador.</div>
+        <div class="status-help"><strong>Automático:</strong> Free nos primeiros 25 dias, Trial nos últimos 5 dias e Cancelado ao completar 30 dias, quando não houver status manual. <strong>Pagante</strong> e <strong>Inadimplente</strong> também podem ser definidos manualmente; mensalidades pagas são calculadas pela data de vencimento.</div>
         <div class="table-scroll">
           <table class="clients-table status-table">
             <thead><tr><th>Cliente</th><th>Status</th><th>Acesso</th><th>Prazo</th><th>Cadastro</th><th>Último login</th><th>Ações</th></tr></thead>
@@ -144,6 +145,7 @@
         <h2>Configurações e operação</h2>
         <p class="muted">Acesse os controles operacionais sem misturá-los à análise financeira dos clientes.</p>
         <div class="admin-settings-grid">
+          <a href="/pagamentos-admin.html"><strong>Pagamentos e assinaturas</strong><span>Acompanhe pedidos e créditos avulsos.</span></a>
           <a href="/produtos-admin.html"><strong>Produtos e permissões</strong><span>Gerencie solicitações e acessos.</span></a>
           <a href="/agendamentos-admin.html"><strong>Disponibilidade de agendamentos</strong><span>Configure dias e horários de consultoria.</span></a>
           <a href="/desafio-admin.html"><strong>Reserva da Liberdade</strong><span>Configure os acessos e modalidades do serviço.</span></a>

@@ -102,6 +102,7 @@
       window.location.href = '/login.html';
       return;
     }
+    if(data.user.role==='client' && data.user.status?.core_blocked){ window.location.replace(data.user.status.blocked?'/renovar.html':'/servicos.html'); return; }
     const nameElement = document.getElementById('name');
     if (nameElement) {
       nameElement.textContent = data.user.name.split(' ')[0];
