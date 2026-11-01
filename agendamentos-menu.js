@@ -37,7 +37,7 @@
       menu.append(houseItem);
     }
     if (!admin) {
-      if (house && !menu) {
+      if (house && !menu && location.pathname !== '/dashboard.html') {
         const nav = document.querySelector('.header .nav');
         if (nav) {
           const details = document.createElement('details');
@@ -62,7 +62,9 @@
       .rota-schedule-link{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:3px;border:1px solid rgba(217,169,40,.4);border-radius:8px;padding:9px 12px;background:#0b0d0f;color:#f2cb5b;text-decoration:none;cursor:pointer;font-size:18px}
       .rota-schedule-count{font-size:11px;background:#f2cb5b;color:#080808;border-radius:20px;padding:2px 5px;margin-left:4px}
       .notification-panel{position:relative}.notification-panel summary{list-style:none}.notification-panel summary::-webkit-details-marker{display:none}
-      .notification-list{position:absolute;top:48px;right:0;z-index:12000;width:min(310px,calc(100vw - 32px));box-sizing:border-box;background:#101821;border:1px solid #514221;border-radius:12px;padding:9px;box-shadow:0 18px 46px #000b}
+      /* Abrir fora do header evita o stacking context abaixo da barra lateral. */
+      .notification-list{position:fixed!important;top:0;left:0;right:auto!important;z-index:20000;width:min(310px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow-y:auto;overscroll-behavior:contain;box-sizing:border-box;background:#101821;border:1px solid #514221;border-radius:12px;padding:9px;box-shadow:0 18px 46px #000b}
+      .notification-list[hidden]{display:none!important}
       .notification-list a,.notification-list button{display:block;width:100%;box-sizing:border-box;padding:12px;border:0;border-radius:8px;background:transparent;color:#e8edf3;text-align:left;text-decoration:none;cursor:pointer;font:500 12px/1.4 system-ui,sans-serif;white-space:normal}
       .notification-list a:hover,.notification-list button:hover{background:#202a34;color:#f2cc59}
       .rota-schedule-dropdown{position:relative}.rota-schedule-dropdown summary{list-style:none}.rota-schedule-dropdown summary::-webkit-details-marker{display:none}
@@ -81,7 +83,7 @@
       .rf-reserve-review-close{position:absolute;right:12px;top:12px;width:32px;height:32px;min-height:32px;border:0;background:transparent;color:#aebccc;font-size:25px;cursor:pointer}
       .rf-reserve-review-feedback{min-height:0;margin-bottom:0;color:#f0c851!important}
       .rf-reserve-review-toast{position:fixed;right:22px;bottom:22px;z-index:100001;max-width:calc(100vw - 44px);padding:12px 16px;border:1px solid #35634a;border-radius:10px;background:#10251a;color:#c2f1cf;font:600 12px system-ui,sans-serif;box-shadow:0 14px 35px #0008}
-      @media(max-width:540px){.rota-schedule-tools{gap:5px}.rf-reserve-review-dialog{padding:23px 18px}.rf-reserve-review-actions{grid-template-columns:1fr}.notification-list{right:-28px}}
+      @media(max-width:540px){.rota-schedule-tools{gap:5px}.rf-reserve-review-dialog{padding:23px 18px}.rf-reserve-review-actions{grid-template-columns:1fr}}
     `;
     document.head.appendChild(style);
 
@@ -108,8 +110,61 @@
     const reserveRequests = document.createElement('button');
     reserveRequests.type = 'button';
     list.append(agenda, products, reserveRequests);
-    notifications.append(list);
+    // A lista é colocada diretamente no body: z-index dentro do cabeçalho
+    // não consegue superar o stacking context do menu lateral.
+    list.id = 'rfLegacyNotificationList';
+    list.setAttribute('role', 'region');
+    list.setAttribute('aria-label', 'Notificações administrativas');
+    list.hidden = true;
+    document.body.append(list);
+    bell.setAttribute('aria-controls', list.id);
+    bell.setAttribute('aria-expanded', 'false');
     tools.append(notifications);
+
+    function positionNotifications() {
+      if (!notifications.open || list.hidden) return;
+      const gap = 12;
+      const rect = bell.getBoundingClientRect();
+      const sidebar = document.querySelector('.rf-app-sidebar');
+      const sidebarRight = window.innerWidth > 600 && sidebar ? sidebar.getBoundingClientRect().right : 0;
+      const minLeft = Math.max(gap, sidebarRight + gap);
+      const width = Math.min(310, Math.max(0, window.innerWidth - minLeft - gap));
+      // No desktop/tablet, abre ao lado do menu; no celular, respeita a viewport.
+      const idealLeft = rect.right - width;
+      const left = Math.max(minLeft, Math.min(idealLeft, window.innerWidth - gap - width));
+      list.style.width = `${width}px`;
+      list.style.left = `${Math.round(left)}px`;
+      const availableBelow = Math.max(0, window.innerHeight - rect.bottom - gap - 8);
+      const availableAbove = Math.max(0, rect.top - gap - 8);
+      const naturalHeight = list.scrollHeight;
+      const openAbove = availableBelow < Math.min(naturalHeight, 200) && availableAbove > availableBelow;
+      if (openAbove) {
+        const maxHeight = Math.max(0, availableAbove);
+        list.style.maxHeight = `${maxHeight}px`;
+        list.style.top = `${Math.max(gap, rect.top - 8 - Math.min(naturalHeight, maxHeight))}px`;
+      } else {
+        list.style.maxHeight = `${availableBelow}px`;
+        list.style.top = `${Math.round(rect.bottom + 8)}px`;
+      }
+    }
+    notifications.addEventListener('toggle', () => {
+      list.hidden = !notifications.open;
+      bell.setAttribute('aria-expanded', String(notifications.open));
+      if (notifications.open) positionNotifications();
+    });
+    document.addEventListener('pointerdown', event => {
+      if (notifications.open && !notifications.contains(event.target) && !list.contains(event.target)) {
+        notifications.open = false;
+      }
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && notifications.open) {
+        notifications.open = false;
+        bell.focus();
+      }
+    });
+    window.addEventListener('resize', positionNotifications, { passive:true });
+    window.addEventListener('scroll', positionNotifications, { passive:true, capture:true });
 
     let agendaCount = null;
     let productCount = null;

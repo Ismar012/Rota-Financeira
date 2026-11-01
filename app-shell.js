@@ -47,7 +47,7 @@
     ['relatorios','Relatórios','/planejamento.html?view=relatorios']
   ];
   const svg = (content, cls='') => `<svg ${cls ? `class="${cls}"` : ''} viewBox="0 0 24 24" aria-hidden="true">${content}</svg>`;
-  const link = ([key,label,href]) => `<a class="rf-sidebar-link${key === 'agendamento' ? ' rf-sidebar-appointment' : ''}" href="${href}" ${key === activeKey ? 'aria-current="page"' : ''} aria-label="${label}" title="${label}">${svg(iconPaths[key])}<span>${label}</span></a>`;
+  const link = ([key,label,href]) => `<a class="rf-sidebar-link" href="${href}" ${key === activeKey ? 'aria-current="page"' : ''} aria-label="${label}" title="${label}">${svg(iconPaths[key])}<span>${label}</span></a>`;
 
   const aside = document.createElement('aside');
   aside.className = 'rf-app-sidebar';
