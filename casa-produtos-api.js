@@ -3,7 +3,7 @@ function expense(b){
  const total=Math.round(Number(b.amount)*100), payer=b.payer;
  if(!Number.isSafeInteger(total)||total<=0||total>100000000||!['me','other','both'].includes(payer)||typeof b.description!=='string'||!b.description.trim()||b.description.length>160||!/^\d{4}-\d{2}-\d{2}$/.test(b.day)||Number.isNaN(Date.parse(b.day))||new Date(b.day).toISOString().slice(0,10)!==b.day)throw Error('Informe descrição, data, valor e quem pagou.');
  const mine=payer==='me'?total:payer==='other'?0:Math.ceil(total/2);
- return {total,mine,share:Math.ceil(total/2),description:b.description.trim(),day:b.day,payer};
+ return {total,mine,share:Math.ceil(total/2),description:b.description.trim(),day:b.day,payer,category:String(b.financial_category||'Outros').trim().slice(0,60)||'Outros'};
 }
 async function install(pool){await pool.query(`
  CREATE TABLE IF NOT EXISTS product_permissions(user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,service_id BIGINT REFERENCES services(id) ON DELETE CASCADE,allowed BOOLEAN NOT NULL,PRIMARY KEY(user_id,service_id));

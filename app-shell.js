@@ -143,6 +143,11 @@
     } catch { return []; }
   };
   const saveStack = stack => { try { sessionStorage.setItem(STACK_KEY, JSON.stringify(stack.slice(-60))); } catch {} };
+  const scrollKey='rf-scroll:'+route();let restored=false;
+  window.addEventListener('pagehide',()=>{try{sessionStorage.setItem(scrollKey,String(window.scrollY));}catch{}});
+  function restoreScroll(){if(restored)return;restored=true;try{const y=Number(sessionStorage.getItem(scrollKey)||0);window.setTimeout(()=>window.scrollTo(0,y),0);}catch{}}
+  document.addEventListener('rota-finance-view-ready',restoreScroll);
+  document.addEventListener('rota-summary-loaded',()=>{if(!new URLSearchParams(location.search).get('view'))restoreScroll();});
   const currentRoute = route();
   const syncStack = () => {
     const stack = readStack();
@@ -178,7 +183,7 @@
     const stack = readStack();
     const current = route();
     if (!stack.length) {
-      window.location.href = '/login.html';
+      window.location.href = '/dashboard.html';
       return;
     }
     if (stack[stack.length - 1] !== current) {
@@ -192,8 +197,8 @@
       saveStack(stack);
       window.location.href = previous;
     } else {
-      saveStack([]);
-      window.location.href = '/login.html';
+      saveStack(['/dashboard.html']);
+      window.location.href = '/dashboard.html';
     }
   });
   logout.addEventListener('click', async () => {

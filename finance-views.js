@@ -19,7 +19,7 @@
   const generalDownload = document.getElementById('downloadGeneralReportPlanning');
   if (generalDownload) generalDownload.addEventListener('click', () => {
     const month = document.getElementById('monthPicker')?.value || new Date().toISOString().slice(0, 7);
-    location.href = `/api/finance/report?month=${encodeURIComponent(month)}`;
+    window.rotaDownload(`/api/finance/report?month=${encodeURIComponent(month)}`,'Relatorio_'+month+'.pdf').catch(e=>window.alert(e.message));
   });
   if (!allowedViews.has(view)) return;
 
@@ -75,9 +75,10 @@
   const body = root.querySelector('#rfFinanceViewBody');
   const actions = root.querySelector('#rfFinanceViewActions');
   const settings = root.querySelector('#rfGoalSettingsDetails');
-  if (view === 'metas') settings.hidden = true;
+  if (view === 'metas') settings.hidden = false;
+  const statusLabels={ready:'Planejamento atualizado',needs_setup:'Configure a data e o saldo inicial',needs_regularization:'Defina os prazos das contas vencidas',no_working_days:'Revise os dias disponíveis antes dos vencimentos',cash_inconsistent:'Confira o saldo e as confirmações',past:'Histórico do mês encerrado'};
   if (view === 'despesas') actions.innerHTML = '<button type="button" class="rf-view-primary" data-rf-action="new-expense">＋ Cadastrar despesa</button>';
-  if (view === 'receitas') actions.innerHTML = '<button type="button" class="rf-view-primary" data-rf-action="new-income">＋ Cadastrar ganho</button>';
+  if (view === 'receitas') actions.innerHTML = '<button type="button" class="rf-view-primary" data-rf-action="new-income">＋ Cadastrar ganho</button><button type="button" class="rf-view-primary" data-rf-action="bulk-income">Cadastrar ganhos em massa</button>';
   if (view === 'metas') actions.innerHTML = '<button type="button" class="rf-view-primary" data-rf-action="download-goals">Baixar relatório de metas</button>';
   if (view === 'relatorios') actions.innerHTML = '<button type="button" class="rf-view-primary" data-rf-action="download-general">Baixar relatório geral</button>';
 
@@ -135,7 +136,7 @@
     return `<section class="rf-view-list-card"><div class="rf-view-list-heading"><div><h2>${type === 'expense' ? 'Despesas do mês' : 'Ganhos do mês'}</h2><p>Consulte ou altere os lançamentos deste período.</p></div><div class="rf-view-list-filters"><input type="search" id="${searchId}" placeholder="Buscar lançamento" aria-label="Buscar lançamento"><select id="${filterId}" aria-label="Filtrar situação"><option value="all">Todas as situações</option><option value="paid">${type === 'expense' ? 'Pagas' : 'Recebidos'}</option><option value="pending">Pendentes</option></select></div></div><div class="rf-view-table-scroll"><table class="rf-view-table"><thead><tr><th>Data efetiva / prevista</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Situação</th><th>Ações</th></tr></thead><tbody id="rfEntriesRows-${type}">${entries.length ? entries.map(entry => {
       const paid = isPaid(entry);
       const action = paid ? `undo-${type==='income'?'receive':'pay'}` : (type==='income'?'receive':'pay');
-      return `<tr data-type="${type}" data-id="${Number(entry.id)}" data-paid="${paid?'paid':'pending'}" data-name="${esc(`${entry.name} ${entry.financial_category||''}`.toLowerCase())}"><td>${fmtDate(isPaid(entry) ? effectiveDate(entry) : entry.due_date)}</td><td>${esc(entry.name)}</td><td>${esc(entry.financial_category || 'Outros')}</td><td class="rf-view-money">${fmt(entry.amount)}</td><td><span class="rf-view-status ${paid?'is-paid':'is-pending'}">${paid?(type==='income'?'Recebido':'Paga'):'Pendente'}</span></td><td><div class="rf-view-row-actions">${entry.house_expense_id ? '<a href="/resumo-casa.html">Gerenciar em Despesas da casa</a>' : entry.challenge_reserve ? '<a href="/desafio.html">Gerenciar na Reserva da Liberdade</a>' : `<button type="button" data-rf-entry-action="${action}" data-id="${Number(entry.id)}">${paid?'Desfazer confirmação':(type==='income'?'Confirmar recebimento':'Confirmar pagamento')}</button><button type="button" data-rf-entry-action="edit" data-id="${Number(entry.id)}">Editar</button>`}</div></td></tr>`;
+      return `<tr data-type="${type}" data-id="${Number(entry.id)}" data-paid="${paid?'paid':'pending'}" data-name="${esc(`${entry.name} ${entry.financial_category||''}`.toLowerCase())}"><td>${fmtDate(isPaid(entry) ? effectiveDate(entry) : entry.due_date)}</td><td>${esc(entry.name)}</td><td>${esc(entry.financial_category || 'Outros')}</td><td class="rf-view-money">${fmt(entry.amount)}</td><td><span class="rf-view-status ${paid?'is-paid':'is-pending'}">${paid?(type==='income'?'Recebido':'Paga'):'Pendente'}</span></td><td><div class="rf-view-row-actions">${entry.house_expense_id ? '<a href="/resumo-casa.html">Gerenciar em Despesas da casa</a>' : entry.challenge_reserve ? '<a href="/desafio.html">Gerenciar na Reserva da Liberdade</a>' : `<button type="button" data-rf-entry-action="${action}" data-id="${Number(entry.id)}">${paid?'Desfazer confirmação':(type==='income'?'Confirmar recebimento':'Confirmar pagamento')}</button><button type="button" data-rf-entry-action="edit" data-id="${Number(entry.id)}">Editar</button><button type="button" data-rf-entry-action="delete" data-id="${Number(entry.id)}">Excluir</button>`}</div></td></tr>`;
     }).join('') : `<tr><td colspan="6">Não há lançamentos ${type==='income'?'de receita':'de despesa'} neste período.</td></tr>`}</tbody></table></div></section>`;
   }
   function renderExpense(summary) {
@@ -158,7 +159,8 @@
     const planned = monthEntries.filter(e=>!isPaid(e)).reduce((sum,e)=>sum+Number(e.amount||0),0);
     const received = monthEntries.filter(isPaid).reduce((sum,e)=>sum+Number(e.amount||0),0);
     const total = planned + received;
-    body.innerHTML = `${metrics([
+    const p=summary.goalPlan||{};
+    body.innerHTML = `<section class="rf-opening-balance"><h2>Saldo inicial em conta</h2><strong>${fmt(p.initialBalance)}</strong><p>Base de ${fmtDate(p.startDate)}. Este dinheiro já existia e não é um novo ganho do mês.</p><p>Saldo inicial ${fmt(p.initialBalance)} + recebimentos ${fmt(p.received)} − pagamentos ${fmt(p.paid)} + ajustes da casa e reserva ${fmt(p.houseCashAdjustment)} = saldo ${fmt(p.cashBalance)}.</p><details><summary>Editar data e saldo inicial</summary><form id="rfOpeningForm"><label>Data inicial<input type="date" name="start_date" required value="${esc(p.startDate||p.referenceDate||'')}"></label><label>Saldo inicial (R$)<input type="number" name="initial_balance" min="0" step="0.01" required value="${Number(p.initialBalance||0)}"></label><button type="submit" class="rf-view-primary">Salvar saldo inicial</button><p role="status"></p></form></details></section>${metrics([
       {label:'Ganhos previstos',value:planned,help:'Valores cadastrados e ainda não recebidos'},
       {label:'Ganhos recebidos',value:received,help:'Valores confirmados como recebidos'},
       {label:'Total de ganhos do mês',value:total,help:'Previstos + recebidos no mês selecionado'}
@@ -173,8 +175,8 @@
     const rows = summary.data || [];
     const plan = summary.goalPlan || {};
     const dailyGoal = plan.displayDailyGoal ?? summary.totals?.dailyGoal;
-    body.innerHTML = `<section class="rf-goal-hero"><div><span class="rf-finance-view-eyebrow">META DIÁRIA DO MÊS</span><strong>${dailyGoal == null ? (plan.status==='needs_setup'?'Configure sua meta':'Revisar planejamento') : fmt(dailyGoal)}</strong><p>${Number(plan.availableWorkingDays ?? summary.totals?.availableWorkingDays ?? 0)} dias disponíveis · ${esc(plan.status==='ready'?'Planejamento atualizado':(plan.status||'consulte a configuração da meta'))}</p></div><span class="rf-goal-hero-icon" aria-hidden="true">◎</span></section>
-      <section class="rf-view-list-card"><div class="rf-view-list-heading"><div><h2>Metas e resultados diários</h2><p>O mês completo é recalculado quando você cadastra, edita ou confirma um lançamento.</p></div><span class="rf-view-period-badge">${esc(summary.month)}</span></div><div class="rf-view-table-scroll"><table class="rf-view-table"><thead><tr><th>Data</th><th>Meta do dia</th><th>Despesa prevista</th><th>Despesa paga</th><th>Ganho previsto</th><th>Ganho recebido</th><th>Dia</th></tr></thead><tbody>${rows.map(d=>`<tr><td>${fmtDate(d.date)}</td><td class="rf-view-money">${d.dailyGoal==null?'—':fmt(d.dailyGoal)}</td><td class="rf-view-money">${fmt(d.futureExpense)}</td><td class="rf-view-money">${fmt(d.paidExpense)}</td><td class="rf-view-money">${fmt(d.futureIncome)}</td><td class="rf-view-money">${fmt(d.paidIncome)}</td><td>${d.isRestDay?'Descanso':d.isWeekend?'Fim de semana':'Disponível'}</td></tr>`).join('')||'<tr><td colspan="7">Sem dados para este mês.</td></tr>'}</tbody></table></div></section>`;
+    body.innerHTML = `<section class="rf-goal-hero"><div><span class="rf-finance-view-eyebrow">META DIÁRIA DO MÊS</span><strong>${dailyGoal == null ? (plan.status==='needs_setup'?'Configure sua meta':'Revisar planejamento') : fmt(dailyGoal)}</strong><p>${Number(plan.availableWorkingDays ?? summary.totals?.availableWorkingDays ?? 0)} dias disponíveis · ${esc(statusLabels[plan.status]||'Consulte a configuração da meta')}</p></div><span class="rf-goal-hero-icon" aria-hidden="true">◎</span></section>
+      <section class="rf-view-list-card"><div class="rf-view-list-heading"><div><h2>Metas e resultados diários</h2><p>Metas futuras são recalculadas com as movimentações. Metas passadas são registros históricos; a exclusão em massa limpa os registros do período incluído. Dias de descanso não exigem produção.</p></div><span class="rf-view-period-badge">${esc(summary.month)}</span></div><div class="rf-view-table-scroll"><table class="rf-view-table"><thead><tr><th>Data</th><th>Meta do dia</th><th>Despesa prevista</th><th>Despesa paga</th><th>Ganho previsto</th><th>Ganho recebido</th><th>Dia</th></tr></thead><tbody>${rows.map(d=>`<tr><td>${fmtDate(d.date)}</td><td class="rf-view-money">${d.isRestDay?'Descanso':d.dailyGoal==null?'—':fmt(d.dailyGoal)}${d.goalState==='recorded'?'<small>Histórico registrado</small>':''}</td><td class="rf-view-money">${fmt(d.futureExpense)}</td><td class="rf-view-money">${fmt(d.paidExpense)}</td><td class="rf-view-money">${fmt(d.futureIncome)}</td><td class="rf-view-money">${fmt(d.paidIncome)}</td><td>${d.isRestDay?'Descanso':d.isWeekend?'Fim de semana':'Disponível'}</td></tr>`).join('')||'<tr><td colspan="7">Sem dados para este mês.</td></tr>'}</tbody></table></div></section>`;
     // A aba Metas permanece focada na meta diária e na tabela do mês.
     // A configuração completa continua disponível no planejamento financeiro.
   }
@@ -199,6 +201,8 @@
     if (overview && overview !== host) overview.remove();
     host.append(panel);
   }
+  const filterKey='rf-filters:'+location.pathname+location.search;
+  let savedFilters={};try{savedFilters=JSON.parse(sessionStorage.getItem(filterKey)||'{}');}catch{}
   function render(summary) {
     currentSummary = summary;
     currentMonth = summary.month || currentMonth;
@@ -207,8 +211,11 @@
     if (view === 'despesas') renderExpense(summary);
     if (view === 'receitas') renderIncome(summary);
     if (view === 'metas') renderGoals(summary);
+    const opening=document.getElementById('rfOpeningForm');if(opening)opening.onsubmit=async e=>{e.preventDefault();const b=opening.querySelector('button'),status=opening.querySelector('[role=status]');b.disabled=true;try{const r=await fetch('/api/finance/goal-settings',{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({start_date:opening.elements.start_date.value,initial_balance:Number(opening.elements.initial_balance.value)})});const data=await r.json();if(!r.ok)throw Error(data.error||'Não foi possível salvar.');document.dispatchEvent(new CustomEvent('rota-goal-reload'));refresh(currentMonth);}catch(err){status.textContent=err.message;}finally{b.disabled=false;}};
     if (view === 'relatorios') renderReports(summary);
     if (view === 'metas') attachMetaPanel();
+    for(const type of ['income','expense']){const search=root.querySelector('#rfEntriesSearch-'+type),status=root.querySelector('#rfEntriesStatus-'+type);if(search)search.value=savedFilters[type]?.search||'';if(status)status.value=savedFilters[type]?.status||'all';}
+    applyEntryFilters();
     document.dispatchEvent(new CustomEvent('rota-finance-view-ready', { detail: { view, month: currentMonth } }));
   }
   async function refresh(month) {
@@ -228,13 +235,14 @@
   }
   function download(month, report) {
     const m = month || currentMonth || document.getElementById('monthPicker')?.value || new Date().toISOString().slice(0,7);
-    location.href = `${report === 'goals' ? '/api/finance/goal-report' : '/api/finance/report'}?month=${encodeURIComponent(m)}`;
+    window.rotaDownload(`${report === 'goals' ? '/api/finance/goal-report' : '/api/finance/report'}?month=${encodeURIComponent(m)}`,'Relatorio_'+report+'_'+m+'.pdf').catch(e=>window.alert(e.message));
   }
   root.addEventListener('click', event => {
     const button = event.target.closest('[data-rf-action]');
     if (button) {
       const action = button.dataset.rfAction;
       if (action === 'new-expense') document.getElementById('addExpense')?.click();
+      if(action==='bulk-income'){document.getElementById('addIncome')?.click();document.getElementById('openBulkExpenses')?.click();}
       if (action === 'new-income') document.getElementById('addIncome')?.click();
       if (action === 'download-goals') download(currentMonth, 'goals');
       if (action === 'download-general') download(currentMonth, 'general');
@@ -256,8 +264,11 @@
   });
   function applyEntryFilters() {
     for (const type of ['expense','income']) {
-      const search = root.querySelector(`#rfEntriesSearch-${type}`)?.value.trim().toLowerCase() || '';
+      const rawSearch=root.querySelector(`#rfEntriesSearch-${type}`)?.value||'';
+      const search = rawSearch.trim().toLowerCase();
       const status = root.querySelector(`#rfEntriesStatus-${type}`)?.value || 'all';
+      if(root.querySelector(`#rfEntriesSearch-${type}`))savedFilters[type]={search:rawSearch,status};
+      try{sessionStorage.setItem(filterKey,JSON.stringify(savedFilters));}catch{}
       root.querySelectorAll(`#rfEntriesRows-${type} tr[data-id]`).forEach(row => {
         const matchName = !search || row.dataset.name.includes(search);
         const matchStatus = status === 'all' || row.dataset.paid === status;
