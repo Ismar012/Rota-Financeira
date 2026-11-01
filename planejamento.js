@@ -103,6 +103,7 @@
 
   function setMonth(month) {
     state.month = month;
+    try{sessionStorage.setItem('rf-month:'+location.pathname+location.search,month);}catch{}
     $('monthPicker').value = month;
     $('monthLabel').textContent = monthLabel(month);
     loadSummary();
@@ -131,8 +132,12 @@
     if (!modeLabel || !mode) return;
 
     const isExpense = type === 'expense';
-    $('openBulkExpenses')?.classList.toggle('hidden', !isExpense || editing);
-    $('categoryLabel')?.classList.toggle('hidden', !isExpense);
+    $('openBulkExpenses')?.classList.toggle('hidden', editing);
+    $('categoryLabel')?.classList.remove('hidden');
+    $('entryCategory').setAttribute('list',type==='income'?'incomeCategories':'expenseCategories');
+    setLabelText($('categoryLabel'),'Categoria do lançamento');
+    $('entryName').placeholder=type==='income'?'Ex.: Salário, corridas':'Ex.: Combustível';
+    $('openBulkExpenses').textContent=type==='income'?'Cadastrar ganhos em massa':'Cadastrar despesas em massa';
     $('secondDayLabel')?.classList.toggle('hidden', !isExpense || editing || mode.value !== 'fortnightly');
     if ($('secondDay')) {$('secondDay').required=isExpense && !editing && mode.value==='fortnightly';$('secondDay').disabled=!isExpense || editing || mode.value!=='fortnightly';}
     const amountLabel = type === 'expense' && mode.value === 'installment'
@@ -236,6 +241,8 @@ function renderEntries() {
   const filter = $('entriesFilter')?.value || 'all';
 
 const filteredEntries = state.entries.filter((entry) => {
+  const activityDate=Number(entry.paid)===1?String(entry.paid_date||entry.paid_at||entry.due_date||'').slice(0,10):String(entry.due_date||'').slice(0,10);
+  if(activityDate.slice(0,7)!==state.month)return false;
   const isIncome = entry.type === 'income';
   const paid = Number(entry.paid) === 1;
 
@@ -604,6 +611,7 @@ async function saveEntry(event) {
   
 const BULK_EXPENSE_ROW_LIMIT = 50;
 let bulkExpenseSaving = false;
+let bulkKind='expense';
 
 function makeBulkControl(tagName, className, attributes = {}) {
   const element = document.createElement(tagName);
@@ -661,7 +669,7 @@ function addBulkExpenseRow() {
   appendBulkCell(row, 'bulk-type-cell', recurrence);
 
   const category = makeBulkControl('input', 'bulk-category', {
-    type: 'text', maxlength: '60', value: 'Outros', list: 'bulkExpenseCategories',
+    type: 'text', maxlength: '60', value: 'Outros', list: bulkKind==='income'?'incomeCategories':'bulkExpenseCategories',
     'aria-label': `Categoria da despesa — linha ${body.children.length + 1}`
   });
   appendBulkCell(row, 'bulk-category-cell', category);
@@ -696,12 +704,12 @@ function addBulkExpenseRow() {
   recurrence.addEventListener('change', () => appendBulkExtra(row));
   row.addEventListener('input', (event) => {
     event.target.removeAttribute('aria-invalid');
-    row.classList.remove('bulk-row-error');
+    row.classList.remove('bulk-row-error');delete row.dataset.requestId;
     if (row.dataset.apiError) delete row.dataset.apiError;
   });
   row.addEventListener('change', (event) => {
     event.target.removeAttribute('aria-invalid');
-    row.classList.remove('bulk-row-error');
+    row.classList.remove('bulk-row-error');delete row.dataset.requestId;
     if (row.dataset.apiError) delete row.dataset.apiError;
   });
 
@@ -748,12 +756,12 @@ function renumberBulkExpenseRows() {
   rows.forEach((row, index) => {
     const position = index + 1;
     row.querySelector('.bulk-row-number').textContent = String(position);
-    row.querySelector('.bulk-name')?.setAttribute('aria-label', `Nome da despesa — linha ${position}`);
-    row.querySelector('.bulk-amount')?.setAttribute('aria-label', `Valor da despesa — linha ${position}`);
+    row.querySelector('.bulk-name')?.setAttribute('aria-label', `Nome do ${bulkKind==='income'?'ganho':'lançamento'} — linha ${position}`);
+    row.querySelector('.bulk-amount')?.setAttribute('aria-label', `Valor do lançamento — linha ${position}`);
     row.querySelector('.bulk-recurrence')?.setAttribute('aria-label', `Tipo de despesa — linha ${position}`);
-    row.querySelector('.bulk-category')?.setAttribute('aria-label', `Categoria da despesa — linha ${position}`);
+    row.querySelector('.bulk-category')?.setAttribute('aria-label', `Categoria do lançamento — linha ${position}`);
     row.querySelector('.bulk-created-date')?.setAttribute('aria-label', `Data do cadastro — linha ${position}`);
-    row.querySelector('.bulk-due-date')?.setAttribute('aria-label', `Data de pagamento — linha ${position}`);
+    row.querySelector('.bulk-due-date')?.setAttribute('aria-label', `Data de ${bulkKind==='income'?'recebimento':'pagamento'} — linha ${position}`);
     row.querySelector('.bulk-delete-row')?.setAttribute('aria-label', `Remover linha ${position}`);
   });
   const count = $('bulkRowCounter');
@@ -811,7 +819,7 @@ function validateBulkExpenseRow(row) {
   const dueDate = controls.dueDate.value;
   if (!bulkDateIsValid(createdDate)) markInvalid(controls.createdDate, 'informe uma data de cadastro válida');
   if (!bulkDateIsValid(dueDate)) markInvalid(controls.dueDate, 'informe uma data de pagamento válida');
-  const recurrenceType = controls.recurrence.value;
+  const recurrenceType = bulkKind==='income'?'single':controls.recurrence.value;
 
   if (recurrenceType === 'daily' && createdDate && dueDate && createdDate > dueDate) {
     markInvalid(controls.dueDate, 'a data final da despesa diária deve ser igual ou posterior à data inicial');
@@ -844,8 +852,8 @@ function validateBulkExpenseRow(row) {
     ready: true,
     row,
     payload: {
-      request_id: crypto.randomUUID(),
-      type: 'expense',
+      request_id: row.dataset.requestId||(row.dataset.requestId=crypto.randomUUID()),
+      type: bulkKind,
       name,
       amount,
       created_date: createdDate,
@@ -880,8 +888,8 @@ async function submitBulkExpenses() {
 
   if (!ready.length) {
     const message = incomplete.length
-      ? `Nenhuma despesa cadastrada. Complete os campos destacados em ${incomplete.length} ${incomplete.length === 1 ? 'linha' : 'linhas'} e tente novamente.`
-      : 'Preencha pelo menos uma linha com nome e valor para cadastrar uma despesa.';
+      ? `Nenhum lançamento cadastrado. Complete os campos destacados em ${incomplete.length} ${incomplete.length === 1 ? 'linha' : 'linhas'} e tente novamente.`
+      : 'Preencha pelo menos uma linha com nome e valor para cadastrar um lançamento.';
     showBulkExpenseFeedback(message, 'error');
     return;
   }
@@ -916,12 +924,12 @@ async function submitBulkExpenses() {
       hideModal('bulkExpenseModal');
       hideModal('modal');
       const message = failed.length
-        ? `${succeeded.length} despesa(s) cadastrada(s). ${failed.length} linha(s) tiveram erro e permaneceram no formulário.`
-        : `${succeeded.length} despesa(s) cadastrada(s) com sucesso.`;
+        ? `${succeeded.length} lançamento(s) cadastrada(s). ${failed.length} linha(s) tiveram erro e permaneceram no formulário.`
+        : `${succeeded.length} lançamento(s) cadastrada(s) com sucesso.`;
       feedback(message, failed.length ? 'error' : 'success');
     } else {
       const parts = [];
-      if (succeeded.length) parts.push(`${succeeded.length} despesa(s) cadastrada(s)`);
+      if (succeeded.length) parts.push(`${succeeded.length} lançamento(s) cadastrada(s)`);
       if (incomplete.length) parts.push(`${incomplete.length} linha(s) incompleta(s) mantida(s) sem cadastro`);
       if (failed.length) parts.push(`${failed.length} linha(s) com erro mantida(s) para revisão`);
       showBulkExpenseFeedback(`${parts.join('. ')}. Revise as linhas destacadas e envie novamente.`, failed.length || incomplete.length ? 'error' : 'success');
@@ -932,7 +940,19 @@ async function submitBulkExpenses() {
 }
 
 function openBulkExpenseModal() {
-  if ($('entryType')?.value !== 'expense' || $('entryId')?.value) return;
+  if ($('entryId')?.value) return;
+  const kind=$('entryType').value;
+  if(kind!==bulkKind)$('bulkExpenseRows').replaceChildren();
+  bulkKind=kind;
+  const noun=kind==='income'?'ganhos':'despesas';
+  $('bulkExpenseModal').dataset.kind=kind;
+  $('bulkExpenseModal').querySelector('.eyebrow').textContent=kind==='income'?'Novos ganhos':'Novas despesas';
+  $('bulkExpenseModal').querySelector('.bulk-expense-intro').textContent='Preencha um lançamento por linha. As linhas completas serão salvas; as incompletas ficarão para correção.';
+  $('bulkExpenseModal').querySelector('[role=region]').setAttribute('aria-label','Tabela de '+noun+' para cadastro em massa');
+  $('bulkExpenseTitle').textContent='Cadastrar '+noun+' em massa';
+  $('bulkSubmitExpenses').textContent='Cadastrar '+noun+' preenchidos';
+  $('bulkExpenseModal').querySelectorAll('th')[1].textContent='Nome do lançamento';
+  $('bulkExpenseModal').querySelectorAll('th')[6].textContent=kind==='income'?'Data de recebimento':'Data de pagamento';
   hideModal('modal');
   const body = $('bulkExpenseRows');
   if (body && !body.children.length) {
@@ -1240,7 +1260,7 @@ async function confirmEntryDate(event) {
   $('bulkExpenseModal')?.addEventListener('click', (event) => {
     if (!bulkExpenseSaving && event.target === $('bulkExpenseModal')) hideModal('bulkExpenseModal');
   });
-  $('expenseRecurrence')?.addEventListener('change', () => syncExpenseRecurrenceUI('expense', false));
+  $('expenseRecurrence')?.addEventListener('change', () => syncExpenseRecurrenceUI($('entryType').value, false));
 $('entryForm')?.addEventListener('submit', saveEntry);
 $('restForm')?.addEventListener('submit', saveRest);
 $('confirmDateForm')?.addEventListener('submit', confirmEntryDate);
@@ -1272,21 +1292,12 @@ $('closeConfirmDateModal')?.addEventListener('click', () => {
 
   document.addEventListener('click', () => hideMenus());
 
-  $('menuDeleteAll')?.addEventListener('click', async (event) => {
-    event.stopPropagation();
-    hideMenus();
-    if (!window.confirm('Excluir as despesas do planejamento de todos os meses? As despesas recorrentes serão interrompidas. Os ganhos serão mantidos. Lançamentos vinculados a descanso, casa ou desafio serão preservados e devem ser gerenciados nas respectivas áreas. Esta ação não pode ser desfeita.')) return;
-    if (window.prompt('Para confirmar, digite EXCLUIR:') !== 'EXCLUIR') return;
-    try {
-      const result = await api('/api/finance/entries', { method: 'DELETE' });
-      await loadSummary();
-      const message = `${result.deletedCount} despesa(s) excluída(s). ${result.protectedCount} vinculado(s) a descanso, casa ou desafio foram preservados e devem ser gerenciados nas respectivas áreas.`;
-      feedback(message, 'success');
-      window.alert(message);
-    } catch (error) {
-      if (error.status === 401 || error.status === 403) { window.location.href = '/login.html'; return; }
-      feedback(error.message, 'error');
-    }
+  $('menuDeleteAll')?.addEventListener('click', event => {
+    event.stopPropagation();hideMenus();
+    window.RotaCleanup.open({title:'Excluir lançamentos',month:state.month,type:window.__rotaNavigationView==='receitas'?'income':'expense',
+      preview:s=>api('/api/finance/entries-preview?'+new URLSearchParams(s)),
+      remove:s=>api('/api/finance/entries',{method:'DELETE',body:JSON.stringify(s)}),
+      done:async r=>{await loadSummary();feedback(`${r.deletedCount} lançamento(s) excluído(s). Registros da casa, reserva e descanso são gerenciados nas respectivas áreas.`,'success');}});
   });
 
   $('menuEdit')?.addEventListener('click', (event) => {
@@ -1360,6 +1371,7 @@ $('closeConfirmDateModal')?.addEventListener('click', () => {
       if (disclosure) disclosure.open = true;
       $('entriesSection')?.classList.remove('hidden');
     }
-    setMonth(isoMonth());
+    let remembered;try{remembered=sessionStorage.getItem('rf-month:'+location.pathname+location.search);}catch{}
+    setMonth(/^\d{4}-(0[1-9]|1[0-2])$/.test(remembered||'')?remembered:isoMonth());
   })();
 })();

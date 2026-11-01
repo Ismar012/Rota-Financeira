@@ -370,6 +370,8 @@ function pdfSafe(value) {
 function pdfAscii(value) {
   return String(value ?? '')
     .normalize('NFC')
+    .replace(/[—–−]/g, '-')
+    .replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
     .replace(/[\r\n\t]+/g, ' ')
     .replace(/[^\x20-\xFF]/g, '?');
 }
@@ -430,7 +432,7 @@ function buildExecutiveTablePdf(report) {
   const esc = value => pdfSafe(pdfAscii(value));
   const text = (c, x, y, value, size = 8, bold = false, color = [0.16, 0.19, 0.23]) => {
     c.push(`${color[0]} ${color[1]} ${color[2]} rg`);
-    c.push(`BT /F${bold ? 2 : 1} ${size} Tf ${x} ${y} Td (${esc(value)}) Tj ET`);
+    c.push(`BT /F${bold ? 2 : 1} ${size} Tf 0 Tc ${x} ${y} Td (${esc(value)}) Tj ET`);
   };
   const line = (c, x1, y1, x2, y2, color = [0.82, 0.85, 0.88]) => {
     c.push(`${color[0]} ${color[1]} ${color[2]} RG 0.6 w ${x1} ${y1} m ${x2} ${y2} l S`);
@@ -447,11 +449,11 @@ function buildExecutiveTablePdf(report) {
   const footer = c => {
     line(c, 38, 32, 557, 32);
     text(c, 38, 19, 'Relatorio executivo · ROTA FINANCEIRA', 7, false, [0.45, 0.49, 0.54]);
-    text(c, 430, 19, `Gerado em ${new Date(report.generatedAt || Date.now()).toLocaleDateString('pt-BR')}`, 7, false, [0.45, 0.49, 0.54]);
+    text(c, 430, 19, `Gerado em ${new Date(report.generatedAt || Date.now()).toLocaleDateString('pt-BR', {timeZone:'America/Bahia'})}`, 7, false, [0.45, 0.49, 0.54]);
   };
   const newPage = () => { const c = []; pages.push(c); header(c, pages.length); return c; };
   let c = newPage();
-  text(c, 38, 758, report.title || 'RELATORIO FINANCEIRO', 17, true, [0.08, 0.12, 0.17]);
+  text(c, 38, 758, report.title || 'RELATORIO FINANCEIRO', 13, true, [0.08, 0.12, 0.17]);
   if (report.clientName) text(c, 38, 739, `Cliente: ${report.clientName}`, 9, false, [0.35, 0.39, 0.44]);
   if (report.month) text(c, 38, 723, `Periodo: ${pdfMonth(report.month)}`, 9, true, [0.35, 0.39, 0.44]);
   let y = report.month ? 698 : 714;
@@ -649,7 +651,7 @@ function buildClientReportPdf(report) {
 
   function text(c, x, y, value, size = 9, bold = false, r = 0.16, g = 0.18, b = 0.22) {
     c.push(`${r} ${g} ${b} rg`);
-    c.push(`BT /F${bold ? 2 : 1} ${size} Tf ${x} ${y} Td (${esc(value)}) Tj ET`);
+    c.push(`BT /F${bold ? 2 : 1} ${size} Tf 0 Tc ${x} ${y} Td (${esc(value)}) Tj ET`);
   }
 
   function header(c, pageNumber) {
@@ -662,7 +664,7 @@ function buildClientReportPdf(report) {
   function footer(c) {
     line(c, 38, 32, 557, 32, 0.85, 0.86, 0.89);
     text(c, 38, 19, 'Documento gerencial · ROTA FINANCEIRA', 7, false, 0.45, 0.48, 0.53);
-    text(c, 405, 19, `Gerado em ${new Date(report.generated_at || Date.now()).toLocaleDateString('pt-BR')}`, 7, false, 0.45, 0.48, 0.53);
+    text(c, 405, 19, `Gerado em ${new Date(report.generated_at || Date.now()).toLocaleDateString('pt-BR', {timeZone:'America/Bahia'})}`, 7, false, 0.45, 0.48, 0.53);
   }
 
   function dashboardCard(c, x, y, w, label, value) {
@@ -2330,7 +2332,7 @@ async function ensureFixedSeriesHorizon(userId, seriesId, fromDate = getTodayLoc
       LIMIT 1
     `).get(userId, seriesId, next);
 
-    if (!exists && compareDates(next, fromDate) >= 0) {
+    if (!exists && !(await db.prepare('SELECT 1 FROM finance_deleted_occurrences WHERE user_id=? AND series_id=? AND due_date=?').get(userId,seriesId,next)) && compareDates(next, fromDate) >= 0) {
       await db.prepare(`
         INSERT INTO finance_entries
         (user_id, type, name, amount, created_date, due_date, paid, paid_at, rest_day_id, recurrence_type, series_id, installment_number, installment_total, recurrence_day, financial_category)
@@ -2805,8 +2807,8 @@ async function buildHouseMonthlyReport(userId, month, clientName = 'Cliente') {
   const uid = Number(userId);
   await require('./casa-ledger').transaction(pool, uid);
   const [expensesResult, settlementsResult, recurringResult] = await Promise.all([
-    pool.query(`SELECT *,day::text AS day,due_date::text AS due_date FROM house_expenses WHERE user_id=$1 AND deleted=FALSE ORDER BY due_date ASC,id ASC`, [uid]),
-    pool.query(`SELECT *,day::text AS day FROM house_settlements WHERE user_id=$1 ORDER BY day ASC,id ASC`, [uid]),
+    pool.query(`SELECT *,day::text AS day,due_date::text AS due_date FROM house_expenses WHERE user_id=$1 AND deleted=FALSE ORDER BY house_expenses.due_date ASC,house_expenses.id ASC`, [uid]),
+    pool.query(`SELECT *,day::text AS day FROM house_settlements WHERE user_id=$1 ORDER BY house_settlements.day ASC,house_settlements.id ASC`, [uid]),
     pool.query(`SELECT *,first_due::text AS first_due FROM house_recurring WHERE user_id=$1 AND active=TRUE ORDER BY id`, [uid])
   ]);
   const expenses = expensesResult.rows;
@@ -3298,24 +3300,7 @@ async function handleFinanceApi(
   const userId =
     Number(user.id);
 
-  // Limpeza de despesas próprias do planejamento, incluindo séries recorrentes.
-  if (req.method === 'DELETE' && url === '/api/finance/entries') {
-    try {
-      await db.exec('BEGIN');
-      await db.prepare('UPDATE expense_schedules SET active=FALSE WHERE user_id=?').run(userId);
-      const removed = await db.prepare(`DELETE FROM finance_entries f WHERE f.user_id=? AND f.type='expense'
-        AND f.rest_day_id IS NULL AND f.house_expense_id IS NULL
-        AND NOT EXISTS (SELECT 1 FROM challenge_deposits d WHERE d.entry_id=f.id)
-        RETURNING f.id`).all(userId);
-      const protectedEntries = await db.prepare("SELECT COUNT(*) AS total FROM finance_entries WHERE user_id=? AND type='expense'").get(userId);
-      await db.exec('COMMIT');
-      return sendJson(res, 200, { deletedCount: removed.length, protectedCount: Number(protectedEntries.total) });
-    } catch (error) {
-      try { await db.exec('ROLLBACK'); } catch (_) {}
-      console.error('Erro ao excluir lançamentos:', error);
-      return sendJson(res, 500, { error: 'Não foi possível excluir os lançamentos. Nenhuma alteração foi confirmada.' });
-    }
-  }
+  if (await cleanupFinance(req,res,url,parsedUrl,userId) !== false) return;
 
   if (req.method === 'GET' && (url === '/api/finance/report' || url === '/api/finance/goal-report')) {
     const requestedMonth = parsedUrl.searchParams.get('month') || getTodayLocal().slice(0, 7);
@@ -6024,6 +6009,7 @@ function isStateChangingMethod(method) {
    API PRINCIPAL
 ========================================================= */
 
+const cleanupFinance = require('./server-cleanup').create({pool,readBody,sendJson,recordClientChange});
 const products = require('./casa-produtos-api').create({pool,requireUser,requireAdmin,readBody,sendJson,buildHouseMonthlyReport,buildHouseReportPdf,sendPdf});
 
 const goals = require('./server-metas').createGoals({pool, requireUser, requireAdmin, readBody, sendJson, recordClientChange});
@@ -6361,7 +6347,7 @@ function serveStatic(
 
 let scriptToInject = adminVisibilityScript;
 if (['/planejamento.html', '/admin.html'].includes(pathname)) {
-  scriptToInject += '<link rel="stylesheet" href="/meta-mensal.css?v=20261014-fix2"><script src="/meta-mensal.js?v=20261027-views3"></script>';
+  scriptToInject += '<link rel="stylesheet" href="/meta-mensal.css?v=20261014-fix2"><script src="/meta-mensal.js?v=20261101-audit"></script>';
 }
 
 // O lembrete financeiro só deve existir no Dashboard.

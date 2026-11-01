@@ -5,17 +5,17 @@ async function api(url,options={}){const r=await fetch(url,{credentials:'same-or
 const post=(url,body)=>api(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
 let state={members:[],expenses:[]},paying=null;const active=()=>state.members.filter(p=>p.active!==false),name=id=>state.members.find(p=>p.id===id)?.name||id,owner=()=>name('me');
 function shareText(n){return money(Math.abs(n))+(n>0?' a receber':n<0?' a devolver':' — acertado');}
-function options(select,people){const previous=select.value;select.innerHTML='<option value="equal">Todos pagaram sua parte</option>'+people.map(p=>`<option value="person:${esc(p.id)}">${esc(p.name)} pagou tudo</option>`).join('')+'<option value="custom">Informar quanto cada pessoa pagou</option>';if([...select.options].some(x=>x.value===previous))select.value=previous;}
+function options(select,people){const previous=select.value;select.innerHTML='<option value="equal">Todos pagaram sua parte</option>'+people.map(p=>`<option value="person:${esc(p.id)}">${p.id==='me'?'Paguei tudo':esc(p.name)+' pagou tudo'}</option>`).join('')+'<option value="custom">Informar quanto cada pessoa pagou</option>';if([...select.options].some(x=>x.value===previous))select.value=previous;}
 function paymentFields(container,people){container.innerHTML=people.map(p=>`<label>${esc(p.name)} pagou (R$)<input type="number" data-person="${esc(p.id)}" min="0" max="1000000" step="0.01" value="0"></label>`).join('');}
 function payments(select,container,ids,total){if(select.value==='custom')return [...container.querySelectorAll('[data-person]')].map(i=>({id:i.dataset.person,amount:Number(i.value)}));if(select.value.startsWith('person:'))return [{id:select.value.slice(7),amount:total/100}];const base=Math.floor(total/ids.length),extra=total%ids.length;return ids.map((id,i)=>({id,amount:(base+(i<extra?1:0))/100}));}
 function mode(){const fixed=el('recurrence').value==='fixed';el('paid').disabled=fixed;if(fixed)el('paid').value='false';const paid=!fixed&&el('paid').value==='true';el('payer').disabled=!paid;el('expensePayments').hidden=!paid||el('payer').value!=='custom';}
-function paymentDescription(x){if(!x.paid)return 'Prevista — aguardando pagamento';return (x.allocations||[]).filter(p=>p.paid_cents>0).map(p=>name(p.id)+' pagou '+money(p.paid_cents)).join(' · ');}
-function render(){const d=state;el('total').textContent=money(d.expenses.reduce((a,x)=>a+x.total_cents,0));el('share').textContent=money(d.expenses.reduce((a,x)=>a+x.share_cents,0));el('balance').textContent=money(Math.abs(d.balance));el('direction').textContent=d.balance>0?owner()+' tem valor a receber neste mês':d.balance<0?owner()+' tem valor a devolver neste mês':'Nenhuma diferença gerada neste mês';el('previousBalance').textContent='Saldo de acertos anterior ao mês: '+shareText(d.previousBalance||0);el('closingBalance').textContent='Saldo de acertos de '+owner()+' ao fim do mês: '+shareText(d.closingBalance||0);
+function paymentDescription(x){if(!x.paid)return 'Prevista — aguardando pagamento';return (x.allocations||[]).filter(p=>p.paid_cents>0).map(p=>(p.id==='me'?'Você pagou':name(p.id)+' pagou')+' '+money(p.paid_cents)).join(' · ');}
+function render(){const d=state;el('total').textContent=money(d.expenses.reduce((a,x)=>a+x.total_cents,0));el('share').textContent=money(d.expenses.reduce((a,x)=>a+x.share_cents,0));el('balance').textContent=money(Math.abs(d.balance));el('direction').textContent=d.balance>0?(owner()==='Eu'?'Você':owner())+' tem valor a receber neste mês':d.balance<0?(owner()==='Eu'?'Você':owner())+' tem valor a devolver neste mês':'Nenhuma diferença gerada neste mês';el('previousBalance').textContent='Saldo de acertos anterior ao mês: '+shareText(d.previousBalance||0);el('closingBalance').textContent='Saldo de acertos de '+owner()+' ao fim do mês: '+shareText(d.closingBalance||0);
 el('memberBalances').innerHTML=d.members.map(p=>{const balance=Number(p.balance||0);const status=balance>0?'Tem a receber':balance<0?'Deve devolver':'Acertado';const statusClass=balance>0?'receive':balance<0?'return':'settled';return `<div class="entry"><div class="rf-member-identity"><strong>${esc(p.name)}${p.id==='me'?' (você)':''}${p.active===false?' · inativo':''}</strong><small>Morador</small></div><div class="rf-member-stat"><span>Anterior</span><strong>${shareText(p.previous||0)}</strong></div><div class="rf-member-stat"><span>No mês</span><strong>${shareText(p.month||0)}</strong></div><div class="rf-member-stat"><span>Saldo</span><strong>${shareText(p.balance||0)}</strong></div><span class="rf-member-status ${statusClass}">${status}</span></div>`;}).join('');el('transfers').innerHTML=(d.transfers||[]).map((t,i)=>`<div class="entry"><p>${esc(name(t.from))} devolve <strong>${money(t.amount_cents)}</strong> a ${esc(name(t.to))}</p><button type="button" data-transfer="${i}" style="float:none">Preencher devolução</button></div>`).join('')||'<p>Todos acertados até o fim deste mês.</p>';el('transfers').querySelectorAll('[data-transfer]').forEach(b=>b.onclick=()=>{const t=d.transfers[Number(b.dataset.transfer)];el('settleFrom').value=t.from;el('settleTo').value=t.to;el('settleAmount').value=(t.amount_cents/100).toFixed(2);el('settleAmount').focus();el('settleDialog')?.showModal();});
 for(const id of ['settleFrom','settleTo'])el(id).innerHTML=d.members.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');el('settleTo').value=d.members.find(p=>p.id!=='me')?.id||'';
 options(el('payer'),active());paymentFields(el('expensePayments'),active());mode();
 el('recurringEntries').innerHTML=(d.recurring||[]).map(x=>`<div class="entry"><button data-stop="${x.id}">Encerrar repetição</button><strong>${esc(x.description)}</strong><p>${money(x.total_cents)} por mês · divisão entre ${active().length} pessoas<br>Vencimento: dia ${Number(x.first_due.slice(8,10))}</p></div>`).join('')||'<p>Nenhuma conta fixa ativa.</p>';
-el('entries').innerHTML=[...d.expenses.map(x=>({...x,kind:'expenses'})),...d.settlements.map(x=>({...x,kind:'settlements'}))].sort((a,b)=>String(b.due_date||b.day).localeCompare(String(a.due_date||a.day))).map(x=>`<div class="entry house-entry"><div class="house-entry-content"><small>${esc(x.due_date||x.day)}${x.recurring_id?' · Fixa':''}</small><strong>${esc(x.description||'Devolução registrada')}</strong><p>${x.kind==='expenses'?money(x.total_cents)+' · '+esc(paymentDescription(x))+'<br>Minha parte no planejamento: '+money(x.share_cents)+'<br>Dividida entre '+(x.allocations||[]).length+' pessoas':money(x.amount_cents??Math.abs(x.delta_cents))+' · '+esc(name(x.from_member||(x.delta_cents>0?'me':'other')))+' devolveu a '+esc(name(x.to_member||(x.delta_cents>0?'other':'me')))}</p></div><div class="house-entry-actions">${x.kind==='expenses'&&!x.paid?`<button type="button" data-pay="${x.id}">Confirmar pagamento</button>`:''}<button type="button" data-kind="${x.kind}" data-id="${x.id}">Excluir</button></div></div>`).join('')||'<p>Nenhum lançamento neste mês.</p>';
+el('entries').innerHTML=[...d.expenses.map(x=>({...x,kind:'expenses'})),...d.settlements.map(x=>({...x,kind:'settlements'}))].sort((a,b)=>String(b.due_date||b.day).localeCompare(String(a.due_date||a.day))).map(x=>`<div class="entry house-entry"><div class="house-entry-content"><small>${esc(x.due_date||x.day)}${x.recurring_id?' · Fixa':''}</small><strong>${esc(x.description||'Devolução registrada')}</strong><p>${x.kind==='expenses'?money(x.total_cents)+' · '+esc(paymentDescription(x))+' · Categoria: '+esc(x.financial_category||'Outros')+'<br>Minha parte no planejamento: '+money(x.share_cents)+'<br>Dividida entre '+(x.allocations||[]).length+' pessoas':money(x.amount_cents??Math.abs(x.delta_cents))+' · '+esc(name(x.from_member||(x.delta_cents>0?'me':'other')))+' devolveu a '+esc(name(x.to_member||(x.delta_cents>0?'other':'me')))}</p></div><div class="house-entry-actions">${x.kind==='expenses'&&!x.paid?`<button type="button" data-pay="${x.id}">Confirmar pagamento</button>`:''}${x.kind==='expenses'?`<button type="button" data-edit-category="${x.id}">Editar categoria</button>`:``}<button type="button" data-kind="${x.kind}" data-id="${x.id}">Excluir</button></div></div>`).join('')||'<p>Nenhum lançamento neste mês.</p>';
 el('entries').querySelectorAll('[data-id]').forEach(b=>b.onclick=async()=>{if(!confirm('Excluir este registro e recalcular o planejamento e o acerto?'))return;await action(()=>api('/api/house/'+b.dataset.kind+'/'+b.dataset.id,{method:'DELETE'}));});el('entries').querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>openHousePayment(d.expenses.find(x=>String(x.id)===b.dataset.pay)));el('recurringEntries').querySelectorAll('[data-stop]').forEach(b=>b.onclick=async()=>{if(!confirm('Encerrar repetição? Parcelas não pagas de hoje em diante serão removidas.'))return;await action(()=>api('/api/house/recurring/'+b.dataset.stop,{method:'DELETE'}));});}
 function openHousePayment(entry){if(!entry)return;paying=entry;el('payDate').value=today();const people=(entry.allocations||[]).map(p=>({id:p.id,name:name(p.id)}));options(el('payPayer'),people);paymentFields(el('confirmationPayments'),people);el('confirmationPayments').hidden=el('payPayer').value!=='custom';el('payDialog').showModal();}
 let houseMonthlyChart,housePeopleChart;
@@ -24,29 +24,22 @@ function renderHouseDashboard(){
  list.innerHTML=pending.length?pending.map(x=>`<div class="house-pending-row"><div><strong>${esc(x.description)}</strong><small>Pagamento pendente</small></div><strong>${money(x.total_cents)}</strong><span>${esc(String(x.due_date).split('-').reverse().join('/'))}</span><div class="house-pending-actions"><button type="button" data-pending-pay="${Number(x.id)}">Confirmar pagamento</button><button type="button" data-pending-delete="${Number(x.id)}">Excluir</button></div></div>`).join(''):'<p>Nenhuma despesa pendente.</p>';
  list.querySelectorAll('[data-pending-pay]').forEach(b=>b.onclick=()=>openHousePayment(pending.find(x=>String(x.id)===b.dataset.pendingPay)));
  list.querySelectorAll('[data-pending-delete]').forEach(b=>b.onclick=async()=>{if(confirm('Excluir esta despesa da casa e recalcular o planejamento e o acerto?')) await action(()=>api('/api/house/expenses/'+b.dataset.pendingDelete,{method:'DELETE'}));});
- const people=state.paidByPerson||[]; const total=people.reduce((n,x)=>n+Number(x.amount),0);
- el('housePeopleLegend').innerHTML=people.map(x=>`<div class="house-legend-row"><span>${esc(name(x.id))}</span><strong>${money(x.amount)}</strong><span>${total?(100*x.amount/total).toFixed(1).replace('.',','):0}%</span></div>`).join('');
+ const people=(state.paidByCategory||[]).map(x=>({...x,id:x.category})); const total=people.reduce((n,x)=>n+Number(x.amount),0);
+ el('housePeopleLegend').innerHTML=people.map(x=>`<div class="house-legend-row"><span>${esc(x.id)}</span><strong>${money(x.amount)}</strong><span>${total?(100*x.amount/total).toFixed(1).replace('.',','):0}%</span></div>`).join('');
  el('housePieEmpty').hidden=total>0;el('housePeopleChart').hidden=total===0;
  if(!window.Chart){el('houseChartError').hidden=false;return;}
  houseMonthlyChart?.destroy();housePeopleChart?.destroy();
  const months=state.monthlyExpenses||[];const formatMonth=m=>{const [y,n]=m.split('-');return n+'/'+y.slice(2);};
  houseMonthlyChart=new Chart(el('houseMonthlyChart'),{type:'bar',data:{labels:months.map(x=>formatMonth(x.month)),datasets:[{label:'Despesa paga',data:months.map(x=>x.paid/100),backgroundColor:'#55b77b'},{label:'Despesa prevista',data:months.map(x=>x.pending/100),backgroundColor:'#e3ad39'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#d7dfe9'}}},scales:{x:{stacked:true,ticks:{color:'#aeb9c7'},grid:{display:false}},y:{stacked:true,beginAtZero:true,ticks:{color:'#aeb9c7',callback:v=>'R$ '+Number(v).toLocaleString('pt-BR')},grid:{color:'#26323b'}}}}});
- if(total)housePeopleChart=new Chart(el('housePeopleChart'),{type:'pie',data:{labels:people.map(x=>name(x.id)),datasets:[{data:people.map(x=>x.amount/100),backgroundColor:['#e4b64c','#4c9c8c','#5685bb','#c57565','#9f83b9','#77ad60','#ca985b','#5ba6ac','#b4789c','#8f9d64'],borderColor:'#121820',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#d7dfe9'}}}}});
+ if(total)housePeopleChart=new Chart(el('housePeopleChart'),{type:'pie',data:{labels:people.map(x=>x.id),datasets:[{data:people.map(x=>x.amount/100),backgroundColor:['#e4b64c','#4c9c8c','#5685bb','#c57565','#9f83b9','#77ad60','#ca985b','#5ba6ac','#b4789c','#8f9d64'],borderColor:'#121820',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#d7dfe9'}}}}});
 }
 el('houseSeeAll')?.addEventListener('click',()=>{const section=el('houseAllEntries');section.open=true;section.scrollIntoView({behavior:'smooth',block:'start'});});
-async function load(){try{state=await api('/api/house?month='+encodeURIComponent(el('houseMonth').value));render();renderHouseDashboard();}catch(e){el('feedback').textContent=e.message;}}
+async function load(){try{state=await api('/api/house?month='+encodeURIComponent(el('houseMonth').value));render();renderHouseDashboard();}catch(e){el('feedback').textContent=e.message;if(/não liberado/.test(e.message))document.querySelectorAll('main button').forEach(b=>{b.disabled=true;b.title='Solicite a liberação deste serviço em Meus serviços.';});}}
 async function action(fn){try{await fn();await load();el('feedback').textContent='Registro salvo. Planejamento e acertos atualizados.';}catch(e){el('feedback').textContent=e.message;}}
-el('clearHouseEntries')?.addEventListener('click', async () => {
-  el('houseOptions').open=false;
-  if (!confirm('Limpar todos os lançamentos da casa de todos os meses? Isso apaga as despesas e devoluções, encerra as contas fixas e recalcula os acertos e o planejamento. Esta ação não pode ser desfeita.')) return;
-  if (prompt('Para confirmar, digite EXCLUIR:') !== 'EXCLUIR') return;
-  const button=el('clearHouseEntries'); button.disabled=true;
-  try {
-    const result=await api('/api/house/entries',{method:'DELETE'});
-    await load();
-    el('feedback').textContent=`Limpeza concluída: ${result.expenses} despesa(s), ${result.settlements} devolução(ões) e ${result.recurring} conta(s) fixa(s) encerrada(s).`;
-  } catch (error) { el('feedback').textContent=error.message; }
-  finally { button.disabled=false; }
+el('clearHouseEntries')?.addEventListener('click',()=>{
+ el('houseOptions').open=false;window.RotaCleanup.open({title:'Excluir lançamentos da casa',month:el('houseMonth').value,chooseType:false,periodHelp:'Na casa, despesas são selecionadas pelo vencimento e devoluções pela data de registro.',
+ preview:s=>api('/api/house/entries-preview?'+new URLSearchParams(s)),remove:s=>api('/api/house/entries',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify(s)}),
+ done:async r=>{await load();el('feedback').textContent=`Limpeza concluída: ${r.expenses} despesas e ${r.settlements} devoluções excluídas.`;}});
 });
 document.addEventListener('click', event => { const menu=el('houseOptions'); if (menu?.open && !menu.contains(event.target)) menu.open=false; });
 el('recurrence').onchange=mode;el('paid').onchange=mode;el('payer').onchange=mode;el('payPayer').onchange=()=>el('confirmationPayments').hidden=el('payPayer').value!=='custom';
@@ -72,7 +65,7 @@ el('cancelPeople')?.addEventListener('click',()=>el('peopleDialog')?.close());
 
 function bulkHousePayerOptions(){
   const people=active();
-  return '<option value="equal">Todos pagaram sua parte</option>'+people.map(p=>`<option value="person:${esc(p.id)}">${esc(p.name)} pagou tudo</option>`).join('');
+  return '<option value="equal">Todos pagaram sua parte</option>'+people.map(p=>`<option value="person:${esc(p.id)}">${p.id==='me'?'Paguei tudo':esc(p.name)+' pagou tudo'}</option>`).join('');
 }
 function updateHouseBulkRow(row){
   if(!row)return;
@@ -89,6 +82,7 @@ function addHouseBulkRow(values={}){
   tr.innerHTML=`
     <td class="rf-house-bulk-number">${idx}</td>
     <td><input class="rf-bulk-description" data-house-bulk-field="description" maxlength="160" placeholder="Ex.: mercado" value="${esc(values.description||'')}" aria-label="Descrição da despesa ${idx}"></td>
+    <td><input data-house-bulk-field="financial_category" list="houseCategories" maxlength="60" value="Outros" aria-label="Categoria da despesa ${idx}"></td>
     <td><input class="rf-bulk-amount" data-house-bulk-field="amount" type="number" min="0.02" max="1000000" step="0.01" placeholder="0,00" value="${esc(values.amount||'')}" aria-label="Valor total da despesa ${idx}"></td>
     <td><select class="rf-bulk-recurrence" data-house-bulk-field="recurrence" aria-label="Repetição da despesa ${idx}"><option value="single">Uma única vez</option><option value="fixed">Fixa</option></select></td>
     <td><input class="rf-bulk-date" data-house-bulk-field="day" type="date" value="${esc(values.day||today())}" aria-label="Data ou primeiro vencimento da despesa ${idx}"></td>
@@ -108,7 +102,7 @@ function renumberHouseBulkRows(){
 }
 function houseBulkRowValues(row){
   const get=name=>row.querySelector(`[data-house-bulk-field="${name}"]`)?.value??'';
-  return {description:get('description').trim(),amount:Number(get('amount')),recurrence:get('recurrence')||'single',day:get('day'),paid:get('paid')==='true',payer:get('payer')||'equal'};
+  return {financial_category:get('financial_category').trim()||'Outros',description:get('description').trim(),amount:Number(get('amount')),recurrence:get('recurrence')||'single',day:get('day'),paid:get('paid')==='true',payer:get('payer')||'equal'};
 }
 function validateHouseBulkRow(row){
   const v=houseBulkRowValues(row);const fields=['description','amount','day'];let valid=true;
@@ -135,7 +129,7 @@ el('bulkHouseExpenseRows')?.addEventListener('click',event=>{const remove=event.
 el('bulkHouseExpenseRows')?.addEventListener('change',event=>{const row=event.target.closest('[data-house-bulk-row]');if(!row)return;if(event.target.matches('[data-house-bulk-field="recurrence"],[data-house-bulk-field="paid"]'))updateHouseBulkRow(row);if(event.target.matches('[data-house-bulk-field]'))validateHouseBulkRow(row);});
 el('bulkHouseExpenseRows')?.addEventListener('input',event=>{const row=event.target.closest('[data-house-bulk-row]');if(row&&event.target.matches('[data-house-bulk-field="description"],[data-house-bulk-field="amount"],[data-house-bulk-field="day"]'))validateHouseBulkRow(row);});
 async function submitHouseBulkExpenses(){
-  const button=el('submitHouseBulkExpenses');const rows=[...el('bulkHouseExpenseRows').querySelectorAll('[data-house-bulk-row]')];
+  const button=el('submitHouseBulkExpenses');const rows=[...el('bulkHouseExpenseRows').querySelectorAll('[data-house-bulk-row]')].filter(row=>{const v=houseBulkRowValues(row);if(v.description||v.amount)return true;row.remove();return false;});
   const ready=rows.filter(validateHouseBulkRow);
   if(!ready.length){el('bulkHouseExpenseStatus').textContent='Preencha descrição, valor e data em pelo menos uma linha completa.';return;}
   button.disabled=true;button.textContent='Salvando despesas…';let saved=0,failed=0;
@@ -147,7 +141,7 @@ async function submitHouseBulkExpenses(){
         if(v.payer.startsWith('person:'))paymentRows=[{id:v.payer.slice(7),amount:v.amount}];
         else{const base=Math.floor(cents/ids.length),extra=cents%ids.length;paymentRows=ids.map((id,index)=>({id,amount:(base+(index<extra?1:0))/100}));}
       }
-      const payload={recurrence:v.recurrence,description:v.description,day:v.day,amount:v.amount,paid,equal_paid:paid&&v.payer==='equal',payments:paymentRows};
+      const payload={financial_category:v.financial_category,recurrence:v.recurrence,description:v.description,day:v.day,amount:v.amount,paid,equal_paid:paid&&v.payer==='equal',payments:paymentRows};
       try{await post(fixed?'/api/house/recurring':'/api/house',payload);row.remove();saved++;}
       catch(error){failed++;row.classList.add('rf-row-error');row.dataset.error=error.message;row.title=error.message;}
     }
@@ -162,4 +156,6 @@ async function submitHouseBulkExpenses(){
 }
 el('submitHouseBulkExpenses')?.addEventListener('click',submitHouseBulkExpenses);
 
-el('day').value=today();el('houseMonth').value=today().slice(0,7);el('houseMonth').onchange=load;el('downloadHouseReport')?.addEventListener('click',()=>{const month=el('houseMonth')?.value||today().slice(0,7);location.href='/api/house/report?month='+encodeURIComponent(month);});mode();load();
+el('day').value=today();el('houseMonth').value=sessionStorage.getItem('rf-house-month')||today().slice(0,7);el('houseMonth').onchange=()=>{sessionStorage.setItem('rf-house-month',el('houseMonth').value);load();};el('downloadHouseReport')?.addEventListener('click',()=>{const month=el('houseMonth')?.value||today().slice(0,7);window.rotaDownload('/api/house/report?month='+encodeURIComponent(month),'Resumo_da_Casa_'+month+'.pdf').catch(e=>el('feedback').textContent=e.message);});mode();load();
+
+el('entries').addEventListener('click',e=>{const b=e.target.closest('[data-edit-category]');if(!b)return;const entry=state.expenses.find(x=>String(x.id)===b.dataset.editCategory);if(!entry)return;const d=document.createElement('dialog');d.className='rf-cleanup';d.innerHTML='<h2>Editar categoria</h2><form><label>Categoria<input name="category" list="houseCategories" maxlength="60" required></label><div class="rf-cleanup-actions"><button type="button">Cancelar</button><button type="submit">Salvar categoria</button></div><p role="alert"></p></form>';document.body.append(d);d.querySelector('input').value=entry.financial_category||'Outros';d.querySelector('[type=button]').onclick=()=>d.close();d.onclose=()=>d.remove();d.querySelector('form').onsubmit=async e=>{e.preventDefault();const submit=d.querySelector('[type=submit]');submit.disabled=true;try{await api('/api/house/expenses/'+entry.id+'/category',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({financial_category:d.querySelector('input').value})});d.close();await load();}catch(err){d.querySelector('[role=alert]').textContent=err.message;submit.disabled=false;}};d.showModal();});
