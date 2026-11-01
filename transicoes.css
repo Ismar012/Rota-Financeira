@@ -24,3 +24,8 @@ main{animation:rota-page-enter .46s cubic-bezier(.2,.7,.2,1) both}
 .tour-card.tour-card-top{top:20px;bottom:auto}.tour-card{bottom:20px;max-height:calc(100dvh - 40px)}
 html.tour-active .modal-box,html.tour-active .modal-content{animation:none!important}
 @media(prefers-reduced-motion:reduce){main,.rota-card-ready,::view-transition-old(root),::view-transition-new(root){animation:none!important}}
+
+/* Mascote transparente somente dentro da caixa do tutorial. */
+.tour-card .tour-content{display:grid;grid-template-columns:88px minmax(0,1fr);gap:14px;align-items:center}.tour-card .tour-mascot{display:block;width:88px;height:144px;object-fit:contain;background:transparent;pointer-events:none}.tour-card .tour-instructions{min-width:0}.tour-card .tour-without-mascot{grid-template-columns:1fr}@media(max-width:420px){.tour-card .tour-content{grid-template-columns:64px minmax(0,1fr);gap:10px}.tour-card .tour-mascot{width:64px;height:112px}}
+
+.tour-rest-step .tour-card .tour-content{grid-template-columns:112px minmax(0,1fr)}.tour-rest-step .tour-card .tour-mascot{width:112px;height:128px}@media(max-width:420px){.tour-rest-step .tour-card .tour-content{grid-template-columns:80px minmax(0,1fr)}.tour-rest-step .tour-card .tour-mascot{width:80px;height:105px}}
