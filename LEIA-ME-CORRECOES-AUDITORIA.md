@@ -43,3 +43,12 @@ Não é uma declaração de cobertura de 100%. O navegador remoto não alcançou
 Antes de liberar aos clientes: testar exclusão mensal e total com a conta de teste, abrir os três PDFs no Render, aprovar/recusar um serviço, navegar com filtros ativos e zerar o saldo inicial em Receitas. A conta publicada ainda pode conter o saldo inicial de R$ 1.000 mencionado na auditoria; este pacote permite editá-lo, mas não o altera automaticamente.
 
 As sugestões de gestão central de categorias e de classificação pessoal/profissional no próprio cadastro continuam como evoluções opcionais. A classificação existente em Atividades e fluxo de caixa foi mantida; não foram introduzidas novas regras de cálculo para esses caixas.
+
+
+## Reteste e ajuste de layout — 01/11/2026
+
+O painel “Entender a meta e ajustar o planejamento” agora ocupa uma linha inteira após os quatro indicadores, preservando a grade do painel. O atalho de cadastrar descanso passou a abrir o formulário existente. Os menus de três pontos foram preservados. Arquivos estáticos receberam nova versão para evitar cache antigo.
+
+Na versão publicada foram conferidos: ganhos e despesas em massa; edição e pagamento/desfazimento; preservação de filtros ao voltar; cancelamento e confirmação da exclusão; exclusão mensal preservando outros meses e parcelas futuras; categorias da casa e gráfico; acertos; descanso e cancelamento de reserva; downloads dos PDFs de Metas, geral e casa. Os três arquivos baixados eram PDFs válidos. A conta foi limpa e, após recarregar, ganhos, despesas, saldo e meta diária estavam zerados.
+
+Os testes locais de integração e interface passaram, incluindo regressão da posição do painel e do atalho de descanso. A correção visual deste pacote ainda precisa ser publicada e revista no navegador; não foi aplicada automaticamente ao Render. A área real de administrador não foi validada nesta rodada pela conta de cliente; há testes locais de suas interações. Não é uma certificação de cobertura integral da plataforma.
