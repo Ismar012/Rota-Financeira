@@ -27,7 +27,7 @@ function create({pool,requireUser,requireAdmin,readBody,sendJson,buildHouseMonth
  if(!own)return false;
  const admin=url.startsWith('/api/admin/');const u=await(admin?requireAdmin(req,res):requireUser(req,res));if(!u)return;
  const uid=Number(u.id),reply=(data,status=200)=>sendJson(res,status,data);
- if(url==='/api/services'&&req.method==='GET'){const r=await pool.query(`SELECT s.*,r.status request_status FROM services s LEFT JOIN product_requests r ON r.service_id=s.id AND r.user_id=$1 WHERE s.active=TRUE ORDER BY s.id`,[uid]);const status=await overview(u);return reply({access:status,services:await Promise.all(r.rows.map(async s=>({...s,price:Number(s.price),acquired:await access.hasService(pool,u,s.slug,status)})))});}
+ if(url==='/api/services'&&req.method==='GET'){const r=await pool.query(`SELECT s.*,r.status request_status FROM services s LEFT JOIN product_requests r ON r.service_id=s.id AND r.user_id=$1 WHERE s.active=TRUE ORDER BY s.id`,[uid]);const status=await overview(u);return reply({access:status,services:await Promise.all(r.rows.map(async s=>{const permission=await access.serviceAccess(pool,u,s.slug,status);return {...s,price:Number(s.price),acquired:permission.allowed,access:permission};}))});}
  const purchase=url.match(/^\/api\/services\/(\d+)\/purchase$/);
  if(purchase&&req.method==='POST'){const id=Number(purchase[1]);const s=await pool.query('SELECT slug FROM services WHERE id=$1 AND active=TRUE',[id]);if(!s.rows[0])return reply({error:'Produto não encontrado.'},404);if(await allowed(u,s.rows[0].slug))return reply({message:'Produto já disponível.'});return reply({checkout_url:'/planos.html',message:'Escolha um plano e conclua o pagamento para liberar os serviços automaticamente.'});}
  if(admin){

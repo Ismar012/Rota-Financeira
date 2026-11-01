@@ -8,7 +8,7 @@
   const today = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const monthState = new URLSearchParams(location.search).get('month');
   const dayState = new URLSearchParams(location.search).get('day');
-  const state = { slots: [], bookings: [], month: /^\d{4}-(0[1-9]|1[0-2])$/.test(monthState||'') ? monthState : nowMonth(), selectedDay: /^\d{4}-\d{2}-\d{2}$/.test(dayState||'') ? dayState : today() };
+  const state = { slots: [], bookings: [], month: /^\d{4}-(0[1-9]|1[0-2])$/.test(monthState||'') ? monthState : nowMonth(), canBook:false, selectedDay: /^\d{4}-\d{2}-\d{2}$/.test(dayState||'') ? dayState : today() };
 
   async function api(url, options={}) {
     const response = await fetch(url,{credentials:'same-origin',cache:'no-store',...options});
@@ -110,11 +110,11 @@
   function addText(container,text){if(!container)return;const p=document.createElement('p');p.className='agenda-empty';p.textContent=text;container.append(p);}
   function renderClientBooking() {
     const mine=$('bookings');clear(mine);if(!state.bookings.length)addText(mine,'Nenhum atendimento agendado.');state.bookings.forEach(b=>{const line=row(mine,`${serviceName(b.service_slug)} · ${date(b.day)} · ${b.start} às ${b.end}`,b.cancelled_at?'Cancelado':'Agendado');if(!b.cancelled_at&&isFuture(b))action(line,'Cancelar',()=>mutate('/api/consultations/'+b.id+'/cancel',{},'Cancelar este atendimento?'));});
-    const previous=$('day').value;clear($('day'));option($('day'),'','Selecione um dia');[...new Set(state.slots.map(s=>s.day))].forEach(d=>option($('day'),d,date(d)));$('day').disabled=!state.slots.length;if(state.slots.some(s=>s.day===previous))$('day').value=previous;renderTimes();if(!state.slots.length)$('feedback').textContent='Não há horários disponíveis no momento. Aguarde a equipe disponibilizar novos horários.';
+    const previous=$('day').value;clear($('day'));option($('day'),'','Selecione um dia');[...new Set(state.slots.map(s=>s.day))].forEach(d=>option($('day'),d,date(d)));$('day').disabled=!state.canBook||!state.slots.length;if(state.slots.some(s=>s.day===previous))$('day').value=previous;renderTimes();if(!state.slots.length)$('feedback').textContent='Não há horários disponíveis no momento. Aguarde a equipe disponibilizar novos horários.';
   }
-  function renderTimes(){clear($('slot'));option($('slot'),'','Selecione um horário');state.slots.filter(s=>s.day===$('day').value).forEach(s=>option($('slot'),s.id,`${s.start} às ${s.end}`));$('slot').disabled=!$('day').value;$('confirm').disabled=true;}
+  function renderTimes(){clear($('slot'));option($('slot'),'','Selecione um horário');state.slots.filter(s=>s.day===$('day').value).forEach(s=>option($('slot'),s.id,`${s.start} às ${s.end}`));$('slot').disabled=!state.canBook||!$('day').value;$('confirm').disabled=true;}
   function render(){if(admin)renderAdminLists();else renderClientBooking();}
-  async function load(){const data=await api(admin?'/api/admin/consultations':'/api/consultations');state.slots=Array.isArray(data.slots)?data.slots:[];state.bookings=Array.isArray(data.bookings)?data.bookings:[];render();}
+  async function load(){if(!admin){const services=await api('/api/services');const entry=services.services?.find(s=>s.slug===service);state.canBook=entry?.acquired===true;let offer=$('bookingAccess');if(!offer){offer=document.createElement('p');offer.id='bookingAccess';$('bookingForm').before(offer);}offer.replaceChildren();if(!state.canBook){offer.append(document.createTextNode('Este atendimento não está incluído no seu acesso. '));const buy=document.createElement('a');buy.href='/planos.html?service='+encodeURIComponent(service);buy.textContent='Ver valor e contratar '+serviceName(service).toLowerCase();offer.append(buy);}}const data=await api(admin?'/api/admin/consultations':'/api/consultations');state.slots=Array.isArray(data.slots)?data.slots:[];state.bookings=Array.isArray(data.bookings)?data.bookings:[];render();}
 
   async function init(){
     try{
@@ -134,8 +134,8 @@
         $('refresh').addEventListener('click',()=>load().catch(error=>{$('feedback').textContent=error.message;}));
         $('markSeen').addEventListener('click',async()=>{const ids=state.bookings.filter(b=>!b.seen_at&&!b.cancelled_at).map(b=>b.id);$('markSeen').disabled=true;try{for(let i=0;i<ids.length;i+=1000)await post('/api/admin/consultations/seen',{ids:ids.slice(i,i+1000)});await load();$('feedback').textContent='Novidades marcadas como vistas.';window.dispatchEvent(new Event('rota-consultations-changed'));}catch(error){$('feedback').textContent=error.message;$('markSeen').disabled=false;}});
       }else{
-        $('day').addEventListener('change',renderTimes);$('slot').addEventListener('change',()=>$('confirm').disabled=!$('slot').value);
-        $('bookingForm').addEventListener('submit',async event=>{event.preventDefault();$('confirm').disabled=true;$('feedback').textContent='Confirmando…';try{await post('/api/consultations',{slotId:Number($('slot').value),service});$('feedback').textContent='Agendamento confirmado.';$('confirmation').showModal();await load();}catch(error){$('feedback').textContent=error.message;if(error.status===409)await load().catch(()=>{});}finally{$('confirm').disabled=!$('slot').value;}});
+        $('day').addEventListener('change',renderTimes);$('slot').addEventListener('change',()=>$('confirm').disabled=!state.canBook||!$('slot').value);
+        $('bookingForm').addEventListener('submit',async event=>{event.preventDefault();$('confirm').disabled=true;$('feedback').textContent='Confirmando…';try{await post('/api/consultations',{slotId:Number($('slot').value),service});$('feedback').textContent='Agendamento confirmado.';$('confirmation').showModal();await load();}catch(error){$('feedback').textContent=error.message;if(error.status===409)await load().catch(()=>{});}finally{$('confirm').disabled=!state.canBook||!$('slot').value;}});
       }
       await load();
     }catch(error){if(error.status===401)location.replace('/login.html');else (admin?$('accessFeedback'):$('feedback')).textContent=error.message;}
