@@ -348,3 +348,24 @@ body.rf-app-shell.client-planning:not(.rf-finance-section-view) #reserveBox a {
   font-size: 11px;
   font-weight: 700;
 }
+
+/* A composição da meta ocupa uma linha própria depois dos quatro indicadores.
+   Os indicadores usam display:contents nos seus wrappers; não inserir detalhes entre eles. */
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-meta-disclosure {
+  grid-column:1 / -1;
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+  margin:0;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-meta-disclosure > summary {
+  min-height:44px;
+  padding:12px 16px;
+  white-space:normal;
+  overflow-wrap:break-word;
+  box-sizing:border-box;
+}
+body.rf-app-shell.client-planning:not(.rf-finance-section-view) .ux-meta-disclosure .meta-panel {
+  min-width:0;
+  margin:12px 0 0;
+}

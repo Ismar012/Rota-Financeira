@@ -950,7 +950,7 @@ function openBulkExpenseModal() {
   $('bulkExpenseModal').querySelector('.bulk-expense-intro').textContent='Preencha um lançamento por linha. As linhas completas serão salvas; as incompletas ficarão para correção.';
   $('bulkExpenseModal').querySelector('[role=region]').setAttribute('aria-label','Tabela de '+noun+' para cadastro em massa');
   $('bulkExpenseTitle').textContent='Cadastrar '+noun+' em massa';
-  $('bulkSubmitExpenses').textContent='Cadastrar '+noun+' preenchidos';
+  $('bulkSubmitExpenses').textContent='Cadastrar '+noun+(kind==='income'?' preenchidos':' preenchidas');
   $('bulkExpenseModal').querySelectorAll('th')[1].textContent='Nome do lançamento';
   $('bulkExpenseModal').querySelectorAll('th')[6].textContent=kind==='income'?'Data de recebimento':'Data de pagamento';
   hideModal('modal');
@@ -1244,6 +1244,7 @@ async function confirmEntryDate(event) {
     if (event.target.value) setMonth(event.target.value);
   });
 
+  $('quickRest')?.addEventListener('click', openRestModal);
   $('addIncome')?.addEventListener('click', () => resetEntryForm('income'));
   $('addExpense')?.addEventListener('click', () => resetEntryForm('expense'));
   $('openBulkExpenses')?.addEventListener('click', openBulkExpenseModal);

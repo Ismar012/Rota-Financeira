@@ -6347,7 +6347,7 @@ function serveStatic(
 
 let scriptToInject = adminVisibilityScript;
 if (['/planejamento.html', '/admin.html'].includes(pathname)) {
-  scriptToInject += '<link rel="stylesheet" href="/meta-mensal.css?v=20261014-fix2"><script src="/meta-mensal.js?v=20261101-audit"></script>';
+  scriptToInject += '<link rel="stylesheet" href="/meta-mensal.css?v=20261014-fix2"><script src="/meta-mensal.js?v=20261101-layout2"></script>';
 }
 
 // O lembrete financeiro só deve existir no Dashboard.
