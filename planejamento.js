@@ -688,10 +688,11 @@ function addBulkExpenseRow() {
     'aria-label': `Tipo de ${bulkKind==='income'?'ganho':'despesa'} — linha ${body.children.length + 1}`
   });
   const recurrenceOptions = bulkKind === 'income'
-    ? [['single', 'Única'], ['fixed', 'Mensal'], ['daily', 'Diária'], ['weekly', 'Semanal'], ['fortnightly', 'Quinzenal (2 dias)']]
+    ? [['single', 'Único'], ['daily', 'Diário'], ['weekly', 'Semanal'], ['fortnightly', 'Quinzenal (2 dias)'], ['fixed', 'Mensal (fixo)']]
     : [['single', 'Única'], ['fixed', 'Mensal'], ['installment', 'Parcelada'],
       ['daily', 'Diária'], ['weekly', 'Semanal'], ['fortnightly', 'Quinzenal (2 dias)']];
   for (const [value, label] of recurrenceOptions) recurrence.append(makeBulkControl('option', '', {value, textContent: label}));
+  recurrence.value = 'single';
   appendBulkCell(row, 'bulk-type-cell', recurrence);
 
   const category = makeBulkControl('select', 'bulk-category', {

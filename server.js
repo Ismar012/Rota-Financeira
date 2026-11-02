@@ -6376,7 +6376,7 @@ if (!['/index.html','/login.html','/cadastro.html','/recuperar-senha.html','/pla
   scriptToInject += '<script defer src="/acesso-cliente.js?v=20261101-billing2"></script>';
 }
 if (['/planejamento.html', '/admin.html'].includes(pathname)) {
-  scriptToInject += '<link rel="stylesheet" href="/meta-mensal.css?v=20261014-fix2"><script src="/meta-mensal.js?v=20261101-layout2"></script>';
+  scriptToInject += '<link rel="stylesheet" href="/meta-mensal.css?v=20261014-fix2"><script src="/meta-mensal.js?v=20261102-ajustes-pontuais2"></script>';
 }
 
 // O lembrete financeiro só deve existir no Dashboard.
