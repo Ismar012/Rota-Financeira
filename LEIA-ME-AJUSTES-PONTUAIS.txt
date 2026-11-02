@@ -1,0 +1,14 @@
+ROTA FINANCEIRA — AJUSTES PONTUAIS — 02/11/2026
+
+1. Ganhos em massa: seletor visível em cada linha, com Único selecionado por padrão. Opções: Único, Diário, Semanal, Quinzenal (2 dias) e Mensal (fixo). Para salário CLT, selecione Mensal (fixo); cadastrar não confirma recebimentos.
+2. Receitas: bloco Saldo inicial em conta movido para depois da lista Ganhos do mês, preservando explicação e formulário.
+3. Planejamento: Entender a meta e ajustar o planejamento movido para o final, após Consultar lançamentos do mês.
+
+INSTALAÇÃO
+Faça uma cópia dos arquivos atuais. Atualize o projeto com os arquivos deste pacote, preservando suas variáveis de ambiente e dados. Reinicie/republique o serviço Node para carregar também a nova referência de versão do painel de meta. Atualize o navegador com Ctrl+F5.
+
+Arquivos de produção alterados: planejamento.html, planejamento.js, audit-fixes.css, finance-views.js, meta-mensal.js e server.js (somente versão do script da meta).
+Não há migração de banco de dados neste ajuste.
+
+VALIDAÇÃO
+Passaram os testes de integração e interface (incluindo visibilidade do seletor, padrão Único e posição dos blocos), além dos testes de receitas recorrentes. Executados em banco isolado. Testes de interface usam DOM simulado; conferir o visual no navegador após instalar. Este pacote não foi publicado automaticamente.
