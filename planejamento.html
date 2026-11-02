@@ -11,7 +11,7 @@
 
 <!-- Estilos principais da Rota Financeira -->
 <link rel="stylesheet" href="/styles.css">
-<link rel="stylesheet" href="/planejamento.css?v=20261101-ganho-massa2">
+<link rel="stylesheet" href="/planejamento.css?v=20261102-padronizacao">
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -360,7 +360,7 @@
         </div>
 
         <!--
-            O planejamento.js preenche este elemento
+            O planejamento.js?v=20261102-padronizacao preenche este elemento
             dinamicamente.
 
             É aqui que os lançamentos de GANHO e DESPESA
@@ -512,11 +512,11 @@
             for="expenseRecurrence"
             class="hidden">
 
-            Tipo de despesa
+            Repetição
 
-            <select id="expenseRecurrence" aria-label="Tipo de despesa">
+            <select id="expenseRecurrence" aria-label="Repetição">
                 <option value="single">Única</option>
-                <option value="fixed">Despesa fixa</option>
+                <option value="fixed">Mensal</option>
                 <option value="installment">Parcelada</option>
                 <option value="daily">Diária</option><option value="weekly">Semanal</option><option value="fortnightly">Quinzenal — dois dias fixos</option>
             </select>
@@ -525,12 +525,13 @@
 
 
         <label id="incomeModeLabel" for="incomeRecurrence" class="hidden">
-            Tipo de ganho
-            <select id="incomeRecurrence" aria-label="Tipo de ganho">
-                <option value="single">Ganho avulso</option>
-                <option value="fixed">Ganho fixo (mensal)</option>
+            Repetição
+            <select id="incomeRecurrence" aria-label="Repetição">
+                <option value="single">Única</option>
+                <option value="fixed">Mensal</option>
+                <option value="daily">Diária</option><option value="weekly">Semanal</option><option value="fortnightly">Quinzenal — dois dias fixos</option>
             </select>
-            <small>O ganho fixo cria previsões mensais. Confirme cada recebimento somente quando receber.</small>
+            <small>Cadastrar cria previsões. Confirme cada recebimento quando receber. Diária repete entre a data de início e a data final.</small>
         </label>
 
         <label id="categoryLabel" for="entryCategory">Categoria do lançamento
@@ -544,7 +545,7 @@
         </label>
         <label id="secondDayLabel" class="hidden">Segundo dia fixo do mês
           <input id="secondDay" type="number" min="1" max="31" step="1">
-          <small>Sugestão editável. O valor informado será cobrado em cada vencimento. Os dois dias se repetem mensalmente.</small>
+          <small>Sugestão editável. O valor informado se repete em cada data. Os dois dias se repetem mensalmente.</small>
         </label>
         <!-- QUANTIDADE DE PARCELAS -->
 
@@ -596,7 +597,7 @@
         </label>
 
 
-        <p class="field-explanation">Data do cadastro: início informado para distribuir o lançamento. Data de pagamento ou recebimento: prazo previsto para quitar ou receber. Ganhos são distribuídos desde a data do cadastro; despesas começam no dia seguinte e vão até o vencimento. Se ambas as datas forem iguais, o valor fica nesse dia. Informar a data não confirma o pagamento.</p>
+        <p class="field-explanation">Cadastrar cria uma previsão. Confirme o pagamento ou recebimento quando acontecer.</p><details class="field-explanation"><summary>Saiba mais sobre as datas</summary><p>Ganhos são distribuídos desde a data do cadastro; despesas, a partir do dia seguinte até o vencimento. Datas iguais concentram o valor naquele dia. Na repetição diária, informe início e fim: será criado um lançamento por dia. A quinzenal repete em dois dias escolhidos de cada mês.</p></details>
 
         <button
             class="primary-btn"
@@ -636,7 +637,7 @@
                         <th scope="col" class="bulk-col-number">#</th>
                         <th scope="col">Nome da despesa</th>
                         <th scope="col">Valor (R$)</th>
-                        <th scope="col" class="bulk-type-heading">Tipo de despesa</th>
+                        <th scope="col" class="bulk-type-heading">Repetição</th>
                         <th scope="col">Categoria</th>
                         <th scope="col">Data do cadastro</th>
                         <th scope="col">Data de pagamento</th>
@@ -811,8 +812,8 @@
 ========================== -->
 
 <script src="/catalogo-categorias-ui.js?v=20261101-catalog1"></script>
-<script src="/planejamento.js?v=20261101-catalog1"></script>
-<script src="/finance-views.js?v=20261101-audit"></script>
+<script src="/planejamento.js?v=20261102-padronizacao"></script>
+<script src="/finance-views.js?v=20261102-padronizacao"></script>
 <script>
 document.getElementById('backLogo')?.addEventListener('click', function (event) {
     event.preventDefault();
@@ -825,6 +826,6 @@ document.getElementById('backLogo')?.addEventListener('click', function (event) 
 <script src="/perfil-financeiro-ui.js?v=1"></script>
 <script src="/ferramentas-financeiras.js?v=2"></script>
 <script src="/categorias.js?v=20261027-premium2"></script>
-<script src="/tutorial.js?v=20261101-fixed-income1"></script><script src="/reserva-caixinha.js?v=1"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script><script src="/app-shell.js?v=20261101-agenda-sidebar1"></script></body>
+<script src="/tutorial.js?v=20261101-fixed-income1"></script><script src="/reserva-caixinha.js?v=1"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script><script src="/app-shell.js?v=20261102-padronizacao"></script></body>
 
 </html>

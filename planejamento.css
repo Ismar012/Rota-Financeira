@@ -145,6 +145,8 @@ dialog.bulk-expense-modal:not([open]){display:none}
 .bulk-expense-table .bulk-income-fixed-choice { display:flex; align-items:center; gap:7px; margin-top:9px; cursor:pointer; color:#ddd; font-size:11px; white-space:nowrap; }
 .bulk-expense-table .bulk-income-fixed-toggle { width:16px; height:16px; min-height:0; min-width:16px; padding:0; margin:0; accent-color:var(--gold); cursor:pointer; }
 .bulk-expense-table .bulk-income-fixed-choice span { line-height:1.35; }
-.bulk-expense-modal[data-kind="income"] .bulk-type-heading,
-.bulk-expense-modal[data-kind="income"] .bulk-type-cell { display:none; }
+
 .bulk-expense-modal[data-kind="income"] .bulk-expense-table { min-width:980px; }
+
+/* Caixas comuns ficam acima do menu; cadastro em massa usa a camada nativa. */
+body > .modal {z-index:100000;position:fixed;inset:0;overflow:auto;}

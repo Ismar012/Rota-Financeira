@@ -3579,8 +3579,8 @@ async function handleFinanceApi(
       if (type === 'expense' && !['single', 'fixed', 'installment', 'daily', 'weekly', 'fortnightly'].includes(recurrenceType)) {
         return sendJson(res, 400, { error: 'Tipo de despesa recorrente inválido.' });
       }
-      if (type === 'income' && !['single', 'fixed'].includes(recurrenceType)) {
-        return sendJson(res, 400, { error: 'Tipo de ganho inválido. Escolha ganho avulso ou ganho fixo.' });
+      if (type === 'income' && !['single', 'fixed', 'daily', 'weekly', 'fortnightly'].includes(recurrenceType)) {
+        return sendJson(res, 400, { error: 'Repetição de ganho inválida.' });
       }
 
       if (type === 'expense' && recurrenceType === 'installment' && (!Number.isInteger(installmentTotal) || installmentTotal < 2 || installmentTotal > 120)) {
@@ -3602,7 +3602,6 @@ async function handleFinanceApi(
       }
 
       if (
-        type === 'expense' &&
         recurrenceType === 'daily' &&
         compareDates(createdDate, dueDate) > 0
       ) {
@@ -3611,7 +3610,7 @@ async function handleFinanceApi(
           400,
           {
             error:
-              'Na despesa diária, a data final deve ser igual ou posterior à data de início.'
+              'Na repetição diária, a data final deve ser igual ou posterior à data de início.'
           }
         );
       }
@@ -3625,7 +3624,7 @@ async function handleFinanceApi(
       const rowsToCreate = [];
       let firstEntryId = null;
 
-      if (type === 'expense' && ['weekly','fortnightly'].includes(recurrenceType)) {
+      if (['weekly','fortnightly'].includes(recurrenceType)) {
         require('./server-recorrencias').dates(dueDate,recurrenceType,parseDate(dueDate).getDate(),secondDay,require('./server-recorrencias').horizon(dueDate)).forEach(date=>rowsToCreate.push({date,installmentNumber:null,installmentTotal:null}));
       } else if (recurrenceType === 'fixed') {
         const dates = buildFixedDates(dueDate, 4, recurrenceDay);
@@ -3644,7 +3643,7 @@ async function handleFinanceApi(
             installmentTotal
           });
         }
-      } else if (type === 'expense' && recurrenceType === 'daily') {
+      } else if (recurrenceType === 'daily') {
         let currentDate = createdDate;
 
         while (compareDates(currentDate, dueDate) <= 0) {
@@ -3719,7 +3718,7 @@ for (let i = 0; i < rowsToCreate.length; i++) {
   }
 }
 
-if (['weekly','fortnightly'].includes(recurrenceType)) await db.prepare('INSERT INTO expense_schedules(user_id,series_id,config,generated_until) VALUES(?,?,?::jsonb,?) RETURNING series_id').run(userId,seriesId,JSON.stringify({first:dueDate,mode:recurrenceType,day:recurrenceDay,second:secondDay,name,amount,category}),require('./server-recorrencias').horizon(dueDate));
+if (['weekly','fortnightly'].includes(recurrenceType)) await db.prepare('INSERT INTO expense_schedules(user_id,series_id,config,generated_until) VALUES(?,?,?::jsonb,?) RETURNING series_id').run(userId,seriesId,JSON.stringify({type,first:dueDate,mode:recurrenceType,day:recurrenceDay,second:secondDay,name,amount,category}),require('./server-recorrencias').horizon(dueDate));
 await db.exec('COMMIT');
       } catch (err) {
         await db.exec('ROLLBACK');
@@ -4908,7 +4907,7 @@ if (
       `).get(id, userId);
 
       if (!existing) return sendJson(res, 404, { error: 'Lançamento não encontrado.' });
-      const isFixedIncome = existing.type === 'income' && existing.recurrence_type === 'fixed';
+      const isFixedIncome = existing.type === 'income' && ['fixed','daily','weekly','fortnightly'].includes(existing.recurrence_type);
       const isRecurringExpense = existing.type === 'expense' && ['fixed', 'installment', 'weekly', 'fortnightly'].includes(existing.recurrence_type);
       if ((!isFixedIncome && !isRecurringExpense) || !existing.series_id) {
         return sendJson(res, 400, { error: 'Este lançamento não permite encerrar ocorrências futuras.' });

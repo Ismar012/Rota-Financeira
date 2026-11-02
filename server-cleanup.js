@@ -24,7 +24,7 @@ function create({pool,readBody,sendJson,recordClientChange}){
    const removable=rows.rows.filter(r=>r.removable),total=removable.reduce((n,r)=>n+Math.round(Number(r.amount)*100),0)/100;
    if(req.method==='GET'){await c.query('COMMIT');return sendJson(res,200,{count:removable.length,total,protectedCount:rows.rows.length-removable.length,scope:s.scope,month:s.month,type:s.type});}
    if(!Number.isInteger(input.expectedCount)||input.expectedCount!==removable.length||Number(input.expectedTotal)!==total){await c.query('ROLLBACK');return sendJson(res,409,{error:'Os lançamentos mudaram. Revise o resumo antes de confirmar novamente.'});}
-   if(s.scope==='all'&&s.type!=='income')await c.query('UPDATE expense_schedules SET active=FALSE WHERE user_id=$1',[uid]);
+   if(s.scope==='all')await c.query("UPDATE expense_schedules SET active=FALSE WHERE user_id=$1 AND ($2='all' OR COALESCE(config->>'type','expense')=$2)",[uid,s.type]);
    if(s.scope==='month')for(const r of removable.filter(r=>r.series_id))await c.query('INSERT INTO finance_deleted_occurrences(user_id,series_id,due_date) VALUES($1,$2,$3) ON CONFLICT DO NOTHING',[uid,r.series_id,r.due_date]);
    const ids=removable.map(r=>r.id);if(ids.length)await c.query('DELETE FROM finance_entries WHERE user_id=$1 AND id=ANY($2::bigint[])',[uid,ids]);
    // Keep an explicit audit history; remove stale daily-goal snapshots for deleted records' months.

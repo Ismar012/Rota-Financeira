@@ -94,7 +94,7 @@
   }
 
   function showModal(id) {
-    const modal=$(id);modal?.classList.remove('hidden');if(modal?.tagName==='DIALOG'&&!modal.open&&typeof modal.showModal==='function')modal.showModal();
+    const modal=$(id);if(modal && modal.parentNode!==document.body)document.body.append(modal);modal?.classList.remove('hidden');if(modal?.tagName==='DIALOG'&&!modal.open&&typeof modal.showModal==='function')modal.showModal();
   }
 
   function hideModal(id) {
@@ -148,7 +148,7 @@
 
   function syncExpenseRecurrenceUI(type, editing = false) {
     const modeLabel = $('expenseModeLabel');
-    const mode = $('expenseRecurrence');
+    const mode = $(type === 'income' ? 'incomeRecurrence' : 'expenseRecurrence');
     const installmentLabel = $('installmentLabel');
     const installmentTotal = $('installmentTotal');
 
@@ -161,23 +161,22 @@
     setLabelText($('categoryLabel'),'Categoria do lançamento');
     $('entryName').placeholder=type==='income'?'Ex.: Salário, corridas':'Ex.: Combustível';
     $('openBulkExpenses').textContent=type==='income'?'Cadastrar ganhos em massa':'Cadastrar despesas em massa';
-    $('secondDayLabel')?.classList.toggle('hidden', !isExpense || editing || mode.value !== 'fortnightly');
-    if ($('secondDay')) {$('secondDay').required=isExpense && !editing && mode.value==='fortnightly';$('secondDay').disabled=!isExpense || editing || mode.value!=='fortnightly';}
+    $('secondDayLabel')?.classList.toggle('hidden', editing || mode.value !== 'fortnightly');
+    if ($('secondDay')) {$('secondDay').required=!editing && mode.value==='fortnightly';$('secondDay').disabled=editing || mode.value!=='fortnightly';}
     const amountLabel = type === 'expense' && mode.value === 'installment'
       ? 'Valor de cada parcela'
-      : type === 'expense' && mode.value === 'daily' ? 'Valor por dia' : type === 'expense' && ['weekly','fortnightly'].includes(mode.value) ? 'Valor de cada pagamento' : 'Valor';
+      : mode.value === 'daily' ? 'Valor por dia' : ['weekly','fortnightly'].includes(mode.value) ? 'Valor de cada pagamento' : 'Valor';
     setLabelText($('entryAmount')?.closest('label'), amountLabel);
     modeLabel.classList.toggle('hidden', !isExpense);
-    mode.disabled = editing || !isExpense;
+    $('expenseRecurrence').disabled = editing || !isExpense;
     $('incomeModeLabel')?.classList.toggle('hidden', isExpense);
     if ($('incomeRecurrence')) $('incomeRecurrence').disabled = editing || isExpense;
 
     if (!isExpense) {
       installmentLabel?.classList.add('hidden');
-      return;
     }
 
-    const parcelada = mode.value === 'installment';
+    const parcelada = isExpense && mode.value === 'installment';
     installmentLabel?.classList.toggle('hidden', !parcelada);
     if (installmentTotal) installmentTotal.required = parcelada && !editing;
 
@@ -204,7 +203,7 @@
   function syncExpenseRecurrenceFromEntry(entry) {
     if (!$('expenseRecurrence')) return;
     $('expenseRecurrence').value = entry.type === 'expense' ? (entry.recurrence_type || 'single') : 'single';
-    if ($('incomeRecurrence')) $('incomeRecurrence').value = entry.type === 'income' && entry.recurrence_type === 'fixed' ? 'fixed' : 'single';
+    if ($('incomeRecurrence')) $('incomeRecurrence').value = entry.type === 'income' ? (entry.recurrence_type || 'single') : 'single';
     $('installmentTotal').value = entry.installment_total || '';
     syncExpenseRecurrenceUI(entry.type, true);
   }
@@ -339,7 +338,7 @@ const filteredEntries = state.entries.filter((entry) => {
           ${linkedArea === 'house' ? '<a href="/resumo-casa.html">Gerenciar em Despesas da casa</a>' : linkedArea === 'challenge' ? '<a href="/desafio.html">Gerenciar na Reserva da Liberdade</a>' : action}
           ${linkedArea === 'house' || linkedArea === 'challenge' ? '' : `<button type="button" class="secondary-btn" data-action="edit" data-id="${entry.id}">Editar</button>
           <button type="button" class="secondary-btn danger" data-action="delete" data-id="${entry.id}">Excluir</button>
-          ${((isIncome && entry.recurrence_type === 'fixed') || (!isIncome && ['fixed','installment','weekly','fortnightly'].includes(entry.recurrence_type))) && entry.series_id ? `<button type="button" class="secondary-btn danger" data-action="delete-future" data-id="${entry.id}">${isIncome ? 'Encerrar repetição' : 'Excluir próximas'}</button>` : ''}`}
+          ${((isIncome && ['fixed','daily','weekly','fortnightly'].includes(entry.recurrence_type)) || (!isIncome && ['fixed','installment','weekly','fortnightly'].includes(entry.recurrence_type))) && entry.series_id ? `<button type="button" class="secondary-btn danger" data-action="delete-future" data-id="${entry.id}">${isIncome ? 'Encerrar repetição' : 'Excluir próximas'}</button>` : ''}`}
         </div>
       </article>`;
   }).join('');
@@ -679,20 +678,6 @@ function addBulkExpenseRow() {
     'aria-label': `Nome da despesa — linha ${body.children.length + 1}`
   });
   const nameCell = appendBulkCell(row, 'bulk-name-cell', name);
-  // A recorrência de cada ganho é escolhida na própria linha do cadastro em massa.
-  // O select de recorrência continua sendo a fonte do valor enviado à API.
-  if (bulkKind === 'income') {
-    const fixedLabel = makeBulkControl('label', 'bulk-income-fixed-choice');
-    const fixedToggle = makeBulkControl('input', 'bulk-income-fixed-toggle', {
-      type: 'checkbox',
-      'aria-label': `Ganho fixo mensal — linha ${body.children.length + 1}`
-    });
-    fixedLabel.append(fixedToggle, makeBulkControl('span', '', {
-      textContent: 'Ganho fixo mensal'
-    }));
-    nameCell.append(fixedLabel);
-  }
-
   const amount = makeBulkControl('input', 'bulk-amount', {
     type: 'number', min: '0.01', step: '0.01', placeholder: '0,00', inputmode: 'decimal',
     'aria-label': `Valor da despesa — linha ${body.children.length + 1}`
@@ -703,18 +688,11 @@ function addBulkExpenseRow() {
     'aria-label': `Tipo de ${bulkKind==='income'?'ganho':'despesa'} — linha ${body.children.length + 1}`
   });
   const recurrenceOptions = bulkKind === 'income'
-    ? [['single', 'Ganho avulso'], ['fixed', 'Ganho fixo (mensal)']]
-    : [['single', 'Única'], ['fixed', 'Despesa fixa'], ['installment', 'Parcelada'],
+    ? [['single', 'Única'], ['fixed', 'Mensal'], ['daily', 'Diária'], ['weekly', 'Semanal'], ['fortnightly', 'Quinzenal (2 dias)']]
+    : [['single', 'Única'], ['fixed', 'Mensal'], ['installment', 'Parcelada'],
       ['daily', 'Diária'], ['weekly', 'Semanal'], ['fortnightly', 'Quinzenal (2 dias)']];
   for (const [value, label] of recurrenceOptions) recurrence.append(makeBulkControl('option', '', {value, textContent: label}));
   appendBulkCell(row, 'bulk-type-cell', recurrence);
-  const incomeFixedToggle = row.querySelector('.bulk-income-fixed-toggle');
-  if (incomeFixedToggle) {
-    incomeFixedToggle.addEventListener('change', () => {
-      recurrence.value = incomeFixedToggle.checked ? 'fixed' : 'single';
-      recurrence.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-  }
 
   const category = makeBulkControl('select', 'bulk-category', {
     'aria-label': `Categoria do lançamento — linha ${body.children.length + 1}`
@@ -874,7 +852,7 @@ function validateBulkExpenseRow(row) {
   const recurrenceType = controls.recurrence.value;
 
   if (recurrenceType === 'daily' && createdDate && dueDate && createdDate > dueDate) {
-    markInvalid(controls.dueDate, 'a data final da despesa diária deve ser igual ou posterior à data inicial');
+    markInvalid(controls.dueDate, 'a data final da repetição diária deve ser igual ou posterior à data inicial');
   }
 
   let installmentTotal = null;
@@ -1000,13 +978,13 @@ function openBulkExpenseModal() {
   $('bulkExpenseModal').dataset.kind=kind;
   $('bulkExpenseModal').querySelector('.eyebrow').textContent=kind==='income'?'Novos ganhos':'Novas despesas';
   $('bulkExpenseModal').querySelector('.bulk-expense-intro').textContent=kind==='income'
-    ? 'Preencha um ganho por linha. Para repetir o recebimento todos os meses, marque “Ganho fixo mensal” abaixo do nome. Cada recebimento deverá ser confirmado quando acontecer.'
+    ? 'Preencha um ganho por linha e escolha a repetição. Cadastrar não confirma o recebimento.'
     : 'Preencha um lançamento por linha. As linhas completas serão salvas; as incompletas ficarão para correção.';
   $('bulkExpenseModal').querySelector('[role=region]').setAttribute('aria-label','Tabela de '+noun+' para cadastro em massa');
   $('bulkExpenseTitle').textContent='Cadastrar '+noun+' em massa';
   $('bulkSubmitExpenses').textContent='Cadastrar '+noun+(kind==='income'?' preenchidos':' preenchidas');
   $('bulkExpenseModal').querySelectorAll('th')[1].textContent=kind==='income'?'Nome do ganho':'Nome da despesa';
-  $('bulkExpenseModal').querySelector('.bulk-type-heading').textContent=kind==='income'?'Tipo de ganho':'Tipo de despesa';
+  $('bulkExpenseModal').querySelector('.bulk-type-heading').textContent='Repetição';
   $('bulkExpenseModal').querySelectorAll('th')[6].textContent=kind==='income'?'Data de recebimento':'Data de pagamento';
   hideModal('modal');
   const body = $('bulkExpenseRows');
@@ -1296,9 +1274,10 @@ async function confirmEntryDate(event) {
     }
   }
 
-  function suggestSecondDay(){if($('expenseRecurrence').value!=='fortnightly' || state.editingId)return;const day=Number($('dueDate').value.slice(-2));const date=new Date($('dueDate').value+'T12:00:00Z');const last=new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,0)).getUTCDate();$('secondDay').value=day+15<=last?String(day+15):'';}
+  function suggestSecondDay(){if($( $('entryType').value==='income'?'incomeRecurrence':'expenseRecurrence').value!=='fortnightly' || state.editingId)return;const day=Number($('dueDate').value.slice(-2));const date=new Date($('dueDate').value+'T12:00:00Z');const last=new Date(Date.UTC(date.getUTCFullYear(),date.getUTCMonth()+1,0)).getUTCDate();$('secondDay').value=day+15<=last?String(day+15):'';}
   $('dueDate').addEventListener('change',suggestSecondDay);
   $('expenseRecurrence').addEventListener('change',suggestSecondDay);
+  $('incomeRecurrence').addEventListener('change',()=>{syncExpenseRecurrenceUI('income',!!state.editingId);suggestSecondDay();});
   $('prevMonth')?.addEventListener('click', () => setMonth(shiftMonth(state.month, -1)));
   $('nextMonth')?.addEventListener('click', () => setMonth(shiftMonth(state.month, 1)));
   $('monthPicker')?.addEventListener('change', (event) => {
