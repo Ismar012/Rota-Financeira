@@ -77,7 +77,7 @@
   const settings = root.querySelector('#rfGoalSettingsDetails');
   if (view === 'metas') settings.hidden = false;
   const statusLabels={ready:'Planejamento atualizado',needs_setup:'Configure a data e o saldo inicial',needs_regularization:'Defina os prazos das contas vencidas',no_working_days:'Revise os dias disponíveis antes dos vencimentos',cash_inconsistent:'Confira o saldo e as confirmações',past:'Histórico do mês encerrado'};
-  if (view === 'despesas') actions.innerHTML = '<button type="button" class="rf-view-primary" data-rf-action="new-expense">＋ Cadastrar despesa</button>';
+  if (view === 'despesas') actions.innerHTML = '<button type="button" class="rf-view-primary" data-rf-action="new-expense">＋ Cadastrar despesa</button><button type="button" class="rf-view-primary" data-rf-action="bulk-expense">Cadastrar despesas em massa</button>';
   if (view === 'receitas') actions.innerHTML = '<button type="button" class="rf-view-primary" data-rf-action="new-income">＋ Cadastrar ganho</button><button type="button" class="rf-view-primary" data-rf-action="bulk-income">Cadastrar ganhos em massa</button>';
   if (view === 'metas') actions.innerHTML = '<button type="button" class="rf-view-primary" data-rf-action="download-goals">Baixar relatório de metas</button>';
   if (view === 'relatorios') actions.innerHTML = '<button type="button" class="rf-view-primary" data-rf-action="download-general">Baixar relatório geral</button>';
@@ -242,6 +242,7 @@
     if (button) {
       const action = button.dataset.rfAction;
       if (action === 'new-expense') document.getElementById('addExpense')?.click();
+      if(action==='bulk-expense'){document.getElementById('addExpense')?.click();document.getElementById('openBulkExpenses')?.click();}
       if(action==='bulk-income'){document.getElementById('addIncome')?.click();document.getElementById('openBulkExpenses')?.click();}
       if (action === 'new-income') document.getElementById('addIncome')?.click();
       if (action === 'download-goals') download(currentMonth, 'goals');

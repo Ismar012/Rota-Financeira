@@ -213,10 +213,34 @@
       window.location.href = '/login.html';
     }
   });
-  bell.addEventListener('click', () => {
-    const pending = document.getElementById('dashboardPending');
-    if (path === '/dashboard.html' && pending) pending.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    else window.location.href = '/dashboard.html#dashboardPending';
+  const notificationDialog = document.createElement('dialog');
+  notificationDialog.setAttribute('aria-label','Notificações');
+  notificationDialog.style.cssText='width:min(420px,calc(100vw - 32px));max-height:80dvh;overflow:auto;background:#101821;color:#e8edf3;border:1px solid #514221;border-radius:16px;padding:22px';
+  const notificationTitle=document.createElement('h2');notificationTitle.textContent='Notificações';
+  const notificationClose=document.createElement('button');notificationClose.type='button';notificationClose.textContent='Fechar';
+  const notificationContent=document.createElement('div');
+  notificationDialog.append(notificationTitle,notificationContent,notificationClose);document.body.append(notificationDialog);
+  notificationClose.addEventListener('click',()=>notificationDialog.close());
+  notificationDialog.addEventListener('close',()=>bell.setAttribute('aria-expanded','false'));
+  bell.setAttribute('aria-haspopup','dialog');bell.setAttribute('aria-expanded','false');
+  bell.addEventListener('click', async () => {
+    if(notificationDialog.open){notificationDialog.close();return;}
+    notificationContent.replaceChildren();notificationDialog.showModal();bell.setAttribute('aria-expanded','true');
+    const legacy=document.getElementById('rfLegacyNotificationList');
+    if(legacy){legacy.hidden=false;legacy.style.cssText='position:static!important;width:100%;max-height:none;box-shadow:none;border:0';notificationContent.append(legacy);return;}
+    notificationContent.textContent='Consultando pendências…';
+    try{
+      const now=new Date().toLocaleDateString('sv-SE',{timeZone:'America/Bahia'});
+      const response=await fetch('/api/finance/entries?month='+now.slice(0,7),{credentials:'same-origin',cache:'no-store'});
+      if(!response.ok)throw Error('consulta');
+      const data=await response.json();const pending=(data.entries||[]).filter(e=>!Number(e.paid)&&e.due_date.slice(0,10)<=now);
+      notificationContent.textContent=pending.length?'Pendências do mês até hoje:':'Nenhuma pendência do mês até hoje.';
+      for(const entry of pending.slice(0,10)){
+        const link=document.createElement('a');link.href='/planejamento.html?view='+(entry.type==='income'?'receitas':'despesas');
+        link.textContent=entry.name+' · '+Number(entry.amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+        link.style.cssText='display:block;padding:12px 0;color:#f2cc59';notificationContent.append(link);
+      }
+    }catch{notificationContent.textContent='Não foi possível consultar as notificações. Feche e tente novamente.';}
   });
 
   // Central de ajuda e FAQ: as respostas ficam na plataforma e o WhatsApp é uma opção explícita.
