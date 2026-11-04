@@ -37,7 +37,7 @@
       menu.append(houseItem);
     }
     if (!admin) {
-      if (house && !menu && location.pathname !== '/dashboard.html') {
+      if (house && !menu && location.pathname !== '/dashboard.html' && location.pathname !== '/resumo-casa.html') {
         const nav = document.querySelector('.header .nav');
         if (nav) {
           const details = document.createElement('details');

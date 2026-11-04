@@ -39,6 +39,7 @@ function create({pool,requireUser,requireAdmin,readBody,sendJson,buildHouseMonth
  if(url==='/api/house/invites/pending'&&req.method==='GET')return reply(await sharing.pending(pool,uid));
 
  if(u.role!=='admin'&&(!await allowed(u,'plataforma')||!await allowed(u,'divisao-casa')))return reply({error:'Produto não liberado pelo administrador.'},403);
+ if(url==='/api/house/people/remove'&&req.method==='POST'){try{return reply(await sharing.remove(pool,uid,await readBody(req)));}catch(e){if(e.status)return reply({error:e.message},e.status);throw e;}}
  if(url==='/api/house/invites'&&req.method==='POST'){try{return reply(await sharing.invite(pool,uid,await readBody(req)));}catch(e){if(e.status)return reply({error:e.message},e.status);throw e;}}
  if(url==='/api/house/invites/accept'&&req.method==='POST'){try{const r=await sharing.accept(pool,uid,await readBody(req));const status=r._status||200;delete r._status;return reply(r,status);}catch(e){if(e.status)return reply({error:e.message},e.status);throw e;}}
  if(url==='/api/house/report'&&req.method==='GET'){
