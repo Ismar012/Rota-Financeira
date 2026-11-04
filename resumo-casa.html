@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="/refinamento.css?v=20261021-3">
   <link rel="stylesheet" href="/casa-layout.css?v=20261027-acoes5">
   <link rel="stylesheet" href="/finance-views.css?v=20261027-views3">
-<link rel="stylesheet" href="/audit-fixes.css?v=20261101"><script src="/cleanup-ui.js?v=20261101" defer></script><link rel="stylesheet" href="/casa-compartilhada.css?v=1"></head>
+<link rel="stylesheet" href="/audit-fixes.css?v=20261101"><script src="/cleanup-ui.js?v=20261101" defer></script><link rel="stylesheet" href="/casa-compartilhada.css?v=2"></head>
 <body class="rf-app-shell rf-household-page">
   <header class="header">
     <nav class="nav">
@@ -31,9 +31,9 @@
         <label class="house-month-field" for="houseMonth">Mês de referência<input id="houseMonth" type="month"></label>
         <details class="house-options" id="houseOptions">
           <summary aria-label="Mais opções da casa">⋮</summary>
-          <div class="house-options-menu"><button type="button" id="clearHouseEntries">Limpar lançamentos da casa</button></div>
+          <div class="house-options-menu"><button type="button" id="houseInvite">Convidar pessoas</button><button type="button" id="houseDivision">Ajustar divisão<small id="houseDivisionPreview"></small></button><button type="button" id="openPeople">Editar pessoas da casa</button><button type="button" id="clearHouseEntries">Limpar lançamentos da casa</button></div>
         </details>
-        <button type="button" id="houseInvite">Convidar pessoa</button><button type="button" id="houseDivision">Divisão: 50% / 50%</button><button type="button" id="downloadHouseReport" class="rf-view-primary">Baixar resumo da casa</button>
+        <button type="button" id="downloadHouseReport" class="rf-view-primary">Baixar resumo da casa</button>
       </div>
     </div>
 
@@ -83,7 +83,7 @@
           <h2 id="settlementHeading">Acerto entre as pessoas</h2>
           <p>Confira o saldo de cada morador e o que já foi acertado.</p>
         </div>
-        <button type="button" id="openPeople" class="house-secondary-button">Pessoas da casa</button>
+        
       </div>
       <p id="previousBalance" class="house-balance-note"></p>
       <p id="closingBalance" class="house-balance-note"></p>
@@ -183,7 +183,7 @@
       <form id="peopleForm" class="rf-house-form">
         <div id="peopleRows"></div>
         <button type="button" id="addPerson" class="rf-outline-button">＋ Adicionar pessoa</button>
-        <p class="rf-form-help">De 2 a 20 pessoas. Pagamentos anteriores mantêm a divisão original. Contas fixas ainda não pagas de hoje em diante se adaptam à nova quantidade.</p>
+        <p class="rf-form-help">De 1 a 20 pessoas. Remover encerra o acesso à casa, preserva o histórico anterior e redistribui contas futuras ainda não pagas. Para sair, use o botão ao lado do seu nome.</p>
         <p id="peopleError" class="rf-bulk-status" role="alert"></p>
         <div class="rf-dialog-actions"><button type="button" id="cancelPeople" class="rf-outline-button">Cancelar</button><button class="rf-primary-action primary" type="submit">Salvar pessoas</button></div>
       </form>
@@ -191,10 +191,10 @@
   </dialog>
 
   <script src="/catalogo-categorias-ui.js?v=20261101-catalog1"></script>
-  <script src="/resumo-casa.js?v=20261104-casa1"></script>
+  <script src="/resumo-casa.js?v=20261104-casa2"></script>
   <script src="/tutorial.js?v=20261101-mascot-context"></script>
   <script src="/transicoes.js?v=20261021-3"></script>
   <script src="/refinamento.js?v=20261021-3"></script>
-  <script src="/app-shell.js?v=20261104-casa1"></script>
+  <script src="/app-shell.js?v=20261104-casa2"></script>
 </body>
 </html>

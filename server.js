@@ -6270,7 +6270,7 @@ function serveStatic(
         }
 
         const adminVisibilityScript = `
-<script defer src="/agendamentos-menu.js?v=20261027-adminnav2"></script>
+<script defer src="/agendamentos-menu.js?v=20261104-casa2"></script>
 <script data-rota-admin-visibility>
 (async function(){
   try {

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "test": "node test/division.cjs && node test/integration.cjs && node test/ui.cjs && node test/migration.cjs"
+    "test": "node test/division.cjs && node test/integration.cjs && node test/ui.cjs && node test/migration.cjs && node test/division-ui.cjs && node test/house-removal.cjs"
   },
   "dependencies": {
     "fast-xml-parser": "^5.11.2",
