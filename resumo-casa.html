@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="/refinamento.css?v=20261021-3">
   <link rel="stylesheet" href="/casa-layout.css?v=20261027-acoes5">
   <link rel="stylesheet" href="/finance-views.css?v=20261027-views3">
-<link rel="stylesheet" href="/audit-fixes.css?v=20261101"><script src="/cleanup-ui.js?v=20261101" defer></script></head>
+<link rel="stylesheet" href="/audit-fixes.css?v=20261101"><script src="/cleanup-ui.js?v=20261101" defer></script><link rel="stylesheet" href="/casa-compartilhada.css?v=1"></head>
 <body class="rf-app-shell rf-household-page">
   <header class="header">
     <nav class="nav">
@@ -25,7 +25,7 @@
       <div class="house-page-title">
         <div class="eyebrow">Divisão de despesas da casa</div>
         <h1>Resumo de casa</h1>
-        <p>Uma divisão justa, um acerto simples. Cada despesa é dividida igualmente entre os moradores cadastrados.</p>
+        <p>Uma divisão justa, um acerto simples. Compartilhe apenas as despesas da casa e ajuste a participação de cada morador.</p>
       </div>
       <div class="house-header-tools">
         <label class="house-month-field" for="houseMonth">Mês de referência<input id="houseMonth" type="month"></label>
@@ -33,7 +33,7 @@
           <summary aria-label="Mais opções da casa">⋮</summary>
           <div class="house-options-menu"><button type="button" id="clearHouseEntries">Limpar lançamentos da casa</button></div>
         </details>
-        <button type="button" id="downloadHouseReport" class="rf-view-primary">Baixar resumo da casa</button>
+        <button type="button" id="houseInvite">Convidar pessoa</button><button type="button" id="houseDivision">Divisão: 50% / 50%</button><button type="button" id="downloadHouseReport" class="rf-view-primary">Baixar resumo da casa</button>
       </div>
     </div>
 
@@ -112,7 +112,7 @@
           <label for="payer">Quem pagou?<select id="payer" name="payer"><option value="equal">Todos pagaram sua parte</option><option value="person:me">Eu paguei tudo</option></select></label>
         </div>
         <div id="expensePayments" class="rf-custom-payments"></div>
-        <p id="recurrenceHelp" class="rf-form-help">A divisão é igual entre as pessoas da casa. Valores pagos podem ser diferentes. Contas fixas geram parcelas previstas até três meses à frente.</p>
+        <p id="recurrenceHelp" class="rf-form-help">A divisão segue os percentuais definidos em Divisão. Valores pagos podem ser diferentes. Contas fixas geram parcelas previstas até três meses à frente.</p>
         <div class="rf-dialog-actions"><button type="button" id="cancelExpenseDialog" class="rf-outline-button">Cancelar</button><button type="submit" class="rf-primary-action">Salvar despesa</button></div>
       </form>
     </section>
@@ -191,10 +191,10 @@
   </dialog>
 
   <script src="/catalogo-categorias-ui.js?v=20261101-catalog1"></script>
-  <script src="/resumo-casa.js?v=20261101-catalog1"></script>
+  <script src="/resumo-casa.js?v=20261104-casa1"></script>
   <script src="/tutorial.js?v=20261101-mascot-context"></script>
   <script src="/transicoes.js?v=20261021-3"></script>
   <script src="/refinamento.js?v=20261021-3"></script>
-  <script src="/app-shell.js?v=20261102-padronizacao"></script>
+  <script src="/app-shell.js?v=20261104-casa1"></script>
 </body>
 </html>

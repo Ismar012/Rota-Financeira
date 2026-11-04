@@ -209,6 +209,7 @@
   }
 
   function resetEntryForm(type) {
+    $('editPaidWrap').hidden=true;$('editPaid').checked=false;$('editPaidDateWrap').hidden=true;
     state.editingId = null;
     state.editingType = type;
     $('entryId').value = '';
@@ -233,6 +234,7 @@
   }
 
   function editEntry(entry) {
+    $('editPaidWrap').hidden=false;$('editPaid').checked=Number(entry.paid)===1;$('editPaidText').textContent=entry.type==='income'?'Ganho recebido':'Despesa paga';$('editPaidDate').value=entry.paid_date||todayLocal();$('editPaidDate').max=todayLocal();$('editPaidDateWrap').hidden=!$('editPaid').checked;
     state.editingId = Number(entry.id);
     state.editingType = entry.type;
     $('entryId').value = entry.id;
@@ -554,6 +556,7 @@ async function saveEntry(event) {
         : null
   };
 
+  if(id){payload.paid=$('editPaid').checked;payload.paid_date=payload.paid?$('editPaidDate').value:null;if(payload.paid&&(!payload.paid_date||payload.paid_date>todayLocal())){feedback('Informe a data efetiva, até hoje.','error');return;}}
   // Primeiro valida os dados.
   if (
     !payload.name ||
@@ -1419,3 +1422,5 @@ $('closeConfirmDateModal')?.addEventListener('click', () => {
     setMonth(/^\d{4}-(0[1-9]|1[0-2])$/.test(remembered||'')?remembered:isoMonth());
   })();
 })();
+
+document.getElementById('editPaid')?.addEventListener('change',()=>{document.getElementById('editPaidDateWrap').hidden=!document.getElementById('editPaid').checked;});

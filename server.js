@@ -2793,18 +2793,19 @@ const realizedIncome =
 }
 
 async function buildHouseMonthlyReport(userId, month, clientName = 'Cliente') {
-  const uid = Number(userId);
+  const viewerId=Number(userId),sharing=require('./server-casa-compartilhada'),ctx=await sharing.context(pool,viewerId);
+  const uid=ctx.owner;
   await require('./casa-ledger').transaction(pool, uid);
   const [expensesResult, settlementsResult, recurringResult] = await Promise.all([
     pool.query(`SELECT *,day::text AS day,due_date::text AS due_date FROM house_expenses WHERE user_id=$1 AND deleted=FALSE ORDER BY house_expenses.due_date ASC,house_expenses.id ASC`, [uid]),
     pool.query(`SELECT *,day::text AS day FROM house_settlements WHERE user_id=$1 ORDER BY house_settlements.day ASC,house_settlements.id ASC`, [uid]),
     pool.query(`SELECT *,first_due::text AS first_due FROM house_recurring WHERE user_id=$1 AND active=TRUE ORDER BY id`, [uid])
   ]);
-  const expenses = expensesResult.rows;
-  const settlements = settlementsResult.rows;
+  const expenses = expensesResult.rows.map(e=>sharing.expenseForViewer(e,ctx));
+  const settlements = settlementsResult.rows.map(e=>sharing.settlementForViewer(e,ctx));
   const recurring = recurringResult.rows;
   const division = require('./casa-divisao');
-  const people = await division.members(pool, uid);
+  const people = (await division.members(pool, uid)).map(p=>({...p,id:sharing.swap(p.id,ctx)}));
   const group = division.balances(expenses, settlements, people, month);
   const movements = [
     ...expenses.filter(item => item.paid).map(item => ({ date: item.day, delta: Number(item.mine_cents || 0) - Number(item.share_cents || 0) })),
@@ -4783,6 +4784,11 @@ if (
       if (!canonicalCategory && !(existing.type === type && financeCategoryCatalog.makeKey(existing.financial_category || 'Outros') === financeCategoryCatalog.makeKey(proposedCategory)))
         return sendJson(res,400,{error:'Categoria não cadastrada. Peça ao administrador para adicioná-la.'});
 
+      if(body.paid!==undefined&&typeof body.paid!=='boolean')return sendJson(res,400,{error:'Situação de pagamento inválida.'});
+      const nextPaid=body.paid===undefined?Number(existing.paid)===1:body.paid;
+      const nextPaidDate=nextPaid?(body.paid_date||existing.paid_date||getTodayLocal()):null;
+      if(nextPaid&&(!validDate(nextPaidDate)||nextPaidDate>getTodayLocal()))return sendJson(res,400,{error:'Informe uma data de pagamento ou recebimento válida, até hoje.'});
+      const nextPaidAt=nextPaid?(existing.paid_at||new Date().toISOString()):null;
       const result =
         await db
           .prepare(`
@@ -4794,7 +4800,8 @@ if (
               amount = ?,
               created_date = ?,
               due_date = ?,
-              financial_category = ?
+              financial_category = ?,
+              paid = ?, paid_date = ?, paid_at = ?
 
             WHERE
               id = ?
@@ -4807,6 +4814,7 @@ if (
             createdDate,
             dueDate,
             canonicalCategory || proposedCategory,
+            nextPaid?1:0,nextPaidDate,nextPaidAt,
             id,
             userId
           );

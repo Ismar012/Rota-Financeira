@@ -22,7 +22,7 @@
 <link rel="stylesheet" href="/perfil-financeiro.css?v=1">
 <link rel="stylesheet" href="/operacoes.css?v=2">
 <link rel="stylesheet" href="/transicoes.css?v=20261101-mascot-context"><link rel="stylesheet" href="/refinamento.css?v=20261021-3"><link rel="stylesheet" href="/app-shell.css?v=20261101-agenda-sidebar1">
-<link rel="stylesheet" href="/finance-views.css?v=20261027-viewfix4"><link rel="stylesheet" href="/planejamento-dashboard.css?v=20261101-layout2"><link rel="stylesheet" href="/audit-fixes.css?v=20261102-ajustes-pontuais2"><script src="/cleanup-ui.js?v=20261101" defer></script></head>
+<link rel="stylesheet" href="/finance-views.css?v=20261027-viewfix4"><link rel="stylesheet" href="/planejamento-dashboard.css?v=20261101-layout2"><link rel="stylesheet" href="/audit-fixes.css?v=20261102-ajustes-pontuais2"><script src="/cleanup-ui.js?v=20261101" defer></script><link rel="stylesheet" href="/casa-compartilhada.css?v=1"></head>
 
 <body class="client-planning">
 
@@ -597,6 +597,7 @@
         </label>
 
 
+        <div id="editPaidWrap" hidden><label class="rf-edit-check"><input id="editPaid" type="checkbox"><span id="editPaidText">Despesa paga</span></label><label id="editPaidDateWrap" hidden>Data efetiva<input id="editPaidDate" type="date"></label></div>
         <p class="field-explanation">Cadastrar cria uma previsão. Confirme o pagamento ou recebimento quando acontecer.</p><details class="field-explanation"><summary>Saiba mais sobre as datas</summary><p>Ganhos são distribuídos desde a data do cadastro; despesas, a partir do dia seguinte até o vencimento. Datas iguais concentram o valor naquele dia. Na repetição diária, informe início e fim: será criado um lançamento por dia. A quinzenal repete em dois dias escolhidos de cada mês.</p></details>
 
         <button
@@ -812,7 +813,7 @@
 ========================== -->
 
 <script src="/catalogo-categorias-ui.js?v=20261101-catalog1"></script>
-<script src="/planejamento.js?v=20261102-ajustes-pontuais2"></script>
+<script src="/planejamento.js?v=20261104-casa1"></script>
 <script src="/finance-views.js?v=20261102-ajustes-pontuais2"></script>
 <script>
 document.getElementById('backLogo')?.addEventListener('click', function (event) {
@@ -826,6 +827,6 @@ document.getElementById('backLogo')?.addEventListener('click', function (event) 
 <script src="/perfil-financeiro-ui.js?v=1"></script>
 <script src="/ferramentas-financeiras.js?v=2"></script>
 <script src="/categorias.js?v=20261027-premium2"></script>
-<script src="/tutorial.js?v=20261101-fixed-income1"></script><script src="/reserva-caixinha.js?v=1"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script><script src="/app-shell.js?v=20261102-padronizacao"></script></body>
+<script src="/tutorial.js?v=20261101-fixed-income1"></script><script src="/reserva-caixinha.js?v=1"></script><script src="/transicoes.js?v=20261021-3"></script><script src="/refinamento.js?v=20261021-3"></script><script src="/app-shell.js?v=20261104-casa1"></script></body>
 
 </html>
