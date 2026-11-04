@@ -55,3 +55,14 @@ O histórico anterior não é apagado: a parte da pessoa retirada é preservada 
 Para incluir novamente uma pessoa removida, gere um convite como Nova pessoa. Isso cria um novo vínculo sem misturar as divisões do vínculo anterior. Não reative um identificador removido pelo cadastro de nomes.
 
 A suíte adicional cobre soma automática, decimal e limite de 100%, menu único, remoção de conta vinculada, retirada efetiva do acesso, preservação do fluxo de caixa anterior, retirada de projeções futuras e transferência de quem criou a casa. Os testes usam PostgreSQL embarcado e DOM; concorrência real com múltiplas conexões e conferência visual em navegador de produção continuam pendentes.
+
+
+## V3 — adaptação para celular
+
+- Camada final `mobile-layout.css` nas nove páginas da área do cliente, depois dos estilos existentes. Não requer migração de dados adicional.
+- Correção de conflitos entre estilos de celular e estilos posteriores; calendário, menus, cartões, botões e formulários ajustados.
+- Receitas e despesas em cartões no celular, com rótulos de data, descrição, categoria, valor, situação e ações. Tabelas extensas continuam com rolagem apenas dentro da tabela.
+- Campos com fonte de 16px no celular para evitar zoom automático ao preencher; pop-ups com limite de altura e rolagem; margem para navegação inferior e área segura do aparelho.
+- Arquivos HTML e versão de finance-views.js atualizados para carregar a nova apresentação. Publicar todos os arquivos desta versão juntos.
+- Verificação em Chromium sem interface, com larguras 320, 375, 390, 430, 768 e 1280px, nas nove páginas e nas visões de receitas/despesas: nenhum conteúdo fora da largura útil detectado. Dados de teste isolados. Recursos externos de gráficos bloqueados nesta conferência; desenhos e interações dos gráficos e teclado real de Android/iOS precisam de conferência após publicação.
+- Suíte `npm test` aprovada: pagamentos, privacidade, convites, percentuais, migração e remoção. Esta versão já inclui as alterações da V2.
