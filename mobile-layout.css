@@ -1,0 +1,85 @@
+/* Correções finais de responsividade. Carregar depois das camadas de cada tela. */
+body.rf-app-shell *, body.rf-app-shell *::before, body.rf-app-shell *::after {box-sizing:border-box}
+body.rf-app-shell main, body.rf-app-shell main > *, body.rf-app-shell .card, body.rf-app-shell form, body.rf-app-shell label {min-width:0}
+body.rf-app-shell main :is(h1,h2,h3,p,strong,small,label,summary) {overflow-wrap:break-word}
+body.rf-app-shell :is(input,select,textarea) {max-width:100%;min-width:0}
+body.rf-app-shell :is(.table-scroll,.bulk-table-scroll,.rf-house-bulk-table-scroll,.rf-view-table-scroll) {max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-x:contain}
+@media (max-width:850px) {
+ body.rf-app-shell .house-page-heading {flex-direction:column;align-items:stretch;gap:16px}
+ body.rf-app-shell .house-header-tools {width:100%;justify-content:flex-start}
+ body.rf-app-shell .house-month-field {flex:1 1 180px;max-width:none}
+ body.rf-app-shell .house-header-tools .house-options {flex:0 0 44px}
+ body.rf-app-shell .house-header-tools #downloadHouseReport {flex-basis:100%;white-space:normal}
+}
+@media (max-width:600px) {
+ body.rf-app-shell {padding-bottom:calc(82px + env(safe-area-inset-bottom))}
+ body.rf-app-shell .rf-app-sidebar {height:calc(70px + env(safe-area-inset-bottom));padding-bottom:calc(4px + env(safe-area-inset-bottom))}
+ body.rf-app-shell .rf-sidebar-nav .rf-sidebar-link {flex:0 0 76px;min-height:56px;font-size:10px;line-height:1.2}
+ body.rf-app-shell .rf-sidebar-nav .rf-sidebar-link span {font-size:10px;line-height:1.2;max-width:72px}
+ body.rf-app-shell .header .nav {gap:8px}
+ body.rf-app-shell .rf-header-caption {gap:6px;flex:1;min-width:0}
+ body.rf-app-shell .rf-header-icon {width:22px;flex-basis:22px}
+ body.rf-app-shell .rf-header-icon svg {width:22px;height:22px}
+ body.rf-app-shell .rf-header-caption strong {max-width:none;font-size:13px;white-space:normal;line-height:1.2}
+ body.rf-app-shell :is(.nav-actions,.rf-shell-header-actions,.dashboard-nav-actions) {flex-shrink:0;gap:4px}
+ body.rf-app-shell .rf-workspace-topbar {position:sticky;top:0;min-height:62px;flex-wrap:wrap;gap:8px;padding:10px 12px}
+ body.rf-app-shell .rf-workspace-title strong {font-size:17px}
+ body.rf-app-shell .rf-workspace-title small {font-size:11px}
+ body.rf-app-shell .rf-workspace-actions {justify-content:flex-start}
+ body.rf-app-shell .rf-house-main {width:calc(100% - 24px);padding-top:82px}
+ body.rf-app-shell .house-header-tools {display:grid;grid-template-columns:minmax(0,1fr) 44px;align-items:end;gap:10px}
+ body.rf-app-shell .house-header-tools .house-month-field {width:auto;min-width:0;max-width:none}
+ body.rf-app-shell .house-header-tools #downloadHouseReport {grid-column:1/-1;width:100%}
+ body.rf-app-shell .house-options summary {width:44px;height:44px}
+ body.rf-app-shell .house-options-menu {min-width:0;width:min(280px,calc(100vw - 24px));max-width:calc(100vw - 24px)}
+ body.rf-app-shell .house-options-menu button {min-height:44px;white-space:normal}
+ body.rf-app-shell .rf-house-main :is(.house-quick-actions,.house-graphs,.grid.house-metrics) {grid-template-columns:minmax(0,1fr)}
+ body.rf-app-shell .house-quick-actions button {padding:13px;gap:10px}
+ body.rf-app-shell .house-quick-actions button > div {min-width:0}
+ body.rf-app-shell .house-pending-row {grid-template-columns:minmax(0,1fr);gap:8px}
+ body.rf-app-shell .house-pending-actions {grid-column:1/-1;flex-wrap:wrap}
+ body.rf-app-shell .house-pending-actions button {flex:1;min-height:44px}
+ body.rf-app-shell .rf-house-main .rf-member-balances .entry {grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.rf-app-shell .rf-house-main .rf-member-stat strong {font-size:16px;line-height:1.35;margin:3px 0}
+ body.rf-app-shell .house-legend-row {flex-wrap:wrap}
+ body.rf-app-shell .house-chart {height:240px;min-width:0}
+ body.rf-app-shell :is(.house-chart,.chart-wrap,.rf-view-chart) canvas {max-width:100%}
+ body.rf-app-shell .planning-head .month-selector {display:flex;width:100%;max-width:100%;gap:5px;flex-wrap:nowrap}
+ body.rf-app-shell .planning-head .month-selector input {flex:1 1 0;width:0;min-width:0;font-size:16px;padding:9px 5px}
+ body.rf-app-shell .planning-head .month-selector :is(.month-btn,.menu-btn) {flex:0 0 40px;width:40px;min-width:40px;height:44px}
+ body.rf-app-shell .planning-head .menu {width:min(280px,calc(100vw - 24px));min-width:0}
+ body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-grid {grid-template-columns:minmax(0,1fr)}
+ body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-card {min-height:64px}
+ body.rf-app-shell.client-planning:not(.rf-finance-section-view) .action-card strong {font-size:14px}
+ body.rf-app-shell :is(.entry-actions,.house-entry-actions,.rf-view-row-actions) {min-width:0;width:100%;display:flex;gap:8px;flex-wrap:wrap}
+ body.rf-app-shell :is(.entry-actions,.house-entry-actions,.rf-view-row-actions) button {min-height:44px;font-size:12px;white-space:normal;flex:1 1 100px}
+ body.rf-app-shell .rf-view-primary {white-space:normal;max-width:100%;min-height:44px}
+ body.rf-app-shell :is(.rf-view-list-filters,.entries-filter) {flex-wrap:wrap;gap:8px;min-width:0}
+ body.rf-app-shell :is(.rf-view-list-filters,.entries-filter) > * {min-width:0;max-width:100%;flex:1 1 140px}
+ /* Listas de receitas/despesas viram cartões; planilhas extensas mantêm rolagem local. */
+ body.rf-app-shell .rf-view-table:has(#rfEntriesRows-expense),body.rf-app-shell .rf-view-table:has(#rfEntriesRows-income) {display:block;min-width:0;width:100%}
+ body.rf-app-shell .rf-view-table:has([id^="rfEntriesRows-"]) thead {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ body.rf-app-shell .rf-view-table [id^="rfEntriesRows-"] {display:block;width:100%}
+ body.rf-app-shell .rf-view-table [id^="rfEntriesRows-"] tr {display:block;padding:12px;border-bottom:1px solid #2b414f}
+ body.rf-app-shell .rf-view-table [id^="rfEntriesRows-"] td {display:block;width:100%;padding:5px 0;border:0;white-space:normal;overflow-wrap:anywhere}
+ body.rf-app-shell .rf-view-table [id^="rfEntriesRows-"] td[data-label]::before {content:attr(data-label);display:block;font-size:11px;font-weight:400;color:#94a9bc;margin-bottom:3px}
+ body.rf-app-shell .rf-view-table [id^="rfEntriesRows-"] td.rf-view-money {font-size:18px}
+ body.rf-app-shell .operations .grid {grid-template-columns:minmax(0,1fr)}
+ body.rf-app-shell :is(input:not([type=checkbox]):not([type=radio]),select,textarea) {font-size:16px!important;min-height:44px}
+ body.rf-app-shell .modal {padding:12px;align-items:flex-start;overflow:auto}
+ body.rf-app-shell :is(.modal-box,.bulk-expense-box) {max-width:100%;max-height:calc(100dvh - 24px);margin:auto;padding:24px 16px 16px}
+ body.rf-app-shell :is(dialog.rf-dialog,dialog.rf-share-dialog,dialog.rf-cleanup) {max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);overflow:auto}
+ body.rf-app-shell .rf-dialog-card {max-height:none;padding:24px 16px 16px;overflow:visible}
+ body.rf-app-shell :is(.rf-form-grid,.rf-share-grid) {grid-template-columns:minmax(0,1fr)}
+ body.rf-app-shell #peopleRows .row {display:flex;flex-wrap:wrap;gap:8px;align-items:end}
+ body.rf-app-shell #peopleRows .row label {flex:1 1 160px}
+ body.rf-app-shell #peopleRows .row button {min-height:44px;white-space:normal}
+ body.rf-app-shell .rf-share-dialog .rf-share-grid label {min-width:0}
+ body.rf-app-shell .rf-share-dialog button {min-height:44px}
+ body.rf-app-shell .rf-invite-code {font-size:clamp(22px,7vw,32px);letter-spacing:3px;padding:16px 8px}
+ /* Ajuda permanece acessível sem dois painéis sobrepostos ao conteúdo. */
+ body.rf-app-shell .rf-app-sidebar .rf-sidebar-footer .rf-sidebar-help.tour-help,
+ body.rf-app-shell .rf-app-sidebar .rf-sidebar-footer .rf-sidebar-support {width:40px;min-width:40px;height:40px;min-height:40px;padding:9px;right:10px;bottom:calc(80px + env(safe-area-inset-bottom));border-radius:50%}
+ body.rf-app-shell .rf-app-sidebar .rf-sidebar-footer .rf-sidebar-support {right:58px}
+ body.rf-app-shell .rf-sidebar-footer :is(.rf-sidebar-help,.rf-sidebar-support) span {display:none}
+}
