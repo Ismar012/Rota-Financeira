@@ -11,7 +11,7 @@ async function install(pool){await pool.query(`
  CREATE TABLE IF NOT EXISTS house_expenses(id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,description VARCHAR(160) NOT NULL,day DATE NOT NULL,total_cents INTEGER NOT NULL,mine_cents INTEGER NOT NULL,share_cents INTEGER NOT NULL,payer TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS house_settlements(id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,day DATE NOT NULL,delta_cents INTEGER NOT NULL);
  INSERT INTO services(slug,name,description,price,default_acquired) VALUES('divisao-casa','Divisão de despesas da casa','Divida despesas entre duas pessoas e acompanhe os valores a devolver.',0,FALSE) ON CONFLICT(slug) DO NOTHING;
- `);await require('./casa-ledger').install(pool);}
+ `);await require('./casa-ledger').install(pool);await require('./server-casa-compartilhada').install(pool);}
 function create({pool,requireUser,requireAdmin,readBody,sendJson,buildHouseMonthlyReport,buildHouseReportPdf,sendPdf}){
  const house=require('./casa-ledger').create({pool,readBody,sendJson,expense});
  const access=require('./server-acesso');
@@ -35,7 +35,12 @@ function create({pool,requireUser,requireAdmin,readBody,sendJson,buildHouseMonth
  if(req.method==='POST'){const b=await readBody(req);if(!['approve','revoke','reject'].includes(b.action)||!Number.isSafeInteger(Number(b.user_id))||!Number.isSafeInteger(Number(b.service_id)))return reply({error:'Ação inválida.'},400);
  const c=await pool.connect();try{await c.query('BEGIN');const target=await c.query("SELECT id FROM users WHERE id=$1 AND role='client'",[b.user_id]);const service=await c.query('SELECT id FROM services WHERE id=$1 AND active=TRUE',[b.service_id]);if(!target.rowCount||!service.rowCount){await c.query('ROLLBACK');return reply({error:'Cliente ou produto não encontrado.'},404);}if(b.action!=='reject')await c.query('INSERT INTO product_permissions(user_id,service_id,allowed) VALUES($1,$2,$3) ON CONFLICT(user_id,service_id) DO UPDATE SET allowed=EXCLUDED.allowed',[b.user_id,b.service_id,b.action==='approve']);if(b.action!=='reject')await c.query(`INSERT INTO billing_manual_service_grants(user_id,service_id,allowed,updated_by) VALUES($1,$2,$3,$4) ON CONFLICT(user_id,service_id) DO UPDATE SET allowed=EXCLUDED.allowed,updated_by=EXCLUDED.updated_by,updated_at=NOW()`,[b.user_id,b.service_id,b.action==='approve',u.id]);await c.query('UPDATE product_requests SET status=$3 WHERE user_id=$1 AND service_id=$2',[b.user_id,b.service_id,b.action==='approve'?'approved':'rejected']);await c.query('COMMIT');}catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}return reply({ok:true});}}
  if(url.startsWith('/api/house')){
+ const sharing=require('./server-casa-compartilhada');
+ if(url==='/api/house/invites/pending'&&req.method==='GET')return reply(await sharing.pending(pool,uid));
+
  if(u.role!=='admin'&&(!await allowed(u,'plataforma')||!await allowed(u,'divisao-casa')))return reply({error:'Produto não liberado pelo administrador.'},403);
+ if(url==='/api/house/invites'&&req.method==='POST'){try{return reply(await sharing.invite(pool,uid,await readBody(req)));}catch(e){if(e.status)return reply({error:e.message},e.status);throw e;}}
+ if(url==='/api/house/invites/accept'&&req.method==='POST'){try{const r=await sharing.accept(pool,uid,await readBody(req));const status=r._status||200;delete r._status;return reply(r,status);}catch(e){if(e.status)return reply({error:e.message},e.status);throw e;}}
  if(url==='/api/house/report'&&req.method==='GET'){
    const month=new URL(req.url||'/api/house/report','http://localhost').searchParams.get('month')||new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bahia',year:'numeric',month:'2-digit'}).format(new Date());
    if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)||month.slice(0,4)==='0000')return reply({error:'Mês inválido.'},400);

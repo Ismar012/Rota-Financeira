@@ -6,6 +6,7 @@
   ]);
   const path = window.location.pathname;
   if (!allowed.has(path)) return;
+  const houseInvitesScript=document.createElement('script');houseInvitesScript.src='/casa-convites-ui.js?v=20261104';houseInvitesScript.defer=true;document.head.append(houseInvitesScript);
 
   const body = document.body;
   body.classList.add('rf-app-shell');
